@@ -152,7 +152,7 @@ StarField.BackgroundColor3 = Color3.fromRGB(20, 0, 30)
 StarField.BackgroundTransparency = 0
 StarField.BorderSizePixel = 0
 StarField.ZIndex = 1
-StarField.Parent = MainWindow
+StarField.Parent = Orion
 
 local Stars = {}
 local StarCount = 150
