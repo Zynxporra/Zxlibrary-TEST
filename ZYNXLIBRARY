@@ -25,8 +25,8 @@ local userInputService = game:GetService("UserInputService")
 
 local Workspace = game:GetService("Workspace")
 
-local PlotItems = Workspace:WaitForChild("PlotItems")
-local PlayersInPlots = PlotItems:WaitForChild("PlayersInPlots")
+local PlotItems = Workspace:FindFirstChild("PlotItems")
+local PlayersInPlots = PlotItems and PlotItems:FindFirstChild("PlayersInPlots")
 
 userInputService.MouseIconEnabled = true
 
@@ -3118,17 +3118,15 @@ end
 
 UpdatePlayerStatus()
 
-PlayersInPlots.ChildAdded:Connect(function(child)
-	if child.Name == player.Name then
-		UpdatePlayerStatus()
-	end
-end)
+if PlayersInPlots then
+    PlayersInPlots.ChildAdded:Connect(function()
+        UpdatePlayerStatus()
+    end)
 
-PlayersInPlots.ChildRemoved:Connect(function(child)
-	if child.Name == player.Name then
-		UpdatePlayerStatus()
-	end
-end)
+    PlayersInPlots.ChildRemoved:Connect(function()
+        UpdatePlayerStatus()
+    end)
+end
 						AddThemeObject(SetProps(Instance.new("UIStroke"), {
 							Parent = OptionBtn,
 							ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
