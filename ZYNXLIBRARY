@@ -3093,8 +3093,16 @@ PlotIcon.Image = "rbxassetid://279461711"
 PlotIcon.Visible = false
 PlotIcon.Parent = OptionBtn
 
-local function UpdatePlayerStatus()
-    if PlayersInPlots:FindFirstChild(player.Name) then
+    local inPlot = false
+    
+    for _, p in ipairs(PlayersInPlots:GetChildren()) do
+        if p == player then
+            inPlot = true
+            break
+        end
+    end
+
+    if inPlot then
         OptionBtn.BackgroundColor3 = Color3.fromRGB(40,170,40)
         PlotIcon.Visible = true
     else
