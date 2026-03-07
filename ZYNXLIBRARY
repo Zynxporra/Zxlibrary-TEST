@@ -3213,8 +3213,25 @@ end
 
 					-- Atualiza as cores dos botões
 					for p, btn in pairs(self.Buttons) do
-						btn.BackgroundColor3 = self.SelectedPlayers[p] and SelectedColor or ButtonColor
-					end
+
+    local inPlot = false
+
+    if PlayersInPlots then
+        for _, obj in ipairs(PlayersInPlots:GetChildren()) do
+            if obj.Name == p.Name then
+                inPlot = true
+                break
+            end
+        end
+    end
+
+    if inPlot then
+        btn.BackgroundColor3 = Color3.fromRGB(40,170,40)
+    else
+        btn.BackgroundColor3 = self.SelectedPlayers[p] and SelectedColor or ButtonColor
+    end
+
+end
 
 					return Config.Callback(selectedUsernames)
 				end
