@@ -3094,12 +3094,15 @@ PlotIcon.Visible = false
 PlotIcon.Parent = OptionBtn
 
 local function UpdatePlayerStatus()
+
     local inPlot = false
-    
-    for _, p in ipairs(PlayersInPlots:GetChildren()) do
-        if p == player then
-            inPlot = true
-            break
+
+    if PlayersInPlots then
+        for _, p in ipairs(PlayersInPlots:GetChildren()) do
+            if p.Name == player.Name then
+                inPlot = true
+                break
+            end
         end
     end
 
@@ -3110,6 +3113,7 @@ local function UpdatePlayerStatus()
         OptionBtn.BackgroundColor3 = ButtonColor
         PlotIcon.Visible = false
     end
+
 end
 
 UpdatePlayerStatus()
