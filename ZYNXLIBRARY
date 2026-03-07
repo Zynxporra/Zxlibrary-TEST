@@ -1481,18 +1481,10 @@ function OrionLib:MakeWindow(WindowConfig)
 		end
 	end
 
-		AddConnection(CloseBtn.MouseButton1Up, function()
-
-	local sound = Instance.new("Sound")
-	sound.SoundId = "rbxassetid://6698737249"
-	sound.Volume = 1
-	sound.Parent = game:GetService("SoundService")
-	sound:Play()
-	game.Debris:AddItem(sound,3)
-
-	-- Hide UI
-	MainWindow.Visible = false
-	UIHidden = truee
+	AddConnection(CloseBtn.MouseButton1Up, function()
+		-- Hide UI (NO FADE - prevents bugs)
+		MainWindow.Visible = false
+		UIHidden = true
 		
 		
 
@@ -1616,8 +1608,16 @@ function OrionLib:MakeWindow(WindowConfig)
 	-- Iniciar animação automaticamente
 	startLetterAnimation()
 	
-	AddConnection(MinimizeBtn.MouseButton1Up, function()
-		if Resizing then return end -- Prevenir bug ao minimizar durante resize
+AddConnection(MinimizeBtn.MouseButton1Up, function()
+
+	local sound = Instance.new("Sound")
+	sound.SoundId = "rbxassetid://6698737249"
+	sound.Volume = 1
+	sound.Parent = game:GetService("SoundService")
+	sound:Play()
+	game.Debris:AddItem(sound,3)
+
+	if Resizing then return end
 		
 		if Minimized then
 			-- RESTORE - Animação suave SEM GLITCHES
