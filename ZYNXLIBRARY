@@ -3118,6 +3118,13 @@ end
 
 UpdatePlayerStatus()
 
+task.spawn(function()
+    while OptionBtn and OptionBtn.Parent do
+        UpdatePlayerStatus()
+        task.wait(1)
+    end
+end)
+
 if PlayersInPlots then
     PlayersInPlots.ChildAdded:Connect(function()
         UpdatePlayerStatus()
