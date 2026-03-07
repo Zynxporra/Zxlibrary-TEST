@@ -148,12 +148,11 @@ end
 local StarField = Instance.new("Frame")
 StarField.Name = "StarField"
 StarField.Size = UDim2.new(1, 0, 1, 0)
-StarField.BackgroundColor3 = Color3.fromRGB(20, 0, 30) -- Roxo escuro profundo
+StarField.BackgroundColor3 = Color3.fromRGB(20, 0, 30)
 StarField.BackgroundTransparency = 0
 StarField.BorderSizePixel = 0
-StarField.ZIndex = -1
-StarField.Parent = MainWindow
-StarField.ClipsDescendants = true
+StarField.ZIndex = 1
+StarField.Parent = Orion
 
 
 -- Criar estrelas
