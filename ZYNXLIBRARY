@@ -151,8 +151,10 @@ StarField.Size = UDim2.new(1, 0, 1, 0)
 StarField.BackgroundColor3 = Color3.fromRGB(20, 0, 30) -- Roxo escuro profundo
 StarField.BackgroundTransparency = 0
 StarField.BorderSizePixel = 0
-StarField.ZIndex = 0
-StarField.Parent = Orion
+StarField.ZIndex = -1
+StarField.Parent = MainWindow
+StarField.ClipsDescendants = true
+
 
 -- Criar estrelas
 local Stars = {}
