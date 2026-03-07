@@ -741,10 +741,19 @@ local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 })
 
 function OrionLib:MakeNotification(NotificationConfig)
+
+local Sound = Instance.new("Sound")
+Sound.SoundId = "rbxassetid://127441833735276"
+Sound.Volume = 1
+Sound.Parent = game:GetService("SoundService")
+Sound:Play()
+
+game.Debris:AddItem(Sound, 5)
+
 	spawn(function()
 		NotificationConfig.Name = NotificationConfig.Name or "Notification"
 		NotificationConfig.Content = NotificationConfig.Content or "Test"
-		NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://4384403532"
+		NotificationConfig.Image = NotificationConfig.Image or "rbxassetid://16913919445"
 		NotificationConfig.Time = NotificationConfig.Time or 15
 
 		local NotificationParent = SetProps(MakeElement("TFrame"), {
