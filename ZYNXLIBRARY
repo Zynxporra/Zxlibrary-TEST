@@ -152,8 +152,13 @@ StarField.BackgroundColor3 = Color3.fromRGB(20, 0, 30)
 StarField.BackgroundTransparency = 0
 StarField.BorderSizePixel = 0
 StarField.ZIndex = 1
-StarField.Parent = Orion
+StarField.Parent = MainWindow
 
+TweenService:Create(
+    star,
+    TweenInfo.new(math.random(2,5), Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true),
+    {BackgroundTransparency = math.random(2,6)/10}
+):Play()
 
 -- Criar estrelas
 local Stars = {}
