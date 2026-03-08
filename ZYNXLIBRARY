@@ -141,6 +141,51 @@ else
 		end
 	end
 end
+
+-- ═══════════════════════════════════════════════════════════════
+-- BLUR BACKGROUND SYSTEM - Novo sistema de blur
+-- ═══════════════════════════════════════════════════════════════
+local blurEnabled = true
+local blurIntensity = 20
+local backgroundTransparency = 0.15  -- 15% transparente (85% opaco)
+local blurBackground = nil
+local blurEffect = nil
+
+local function createBlurBackground()
+	if not blurEnabled then return end
+	
+	-- Criar frame de fundo semi-transparente
+	blurBackground = Instance.new("Frame")
+	blurBackground.Name = "BlurBackground"
+	blurBackground.Size = UDim2.new(1, 0, 1, 0)
+	blurBackground.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	blurBackground.BackgroundTransparency = 0.85  -- Transparente (mais claro = mais transparência)
+	blurBackground.BorderSizePixel = 0
+	blurBackground.ZIndex = 0
+	blurBackground.Parent = Orion
+	
+	-- Criar efeito de blur
+	blurEffect = Instance.new("BlurEffect")
+	blurEffect.Name = "UIBlur"
+	blurEffect.Size = blurIntensity
+	blurEffect.Enabled = true
+	blurEffect.Parent = game:GetService("Lighting")
+	
+	-- Manter blur ativo mesmo se a iluminação mudar
+	game:GetService("Lighting").ChildAdded:Connect(function(child)
+		if child.Name == "UIBlur" and child ~= blurEffect then
+			child:Destroy()
+		end
+	end)
+end
+
+local function toggleBlur(enabled)
+	if blurBackground and blurEffect then
+		blurBackground.Visible = enabled
+		blurEffect.Enabled = enabled
+	end
+end
+
 -- ═══════════════════════════════════════════════════════════════
 --  ORIONLIB INITIALIZATION - Inicialização da biblioteca
 -- ═══════════════════════════════════════════════════════════════
@@ -236,7 +281,7 @@ local function MakeDraggable(DragPoint, Main)
 			if Input == DragInput and Dragging then
 				local Delta = Input.Position - MousePos
 				--  Movimento suave e responsivo (SEM BARREIRA)
-				Main.Position  = UDim2.new(FramePos.X.Scale,FramePos.X.Offset + Delta.X, FramePos.Y.Scale, FramePos.Y.Offset + Delta.Y)
+				Main.Position  = UDim2.new(FramePos.X.Scale,FramePos.X.Offset + Delta.X, FramePos.Y.Scale,FramePos.Y.Offset + Delta.Y)
 			end
 		end)
 	end)
@@ -869,6 +914,8 @@ function OrionLib:MakeWindow(WindowConfig)
 	local Loaded = false
 	local UIHidden = false
 	
+	-- Criar blur background quando a janela for criada
+	createBlurBackground()
 
 	WindowConfig = WindowConfig or {}
 	WindowConfig.Name = WindowConfig.Name or "Orion Library"
@@ -1168,7 +1215,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		Position = UDim2.new(0.5, -307, 0.5, -172),
 		Size = UDim2.new(0, 615, 0, 344),
 		ClipsDescendants = true,
-		BackgroundTransparency = 0.02, -- Levemente transparente para efeito moderno
+		BackgroundTransparency = 0.15, -- 🌟 AGORA COM TRANSPARÊNCIA (15%)
 		Active = true -- Bloqueia cliques que passam através do hub
 	}), {
 		MakeElement("Stroke", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 2.5), -- Borda colorida grossa!
@@ -1441,7 +1488,7 @@ function OrionLib:MakeWindow(WindowConfig)
 					end
 					if PlayerName then 
 						PlayerName.Visible = true
-						-- NÃO MEXER NA POSIÇÃO!
+						
 					end
 				end
 			end
@@ -1451,7 +1498,7 @@ function OrionLib:MakeWindow(WindowConfig)
 			if Input.UserInputType == Enum.UserInputType.MouseButton1 or Input.UserInputType == Enum.UserInputType.Touch then
 				if SideResizing then
 					SideResizing = false
-					-- Resetar bolinhas para semi-transparente
+					
 					if Dot1 then TweenService:Create(Dot1, TweenInfo.new(0.2), {BackgroundTransparency = 0.7}):Play() end
 					if Dot2 then TweenService:Create(Dot2, TweenInfo.new(0.2), {BackgroundTransparency = 0.7}):Play() end
 					if Dot3 then TweenService:Create(Dot3, TweenInfo.new(0.2), {BackgroundTransparency = 0.7}):Play() end
@@ -1469,6 +1516,9 @@ function OrionLib:MakeWindow(WindowConfig)
 		buttonmodal.Modal = true
 		UserInputService.MouseIconEnabled = true
 		freeMouse.Visible = true
+		
+		-- Ativar blur quando UI abre
+		toggleBlur(true)
 	end)
 
 	local function showMobileOpenButton()
@@ -1482,13 +1532,13 @@ function OrionLib:MakeWindow(WindowConfig)
 	end
 
 	AddConnection(CloseBtn.MouseButton1Up, function()
-		-- Hide UI (NO FADE - prevents bugs)
+		
 		MainWindow.Visible = false
 		UIHidden = true
 		
+		-- Desativar blur quando UI fecha
+		toggleBlur(false)
 		
-
-		-- FORÇAR DESATIVAÇÃO DO MOUSE UI E MODAL
 		mouselock = false
 		freeMouse.Visible = false
 		freeMouse.Modal = false
@@ -1514,7 +1564,7 @@ function OrionLib:MakeWindow(WindowConfig)
 		if gameProcessed then return end
 		if Input.KeyCode == Enum.KeyCode[WindowConfig.KeyToOpenWindow] then
 			if UIHidden then
-				-- Show UI
+				
 				MainWindow.Visible = true
 				UIHidden = false
 				freeMouse.Visible = true
@@ -1522,6 +1572,9 @@ function OrionLib:MakeWindow(WindowConfig)
 				buttonmodal.Modal = true
 				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 				UserInputService.MouseIconEnabled = true
+				
+				-- Ativar blur quando UI abre
+				toggleBlur(true)
 				
 				if WindowConfig.FreeMouse then
 					UnlockMouse(true)
@@ -1532,6 +1585,9 @@ function OrionLib:MakeWindow(WindowConfig)
 				-- Hide UI
 				MainWindow.Visible = false
 				UIHidden = true
+				
+				-- Desativar blur quando UI fecha
+				toggleBlur(false)
 				
 				-- FORÇAR DESATIVAÇÃO DO MOUSE UI E MODAL
 				mouselock = false
@@ -1843,12 +1899,18 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 		UserInputService.MouseIconEnabled = true
 		freeMouse.Visible = true
 		
+		-- Ativar blur após intro
+		toggleBlur(true)
+		
 		wait(0.5)
 		LoadBg:Destroy()
 	end 
 
 	if WindowConfig.IntroEnabled then
 		LoadSequence()
+	else
+		-- Ativar blur mesmo sem intro
+		toggleBlur(true)
 	end
 	
 	-- Ativar freeMouse quando UI abre
@@ -1903,7 +1965,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 			Visible = false,
 			Name = "ItemContainer",
 			ClipsDescendants = true,
-			BorderSizePixel = 0
+			BorderSizePixel = 0,
+			BackgroundTransparency = 0.85 -- 🌟 Scroll container transparente também
 		}), {
 			MakeElement("List", 0, 6),
 			MakeElement("Padding", 15, 10, 10, 15)
@@ -2104,7 +2167,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 
 				local ButtonFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 33),
-					Parent = ItemParent
+					Parent = ItemParent,
+					BackgroundTransparency = 0.7 -- 🌟 Botões também transparentes
 				}), {
 					ButtonLabel,
 					AddThemeObject(SetProps(MakeElement("Image", ButtonConfig.Icon), {
@@ -2181,7 +2245,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 
 				local ToggleFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 38),
-					Parent = ItemParent
+					Parent = ItemParent,
+					BackgroundTransparency = 0.7 -- 🌟 Toggle também transparente
 				}), {
 					AddThemeObject(SetProps(MakeElement("Label", ToggleConfig.Name, 15), {
 						Size = UDim2.new(1, -12, 1, 0),
@@ -2287,7 +2352,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 
 				local SliderFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 4), {
 					Size = UDim2.new(1, 0, 0, 65),
-					Parent = ItemParent
+					Parent = ItemParent,
+					BackgroundTransparency = 0.7 -- 🌟 Slider também transparente
 				}), {
 					AddThemeObject(SetProps(MakeElement("Label", SliderConfig.Name, 15), {
 						Size = UDim2.new(1, -12, 0, 14),
@@ -2381,7 +2447,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 				local DropdownFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 38),
 					Parent = ItemParent,
-					ClipsDescendants = true
+					ClipsDescendants = true,
+					BackgroundTransparency = 0.7 -- 🌟 Dropdown também transparente
 				}), {
 					DropdownContainer,
 					SetProps(SetChildren(MakeElement("TFrame"), {
@@ -2551,7 +2618,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 				local DropdownFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 38),
 					Parent = ItemParent,
-					ClipsDescendants = true
+					ClipsDescendants = true,
+					BackgroundTransparency = 0.7 -- 🌟 Dropdown também transparente
 				}), {
 					DropdownContainer,
 					SetProps(SetChildren(MakeElement("TFrame"), {
@@ -2835,7 +2903,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 				local DropdownFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 38),
 					Parent = ItemParent,
-					ClipsDescendants = true
+					ClipsDescendants = true,
+					BackgroundTransparency = 0.7 -- 🌟 Dropdown também transparente
 				}), {
 					DropdownContainer,
 					SetProps(SetChildren(MakeElement("TFrame"), {
@@ -3007,7 +3076,7 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 					SetChildren(
 						SetProps(
 							MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5),
-							{ Size = UDim2.new(1, 0, 0, 38), Parent = ItemParent, ClipsDescendants = true }
+							{ Size = UDim2.new(1, 0, 0, 38), Parent = ItemParent, ClipsDescendants = true, BackgroundTransparency = 0.7 }
 						),
 						{
 							DropdownContainer,
@@ -3242,7 +3311,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 
 				local BindFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 38),
-					Parent = ItemParent
+					Parent = ItemParent,
+					BackgroundTransparency = 0.7 -- 🌟 Bind também transparente
 				}), {
 					AddThemeObject(SetProps(MakeElement("Label", BindConfig.Name, 15), {
 						Size = UDim2.new(1, -12, 1, 0),
@@ -3369,7 +3439,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 
 				local TextboxFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 38),
-					Parent = ItemParent
+					Parent = ItemParent,
+					BackgroundTransparency = 0.7 -- 🌟 Textbox também transparente
 				}), {
 					AddThemeObject(SetProps(MakeElement("Label", TextboxConfig.Name, 15), {
 						Size = UDim2.new(1, -12, 1, 0),
@@ -3509,7 +3580,8 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 
 				local ColorpickerFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 5), {
 					Size = UDim2.new(1, 0, 0, 38),
-					Parent = ItemParent
+					Parent = ItemParent,
+					BackgroundTransparency = 0.7 -- 🌟 Colorpicker também transparente
 				}), {
 					SetProps(SetChildren(MakeElement("TFrame"), {
 						AddThemeObject(SetProps(MakeElement("Label", ColorpickerConfig.Name, 15), {
