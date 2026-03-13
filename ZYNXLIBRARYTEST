@@ -108,6 +108,7 @@ local OrionLib = {
             Text = Color3.fromRGB(255, 255, 255),
             TextDark = Color3.fromRGB(210, 190, 240),
             Background = Color3.fromRGB(22, 15, 30),
+            BackgroundImage = "",  -- Novo: ID da imagem de fundo (ex: "rbxassetid://123456")
 
             -- Gradiente (novo)
             MainGradient = ColorSequence.new{
@@ -266,6 +267,12 @@ local function SetTheme()
             end)
         end
     end
+    -- Atualizar imagem de fundo
+    if MainWindow and MainWindow:FindFirstChild("BackgroundImage") then
+        local bgImg = MainWindow.BackgroundImage
+        bgImg.Image = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage
+        bgImg.ImageTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage == "" and 1 or 0
+    end
 end
 
 -- ═══════════════════════════════════════════════════════════════
@@ -327,6 +334,10 @@ local function LoadCfg(Config)
         end
         if Data.Settings.ThemeBackground and Data.Settings.ThemeBackground.Value then
             OrionLib.Themes[OrionLib.SelectedTheme].Background = ColorUnpack(Data.Settings.ThemeBackground.Value)
+            loadedCount = loadedCount + 1
+        end
+        if Data.Settings.ThemeBackgroundImage then
+            OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage = Data.Settings.ThemeBackgroundImage
             loadedCount = loadedCount + 1
         end
         if loadedCount > 0 then SetTheme() end
@@ -419,6 +430,7 @@ local function SaveCfg(Name)
     CompleteConfig.Settings["ThemeText"] = { Type = "ColorPicker", Value = ColorPack(OrionLib.Themes[OrionLib.SelectedTheme].Text) }
     CompleteConfig.Settings["ThemeTextDark"] = { Type = "ColorPicker", Value = ColorPack(OrionLib.Themes[OrionLib.SelectedTheme].TextDark) }
     CompleteConfig.Settings["ThemeBackground"] = { Type = "ColorPicker", Value = ColorPack(OrionLib.Themes[OrionLib.SelectedTheme].Background) }
+    CompleteConfig.Settings["ThemeBackgroundImage"] = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage
     CompleteConfig.Globals = { Language = getgenv().OrionLanguage or "en" }
 
     task.spawn(function()
@@ -966,6 +978,14 @@ function OrionLib:MakeWindow(WindowConfig)
         ClipsDescendants = true,
         Active = true
     }), {
+        -- Imagem de fundo
+        SetProps(MakeElement("Image", OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage), {
+            Size = UDim2.new(1,0,1,0),
+            BackgroundTransparency = 1,
+            ImageTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage == "" and 1 or 0,
+            ZIndex = 1,
+            Name = "BackgroundImage"
+        }),
         MakeElement("Stroke", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 2.5),
         SetChildren(SetProps(MakeElement("TFrame"), {Size = UDim2.new(1,0,0,50), Name = "TopBar"}), {
             WindowNameContainer,
@@ -2483,6 +2503,16 @@ function OrionLib:MakeWindow(WindowConfig)
         Default = OrionLib.Themes[OrionLib.SelectedTheme].Background,
         Callback = function(Value)
             OrionLib.Themes[OrionLib.SelectedTheme].Background = Value
+            SetTheme()
+            SaveCfg(game.GameId)
+        end
+    })
+    ThemesTab:AddTextBox({
+        Name = "Imagem de Fundo",
+        Default = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage,
+        Placeholder = "rbxassetid://...",
+        Callback = function(Value)
+            OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage = Value
             SetTheme()
             SaveCfg(game.GameId)
         end
