@@ -4,7 +4,12 @@
 -- ═══════════════════════════════════════════════════════════════
 
 -- PROTEÇÃO MULTI-INSTÂNCIA
-getgenv().gethui = function() return game:GetService("CoreGui") end
+if not gethui then
+getgenv().gethui = function()
+return game:GetService("CoreGui")
+end
+end
+
 if _G.ORION_MODDED_LOADED then return end
 _G.ORION_MODDED_LOADED = true
 
@@ -17,74 +22,77 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
+-- CRIAR A TABELA PRINCIPAL DA LIBRARY (ERRO PRINCIPAL)
+local OrionModded = {}
+
 -- ═══════════════════════════════════════════════════════════════
 -- SISTEMA DE CONFIGURAÇÃO DA LIVRARIA
 -- ═══════════════════════════════════════════════════════════════
 local OrionConfig = {
-    CurrentTheme = "Default",
-    Background = {
-        Type = "gradient", -- "none", "color", "gradient", "image"
-        Color1 = Color3.fromRGB(25, 10, 35),
-        Color2 = Color3.fromRGB(120, 50, 180),
-        Rotation = 135,
-        ImageUrl = "",
-        ImageTransparency = 0.3
-    },
-    Themes = {
-        Default = {
-            Name = "Default",
-            Main = Color3.fromRGB(18, 12, 28),
-            Second = Color3.fromRGB(28, 18, 38),
-            Accent = Color3.fromRGB(140, 80, 255),
-            Accent2 = Color3.fromRGB(200, 100, 255),
-            Stroke = Color3.fromRGB(100, 60, 180),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(200, 180, 240),
-            Success = Color3.fromRGB(80, 255, 120),
-            Danger = Color3.fromRGB(255, 70, 70)
-        },
-        Dark = {
-            Name = "Dark",
-            Main = Color3.fromRGB(10, 10, 15),
-            Second = Color3.fromRGB(18, 18, 25),
-            Accent = Color3.fromRGB(0, 200, 255),
-            Accent2 = Color3.fromRGB(100, 220, 255),
-            Stroke = Color3.fromRGB(40, 100, 200),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(160, 180, 200),
-            Success = Color3.fromRGB(0, 255, 150),
-            Danger = Color3.fromRGB(255, 60, 60)
-        },
-        Light = {
-            Name = "Light",
-            Main = Color3.fromRGB(245, 240, 255),
-            Second = Color3.fromRGB(255, 255, 255),
-            Accent = Color3.fromRGB(120, 80, 255),
-            Accent2 = Color3.fromRGB(160, 120, 255),
-            Stroke = Color3.fromRGB(180, 160, 240),
-            Text = Color3.fromRGB(20, 20, 30),
-            TextDim = Color3.fromRGB(100, 100, 140),
-            Success = Color3.fromRGB(0, 180, 80),
-            Danger = Color3.fromRGB(220, 40, 40)
-        },
-        Purple = {
-            Name = "Purple",
-            Main = Color3.fromRGB(25, 5, 35),
-            Second = Color3.fromRGB(45, 15, 55),
-            Accent = Color3.fromRGB(200, 100, 255),
-            Accent2 = Color3.fromRGB(255, 150, 255),
-            Stroke = Color3.fromRGB(150, 80, 200),
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(220, 180, 255)
-        }
-    },
-    Settings = {
-        WindowSize = UDim2.new(0, 800, 0, 500),
-        KeyToOpen = "M",
-        Animations = true,
-        Notifications = true,
-        FPSDisplay = true
-    }
+CurrentTheme = "Default",
+Background = {
+Type = "gradient",
+Color1 = Color3.fromRGB(25, 10, 35),
+Color2 = Color3.fromRGB(120, 50, 180),
+Rotation = 135,
+ImageUrl = "",
+ImageTransparency = 0.3
+},
+Themes = {
+Default = {
+Name = "Default",
+Main = Color3.fromRGB(18, 12, 28),
+Second = Color3.fromRGB(28, 18, 38),
+Accent = Color3.fromRGB(140, 80, 255),
+Accent2 = Color3.fromRGB(200, 100, 255),
+Stroke = Color3.fromRGB(100, 60, 180),
+Text = Color3.fromRGB(255, 255, 255),
+TextDim = Color3.fromRGB(200, 180, 240),
+Success = Color3.fromRGB(80, 255, 120),
+Danger = Color3.fromRGB(255, 70, 70)
+},
+Dark = {
+Name = "Dark",
+Main = Color3.fromRGB(10, 10, 15),
+Second = Color3.fromRGB(18, 18, 25),
+Accent = Color3.fromRGB(0, 200, 255),
+Accent2 = Color3.fromRGB(100, 220, 255),
+Stroke = Color3.fromRGB(40, 100, 200),
+Text = Color3.fromRGB(255, 255, 255),
+TextDim = Color3.fromRGB(160, 180, 200),
+Success = Color3.fromRGB(0, 255, 150),
+Danger = Color3.fromRGB(255, 60, 60)
+},
+Light = {
+Name = "Light",
+Main = Color3.fromRGB(245, 240, 255),
+Second = Color3.fromRGB(255, 255, 255),
+Accent = Color3.fromRGB(120, 80, 255),
+Accent2 = Color3.fromRGB(160, 120, 255),
+Stroke = Color3.fromRGB(180, 160, 240),
+Text = Color3.fromRGB(20, 20, 30),
+TextDim = Color3.fromRGB(100, 100, 140),
+Success = Color3.fromRGB(0, 180, 80),
+Danger = Color3.fromRGB(220, 40, 40)
+},
+Purple = {
+Name = "Purple",
+Main = Color3.fromRGB(25, 5, 35),
+Second = Color3.fromRGB(45, 15, 55),
+Accent = Color3.fromRGB(200, 100, 255),
+Accent2 = Color3.fromRGB(255, 150, 255),
+Stroke = Color3.fromRGB(150, 80, 200),
+Text = Color3.fromRGB(255, 255, 255),
+TextDim = Color3.fromRGB(220, 180, 255)
+}
+},
+Settings = {
+WindowSize = UDim2.new(0, 800, 0, 500),
+KeyToOpen = "M",
+Animations = true,
+Notifications = true,
+FPSDisplay = true
+}
 }
 
 -- ═══════════════════════════════════════════════════════════════
@@ -92,10 +100,15 @@ local OrionConfig = {
 -- ═══════════════════════════════════════════════════════════════
 local OrionGUI = Instance.new("ScreenGui")
 OrionGUI.Name = "OrionModded"
-OrionGUI.Parent = (syn and syn.protect_gui and (function() syn.protect_gui(OrionGUI) return game:GetService("CoreGui") end)() or 
-                  (gethui and gethui() or game:GetService("CoreGui")))
 OrionGUI.ResetOnSpawn = false
 OrionGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+if syn and syn.protect_gui then
+syn.protect_gui(OrionGUI)
+OrionGUI.Parent = game:GetService("CoreGui")
+else
+OrionGUI.Parent = gethui()
+end
 
 -- ═══════════════════════════════════════════════════════════════
 -- FUNÇÕES UTILITÁRIAS
@@ -1527,4 +1540,6 @@ UpdateBackground()
 
 -- Retornar a livraria
 OrionModded = OrionModded or {}
-return OrionModded
+
+
+return ZynxLibrary
