@@ -107,6 +107,7 @@ local OrionLib = {
             Divider = Color3.fromRGB(60, 40, 75),   -- Roxo médio-escuro
             Text = Color3.fromRGB(255, 255, 255),
             TextDark = Color3.fromRGB(210, 190, 240),
+            Background = Color3.fromRGB(22, 15, 30),
 
             -- Gradiente (novo)
             MainGradient = ColorSequence.new{
@@ -324,6 +325,10 @@ local function LoadCfg(Config)
             OrionLib.Themes[OrionLib.SelectedTheme].TextDark = ColorUnpack(Data.Settings.ThemeTextDark.Value)
             loadedCount = loadedCount + 1
         end
+        if Data.Settings.ThemeBackground and Data.Settings.ThemeBackground.Value then
+            OrionLib.Themes[OrionLib.SelectedTheme].Background = ColorUnpack(Data.Settings.ThemeBackground.Value)
+            loadedCount = loadedCount + 1
+        end
         if loadedCount > 0 then SetTheme() end
     end
 
@@ -413,6 +418,7 @@ local function SaveCfg(Name)
     CompleteConfig.Settings["ThemeDivider"] = { Type = "ColorPicker", Value = ColorPack(OrionLib.Themes[OrionLib.SelectedTheme].Divider) }
     CompleteConfig.Settings["ThemeText"] = { Type = "ColorPicker", Value = ColorPack(OrionLib.Themes[OrionLib.SelectedTheme].Text) }
     CompleteConfig.Settings["ThemeTextDark"] = { Type = "ColorPicker", Value = ColorPack(OrionLib.Themes[OrionLib.SelectedTheme].TextDark) }
+    CompleteConfig.Settings["ThemeBackground"] = { Type = "ColorPicker", Value = ColorPack(OrionLib.Themes[OrionLib.SelectedTheme].Background) }
     CompleteConfig.Globals = { Language = getgenv().OrionLanguage or "en" }
 
     task.spawn(function()
@@ -990,7 +996,7 @@ function OrionLib:MakeWindow(WindowConfig)
             ImageColor3 = OrionLib.Themes[OrionLib.SelectedTheme].TextDark,
             ImageTransparency = 0.5
         }), {})
-    }), "Main")
+    }), "Background")
 
     WindowNameContainer.Parent = MainWindow.TopBar
 
@@ -1211,7 +1217,7 @@ function OrionLib:MakeWindow(WindowConfig)
             Parent = Orion,
             Size = UDim2.new(1,0,1,0),
             BackgroundColor3 = Color3.fromRGB(20,10,25),
-            BackgroundTransparency = 0,
+            BackgroundTransparency = 1,
             ZIndex = 999
         })
         local LoadLogo = SetProps(MakeElement("Image", WindowConfig.IntroIcon), {
@@ -2415,6 +2421,84 @@ function OrionLib:MakeWindow(WindowConfig)
 
         return ElementFunction
     end
+
+    -- Add themes tab
+    local ThemesTab = TabFunction:MakeTab({Name = "Temas", Icon = "rbxassetid://7072706796"})
+    ThemesTab:AddColorPicker({
+        Name = "Cor Principal",
+        Default = OrionLib.Themes[OrionLib.SelectedTheme].Main,
+        Callback = function(Value)
+            OrionLib.Themes[OrionLib.SelectedTheme].Main = Value
+            SetTheme()
+            SaveCfg(game.GameId)
+        end
+    })
+    ThemesTab:AddColorPicker({
+        Name = "Cor Secundária",
+        Default = OrionLib.Themes[OrionLib.SelectedTheme].Second,
+        Callback = function(Value)
+            OrionLib.Themes[OrionLib.SelectedTheme].Second = Value
+            SetTheme()
+            SaveCfg(game.GameId)
+        end
+    })
+    ThemesTab:AddColorPicker({
+        Name = "Cor de Contorno",
+        Default = OrionLib.Themes[OrionLib.SelectedTheme].Stroke,
+        Callback = function(Value)
+            OrionLib.Themes[OrionLib.SelectedTheme].Stroke = Value
+            SetTheme()
+            SaveCfg(game.GameId)
+        end
+    })
+    ThemesTab:AddColorPicker({
+        Name = "Cor do Divisor",
+        Default = OrionLib.Themes[OrionLib.SelectedTheme].Divider,
+        Callback = function(Value)
+            OrionLib.Themes[OrionLib.SelectedTheme].Divider = Value
+            SetTheme()
+            SaveCfg(game.GameId)
+        end
+    })
+    ThemesTab:AddColorPicker({
+        Name = "Cor do Texto",
+        Default = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+        Callback = function(Value)
+            OrionLib.Themes[OrionLib.SelectedTheme].Text = Value
+            SetTheme()
+            SaveCfg(game.GameId)
+        end
+    })
+    ThemesTab:AddColorPicker({
+        Name = "Cor do Texto Escuro",
+        Default = OrionLib.Themes[OrionLib.SelectedTheme].TextDark,
+        Callback = function(Value)
+            OrionLib.Themes[OrionLib.SelectedTheme].TextDark = Value
+            SetTheme()
+            SaveCfg(game.GameId)
+        end
+    })
+    ThemesTab:AddColorPicker({
+        Name = "Fundo",
+        Default = OrionLib.Themes[OrionLib.SelectedTheme].Background,
+        Callback = function(Value)
+            OrionLib.Themes[OrionLib.SelectedTheme].Background = Value
+            SetTheme()
+            SaveCfg(game.GameId)
+        end
+    })
+    AddConnection(ConfigBtn.MouseButton1Click, function()
+        if Tabs["Temas"] and TabContainers["Temas"] then
+            for _, TabBtn in pairs(Tabs) do
+                TabBtn.BackgroundTransparency = 1
+            end
+            Tabs["Temas"].BackgroundTransparency = 0
+            for _, Container in pairs(TabContainers) do
+                Container.Visible = false
+            end
+            TabContainers["Temas"].Visible = true
+        end
+    end)
 
     return TabFunction
 end
