@@ -119,6 +119,7 @@ local OrionLib = {
     },
     SelectedTheme = "Default",
     Folder = "",
+    ConfigFolder = "workspace",
     SaveCfg = false,
     CurrentLanguage = "en"
 }
@@ -349,7 +350,6 @@ local function LoadCfg(Config)
 end
 
 local AUTO_SAVE_ENABLED = true
-local CONFIG_FOLDER = "workspace"
 local saveDebounceTime = 2.0
 local lastSaveTime = 0
 local saveScheduled = false
@@ -357,8 +357,8 @@ local saveConnection = nil
 
 local function ensureConfigFolder()
     if not isfolder then return false end
-    if not isfolder(CONFIG_FOLDER) then
-        makefolder(CONFIG_FOLDER)
+    if not isfolder(OrionLib.ConfigFolder) then
+        makefolder(OrionLib.ConfigFolder)
     end
     return true
 end
@@ -393,7 +393,7 @@ local function SaveCfg(Name)
 
     for flagName, flagData in pairs(OrionLib.Flags) do
         if flagData.Save then
-            if flagData.Type == "Colorpicker" then
+            if flagData.Type == "ColorPicker" then
                 CompleteConfig.Flags[flagName] = {
                     Type = "ColorPicker",
                     Value = ColorPack(flagData.Value)
@@ -416,7 +416,7 @@ local function SaveCfg(Name)
     CompleteConfig.Globals = { Language = getgenv().OrionLanguage or "en" }
 
     task.spawn(function()
-        local configPath = CONFIG_FOLDER .. "/" .. Name .. ".json"
+        local configPath = OrionLib.ConfigFolder .. "/" .. Name .. ".json"
         local success = pcall(function()
             writefile(configPath, HttpService:JSONEncode(CompleteConfig))
         end)
@@ -663,7 +663,7 @@ end
 function OrionLib:Init()
     if OrionLib.SaveCfg then
         pcall(function()
-            local configFile = CONFIG_FOLDER .. "/" .. game.GameId .. ".json"
+            local configFile = OrionLib.ConfigFolder .. "/" .. game.GameId .. ".json"
             if isfile and isfile(configFile) then
                 LoadCfg(readfile(configFile))
             end
@@ -695,10 +695,11 @@ function OrionLib:MakeWindow(WindowConfig)
     WindowConfig.SearchBar = WindowConfig.SearchBar or {Default = "🔍 Search"}
 
     OrionLib.Folder = WindowConfig.ConfigFolder
+    OrionLib.ConfigFolder = WindowConfig.ConfigFolder
     OrionLib.SaveCfg = WindowConfig.SaveConfig
 
-    if WindowConfig.SaveConfig and not isfolder(WindowConfig.ConfigFolder) then
-        makefolder(WindowConfig.ConfigFolder)
+    if WindowConfig.SaveConfig and not isfolder(OrionLib.ConfigFolder) then
+        makefolder(OrionLib.ConfigFolder)
     end
 
     if WindowConfig.FreeMouse then
