@@ -108,6 +108,7 @@ local OrionLib = {
             Text = Color3.fromRGB(255, 255, 255),
             TextDark = Color3.fromRGB(210, 190, 240),
             Background = Color3.fromRGB(22, 15, 30),
+            BackgroundTransparency = 0.2,
             BackgroundImage = "",  -- Novo: ID da imagem de fundo (ex: "rbxassetid://123456")
 
             -- Gradiente (novo)
@@ -267,11 +268,17 @@ local function SetTheme()
             end)
         end
     end
-    -- Atualizar imagem de fundo
-    if MainWindow and MainWindow:FindFirstChild("BackgroundImage") then
-        local bgImg = MainWindow.BackgroundImage
-        bgImg.Image = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage
-        bgImg.ImageTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage == "" and 1 or 0
+
+    -- Aplicar cor de fundo + transparência
+    if OrionLib.MainWindow then
+        OrionLib.MainWindow.BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Background
+        OrionLib.MainWindow.BackgroundTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage ~= "" and 1 or 0
+
+        local bgImg = OrionLib.MainWindow:FindFirstChild("BackgroundImage")
+        if bgImg then
+            bgImg.Image = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage
+            bgImg.ImageTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage == "" and 1 or OrionLib.Themes[OrionLib.SelectedTheme].BackgroundTransparency
+        end
     end
 end
 
@@ -994,6 +1001,7 @@ function OrionLib:MakeWindow(WindowConfig)
         ClipsDescendants = true,
         Active = true
     }), {
+
         -- Imagem de fundo
         SetProps(MakeElement("Image", OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage), {
             Size = UDim2.new(1,0,1,0),
@@ -1033,6 +1041,7 @@ function OrionLib:MakeWindow(WindowConfig)
             ImageTransparency = 0.5
         }), {})
     }), "Background")
+    OrionLib.MainWindow = MainWindow
 
     WindowNameContainer.Parent = MainWindow.TopBar
 
