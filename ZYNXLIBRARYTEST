@@ -562,6 +562,21 @@ CreateElement("Label", function(Text, TextSize, Transparency)
     })
 end)
 
+CreateElement("TextBox", function(Text, Placeholder, TextSize)
+    return Create("TextBox", {
+        Text = Text or "",
+        PlaceholderText = Placeholder or "",
+        TextColor3 = Color3.fromRGB(240,240,240),
+        PlaceholderColor3 = Color3.fromRGB(170,170,190),
+        TextSize = TextSize or 14,
+        Font = Enum.Font.Gotham,
+        BackgroundTransparency = 0.6,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ClearTextOnFocus = false,
+        BorderSizePixel = 0
+    })
+end)
+
 -- ═══════════════════════════════════════════════════════════════
 -- NOTIFICATION HOLDER (com novo design)
 -- ═══════════════════════════════════════════════════════════════
@@ -746,6 +761,7 @@ function OrionLib:MakeWindow(WindowConfig)
 
     -- Tabs table
     local Tabs = {}
+    local TabContainers = {}
 
     -- Tab Holder (NOVO DESIGN)
     local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 4), {
@@ -983,7 +999,7 @@ function OrionLib:MakeWindow(WindowConfig)
             Size = UDim2.new(1,0,1,0),
             BackgroundTransparency = 1,
             ImageTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage == "" and 1 or 0,
-            ZIndex = 1,
+            ZIndex = 0,
             Name = "BackgroundImage"
         }),
         MakeElement("Stroke", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 2.5),
@@ -1379,6 +1395,8 @@ function OrionLib:MakeWindow(WindowConfig)
             MakeElement("Padding", 15, 10, 10, 15)
         }), "Divider")
 
+        TabContainers[TabConfig.Name] = Container
+
         AddConnection(Container.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
             Container.CanvasSize = UDim2.new(0,0,0, Container.UIListLayout.AbsoluteContentSize.Y + 30)
         end)
@@ -1736,6 +1754,81 @@ function OrionLib:MakeWindow(WindowConfig)
                 Slider:Set(Slider.Value)
                 if SliderConfig.Flag then OrionLib.Flags[SliderConfig.Flag] = Slider end
                 return Slider
+            end
+
+            -- TEXT BOX (novo)
+            function ElementFunction:AddTextBox(TextBoxConfig)
+                TextBoxConfig = TextBoxConfig or {}
+                TextBoxConfig.Name = TextBoxConfig.Name or "TextBox"
+                TextBoxConfig.Default = TextBoxConfig.Default or ""
+                TextBoxConfig.Placeholder = TextBoxConfig.Placeholder or ""
+                TextBoxConfig.Callback = TextBoxConfig.Callback or function() end
+
+                local BoxFrame = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", OrionLib.Themes[OrionLib.SelectedTheme].Second, 0, 10), {
+                    Size = UDim2.new(1,0,0,60),
+                    Parent = ItemParent
+                }), {
+                    AddThemeObject(SetProps(MakeElement("Label", TextBoxConfig.Name, 15), {
+                        Size = UDim2.new(1,-12,0,18),
+                        Position = UDim2.new(0,12,0,0),
+                        Font = Enum.Font.GothamBold,
+                        Name = "Title"
+                    }), "Text"),
+                    AddThemeObject(SetProps(MakeElement("TextBox"), {
+                        Size = UDim2.new(1,-24,0,26),
+                        Position = UDim2.new(0,12,0,28),
+                        BackgroundTransparency = 0.6,
+                        Text = TextBoxConfig.Default,
+                        PlaceholderText = TextBoxConfig.Placeholder,
+                        TextColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Text,
+                        Font = Enum.Font.Gotham,
+                        TextSize = 14,
+                        ClearTextOnFocus = false,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        Name = "Input"
+                    }), "Text"),
+                    AddThemeObject(MakeElement("Stroke"), "Stroke")
+                }), "Second")
+
+                local Input = BoxFrame.Input
+                AddConnection(Input.FocusLost, function(enter)
+                    if enter then
+                        TextBoxConfig.Callback(Input.Text)
+                    end
+                end)
+
+                local obj = {}
+                function obj:Set(t) Input.Text = t end
+                return obj
+            end
+
+            -- COLOR PICKER (novo, usa TextBox para HEX)
+            function ElementFunction:AddColorPicker(ColorConfig)
+                ColorConfig = ColorConfig or {}
+                ColorConfig.Name = ColorConfig.Name or "Color"
+                ColorConfig.Default = ColorConfig.Default or Color3.new(1,1,1)
+                ColorConfig.Callback = ColorConfig.Callback or function() end
+
+                local hex = string.format("#%02x%02x%02x", math.floor(ColorConfig.Default.R*255), math.floor(ColorConfig.Default.G*255), math.floor(ColorConfig.Default.B*255))
+
+                local picker = ElementFunction:AddTextBox({
+                    Name = ColorConfig.Name,
+                    Default = hex,
+                    Placeholder = "#RRGGBB",
+                    Callback = function(value)
+                        local ok, c = pcall(function() return ColorUnpack(value) end)
+                        if ok and typeof(c) == "Color3" then
+                            ColorConfig.Callback(c)
+                        end
+                    end
+                })
+
+                local obj = {}
+                function obj:Set(c)
+                    local h = string.format("#%02x%02x%02x", math.floor(c.R*255), math.floor(c.G*255), math.floor(c.B*255))
+                    picker:Set(h)
+                end
+                return obj
             end
 
             -- DROPDOWN (seu código original)
@@ -2510,8 +2603,11 @@ function OrionLib:MakeWindow(WindowConfig)
     ThemesTab:AddTextBox({
         Name = "Imagem de Fundo",
         Default = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage,
-        Placeholder = "rbxassetid://...",
+        Placeholder = "rbxassetid://... ou apenas o ID",
         Callback = function(Value)
+            if Value ~= "" and not string.find(Value, "rbxassetid://") then
+                Value = "rbxassetid://" .. Value
+            end
             OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage = Value
             SetTheme()
             SaveCfg(game.GameId)
