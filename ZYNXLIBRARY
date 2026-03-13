@@ -102,6 +102,26 @@ local OrionLib = {
             TextDark = Color3.fromRGB(210, 190, 240),
             Success = Color3.fromRGB(80, 255, 120),
             Danger = Color3.fromRGB(255, 70, 70)
+        },
+        Dark = {
+            Main = Color3.fromRGB(15, 15, 15),
+            Second = Color3.fromRGB(25, 25, 25),
+            Stroke = Color3.fromRGB(100, 100, 100),
+            Divider = Color3.fromRGB(50, 50, 50),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDark = Color3.fromRGB(200, 200, 200),
+            Success = Color3.fromRGB(0, 255, 0),
+            Danger = Color3.fromRGB(255, 0, 0)
+        },
+        Light = {
+            Main = Color3.fromRGB(240, 240, 240),
+            Second = Color3.fromRGB(255, 255, 255),
+            Stroke = Color3.fromRGB(150, 150, 150),
+            Divider = Color3.fromRGB(200, 200, 200),
+            Text = Color3.fromRGB(0, 0, 0),
+            TextDark = Color3.fromRGB(100, 100, 100),
+            Success = Color3.fromRGB(0, 150, 0),
+            Danger = Color3.fromRGB(200, 0, 0)
         }
     },
     SelectedTheme = "Default",
@@ -406,7 +426,7 @@ function OrionLib:MakeWindow(WindowConfig)
             local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
             local time = os.date("%H:%M")
             InfoLabel.Text = string.format("%s | %d FPS | %dms", time, fps, ping)
-            task.wait(0.5)
+            task.wait(1)  -- Atualizar a cada segundo em vez de 0.5
         end
     end)
 
@@ -428,9 +448,17 @@ function OrionLib:MakeWindow(WindowConfig)
         SetProps(MakeElement("Image", "rbxassetid://7072720794"), {
             Size = UDim2.new(0, 24, 0, 24),
             Position = UDim2.new(0.5, -12, 0.5, -12),
-            ImageColor3 = theme.TextDark
+            ImageColor3 = theme.TextDark,
+            Name = "Icon"
         })
     })
+
+    ConfigBtn.MouseEnter:Connect(function()
+        TweenService:Create(ConfigBtn.Icon, TweenInfo.new(0.2), {ImageColor3 = theme.Text}):Play()
+    end)
+    ConfigBtn.MouseLeave:Connect(function()
+        TweenService:Create(ConfigBtn.Icon, TweenInfo.new(0.2), {ImageColor3 = theme.TextDark}):Play()
+    end)
 
     -- Minimize Button
     local MinimizeBtn = SetChildren(SetProps(MakeElement("Button"), {
@@ -447,6 +475,13 @@ function OrionLib:MakeWindow(WindowConfig)
         })
     })
 
+    MinimizeBtn.MouseEnter:Connect(function()
+        TweenService:Create(MinimizeBtn.Ico, TweenInfo.new(0.2), {ImageColor3 = theme.Text}):Play()
+    end)
+    MinimizeBtn.MouseLeave:Connect(function()
+        TweenService:Create(MinimizeBtn.Ico, TweenInfo.new(0.2), {ImageColor3 = theme.TextDark}):Play()
+    end)
+
     -- Close Button
     local CloseBtn = SetChildren(SetProps(MakeElement("Button"), {
         Parent = ControlBtns,
@@ -457,9 +492,17 @@ function OrionLib:MakeWindow(WindowConfig)
         SetProps(MakeElement("Image", "rbxassetid://7072725342"), {
             Size = UDim2.new(0, 24, 0, 24),
             Position = UDim2.new(0.5, -12, 0.5, -12),
-            ImageColor3 = theme.TextDark
+            ImageColor3 = theme.TextDark,
+            Name = "Icon"
         })
     })
+
+    CloseBtn.MouseEnter:Connect(function()
+        TweenService:Create(CloseBtn.Icon, TweenInfo.new(0.2), {ImageColor3 = theme.Danger}):Play()
+    end)
+    CloseBtn.MouseLeave:Connect(function()
+        TweenService:Create(CloseBtn.Icon, TweenInfo.new(0.2), {ImageColor3 = theme.TextDark}):Play()
+    end)
 
     -- DRAG POINT
     local DragPoint = SetProps(MakeElement("TFrame"), {
@@ -689,7 +732,7 @@ function OrionLib:MakeWindow(WindowConfig)
     local function CreateConfigTab()
         -- Verificar se já existe
         for _, tab in pairs(Tabs) do
-            if tab.Name == "⚙️ Config" then
+            if tab.Name == "Config" then
                 -- Se existe, apenas seleciona
                 if tab.Frame then
                     tab.Frame.MouseButton1Click:Fire()
@@ -700,7 +743,7 @@ function OrionLib:MakeWindow(WindowConfig)
 
         -- Criar a aba de configurações
         local ConfigTab = WindowObj:MakeTab({
-            Name = "⚙️ Config",
+            Name = "Config",
             Icon = "rbxassetid://7072720794"
         })
 
@@ -757,8 +800,11 @@ function OrionLib:MakeWindow(WindowConfig)
             Default = OrionLib.SelectedTheme,
             Callback = function(v)
                 OrionLib.SelectedTheme = v
-                -- Atualizar cores da interface (simplificado)
-                OrionLib:MakeNotification({Name = "Theme", Content = "Tema alterado para "..v, Time = 2})
+                -- Atualizar cores da interface
+                local newTheme = OrionLib.Themes[v]
+                -- Aqui você pode adicionar lógica para atualizar todos os elementos visuais
+                -- Por simplicidade, apenas notificação
+                OrionLib:MakeNotification({Name = "Theme", Content = "Tema alterado para "..v..". Reinicie a interface para aplicar.", Time = 3})
             end
         })
 
@@ -1159,6 +1205,57 @@ function OrionLib:MakeWindow(WindowConfig)
             return sliderObj
         end
 
+        -- TEXTBOX
+        function TabObj:AddTextbox(config)
+            config = config or {}
+            config.Name = config.Name or "Textbox"
+            config.Default = config.Default or ""
+            config.Callback = config.Callback or function() end
+
+            local frame = SetChildren(SetProps(MakeElement("RoundFrame", theme.Second, 0, 10), {
+                Parent = TabContent,
+                Size = UDim2.new(1, 0, 0, 50)
+            }), {
+                MakeElement("Stroke", theme.Stroke, 1.5),
+                SetProps(MakeElement("Label", config.Name, 15), {
+                    Size = UDim2.new(1, -20, 0, 20),
+                    Position = UDim2.new(0, 15, 0, 5),
+                    Font = Enum.Font.Gotham,
+                    TextColor3 = theme.Text,
+                    TextXAlignment = Enum.TextXAlignment.Left
+                })
+            })
+
+            local textbox = Create("TextBox", {
+                Parent = frame,
+                Size = UDim2.new(1, -30, 0, 25),
+                Position = UDim2.new(0, 15, 0, 25),
+                BackgroundColor3 = theme.Main,
+                BackgroundTransparency = 0.5,
+                Text = config.Default,
+                PlaceholderText = "Digite aqui...",
+                PlaceholderColor3 = theme.TextDark,
+                TextColor3 = theme.Text,
+                TextSize = 14,
+                Font = Enum.Font.Gotham,
+                ClearTextOnFocus = false
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 6)}),
+                Create("UIStroke", {Color = theme.Stroke, Thickness = 1, Transparency = 0.7})
+            })
+
+            textbox:GetPropertyChangedSignal("Text"):Connect(function()
+                config.Callback(textbox.Text)
+            end)
+
+            local obj = {Value = config.Default}
+            function obj:Set(t)
+                textbox.Text = t
+                config.Callback(t)
+            end
+            return obj
+        end
+
         -- DROPDOWN
         function TabObj:AddDropdown(config)
             config = config or {}
@@ -1405,12 +1502,14 @@ function OrionLib:MakeWindow(WindowConfig)
             config.Default = config.Default or Color3.fromRGB(255,255,255)
             config.Callback = config.Callback or function() end
 
-            local picking = false
+            local expanded = false
             local color = config.Default
+            local r, g, b = color.R * 255, color.G * 255, color.B * 255
 
             local frame = SetChildren(SetProps(MakeElement("RoundFrame", theme.Second, 0, 10), {
                 Parent = TabContent,
-                Size = UDim2.new(1, 0, 0, 50)
+                Size = UDim2.new(1, 0, 0, 50),
+                ClipsDescendants = true
             }), {
                 MakeElement("Stroke", theme.Stroke, 1.5),
                 SetProps(MakeElement("Label", config.Name, 15), {
@@ -1428,16 +1527,115 @@ function OrionLib:MakeWindow(WindowConfig)
                 })
             })
 
+            -- Painel expandido do colorpicker
+            local pickerPanel = SetChildren(SetProps(MakeElement("RoundFrame", theme.Main, 0, 10), {
+                Parent = frame,
+                Size = UDim2.new(1, -20, 0, 120),
+                Position = UDim2.new(0, 10, 0, 55),
+                Visible = false
+            }), {
+                MakeElement("Stroke", theme.Stroke, 1),
+                MakeElement("List", 0, 5)
+            })
+
+            -- Sliders para R, G, B
+            local sliders = {}
+            local labels = {"R", "G", "B"}
+            local values = {r, g, b}
+            for i = 1, 3 do
+                local sliderFrame = SetChildren(SetProps(MakeElement("RoundFrame", theme.Second, 0, 6), {
+                    Parent = pickerPanel,
+                    Size = UDim2.new(1, 0, 0, 30)
+                }), {
+                    MakeElement("Stroke", theme.Stroke, 1),
+                    SetProps(MakeElement("Label", labels[i], 14), {
+                        Size = UDim2.new(0, 20, 1, 0),
+                        Position = UDim2.new(0, 5, 0, 0),
+                        Font = Enum.Font.GothamBold,
+                        TextColor3 = theme.Text
+                    })
+                })
+
+                local track = SetChildren(SetProps(MakeElement("Frame"), {
+                    Parent = sliderFrame,
+                    Size = UDim2.new(1, -50, 0, 6),
+                    Position = UDim2.new(0, 30, 0.5, -3),
+                    BackgroundColor3 = theme.Main
+                }), {
+                    Create("UICorner", {CornerRadius = UDim.new(1, 0)})
+                })
+
+                local fill = SetChildren(SetProps(MakeElement("Frame"), {
+                    Size = UDim2.new(values[i]/255, 0, 1, 0),
+                    BackgroundColor3 = Color3.fromRGB(i==1 and 255 or 0, i==2 and 255 or 0, i==3 and 255 or 0)
+                }), {
+                    Create("UICorner", {CornerRadius = UDim.new(1, 0)})
+                })
+                fill.Parent = track
+
+                local knob = SetChildren(SetProps(MakeElement("RoundFrame", Color3.new(1,1,1), 1, 0), {
+                    Parent = track,
+                    Size = UDim2.new(0, 12, 0, 12),
+                    Position = UDim2.new(values[i]/255, -6, 0.5, -6)
+                }), {
+                    MakeElement("Stroke", theme.Stroke, 1)
+                })
+
+                local dragging = false
+                track.InputBegan:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = true
+                        local rel = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+                        values[i] = rel * 255
+                        fill.Size = UDim2.new(rel, 0, 1, 0)
+                        knob.Position = UDim2.new(rel, -6, 0.5, -6)
+                        updateColor()
+                    end
+                end)
+                track.InputEnded:Connect(function(input)
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        dragging = false
+                    end
+                end)
+                UserInputService.InputChanged:Connect(function(input)
+                    if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                        local rel = math.clamp((input.Position.X - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+                        values[i] = rel * 255
+                        fill.Size = UDim2.new(rel, 0, 1, 0)
+                        knob.Position = UDim2.new(rel, -6, 0.5, -6)
+                        updateColor()
+                    end
+                end)
+
+                table.insert(sliders, {fill = fill, knob = knob})
+            end
+
+            local function updateColor()
+                color = Color3.fromRGB(values[1], values[2], values[3])
+                frame:FindFirstChildOfClass("Frame").BackgroundColor3 = color
+                config.Callback(color)
+            end
+
             local btn = SetProps(MakeElement("Button"), {Parent = frame, Size = UDim2.new(1, 0, 1, 0)})
             btn.MouseButton1Click:Connect(function()
-                -- Simples notificação, você pode implementar um seletor completo depois
-                OrionLib:MakeNotification({Name = "Color Picker", Content = "Seletor de cores em breve", Time = 2})
+                expanded = not expanded
+                pickerPanel.Visible = expanded
+                TweenService:Create(frame, TweenInfo.new(0.2), {
+                    Size = expanded and UDim2.new(1, 0, 0, 50 + 130) or UDim2.new(1, 0, 0, 50)
+                }):Play()
             end)
 
             local obj = {Value = color}
             function obj:Set(c)
                 color = c
+                r, g, b = c.R * 255, c.G * 255, c.B * 255
+                values = {r, g, b}
                 frame:FindFirstChildOfClass("Frame").BackgroundColor3 = c
+                for i, slider in ipairs(sliders) do
+                    local rel = values[i] / 255
+                    slider.fill.Size = UDim2.new(rel, 0, 1, 0)
+                    slider.knob.Position = UDim2.new(rel, -6, 0.5, -6)
+                end
                 config.Callback(c)
             end
             return obj
