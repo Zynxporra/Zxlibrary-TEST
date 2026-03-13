@@ -100,24 +100,28 @@ local OrionLib = {
     ThemeObjects = {},
     Themes = {
         Default = {
-            -- NOVAS cores mais modernas!
-            Main = Color3.fromRGB(22, 15, 30),      -- Roxo escuro moderno
-            Second = Color3.fromRGB(35, 22, 45),    -- Roxo médio
-            Stroke = Color3.fromRGB(160, 90, 255),  -- Roxo vibrante
-            Divider = Color3.fromRGB(60, 40, 75),   -- Roxo médio-escuro
-            Text = Color3.fromRGB(255, 255, 255),
-            TextDark = Color3.fromRGB(210, 190, 240),
-            Background = Color3.fromRGB(22, 15, 30),
-            BackgroundTransparency = 0.2,
-            BackgroundImage = "",  -- Novo: ID da imagem de fundo (ex: "rbxassetid://123456")
+            -- NOVAS cores estilo "Neon Glass" (fundo escuro + gradiente)
+            Main = Color3.fromRGB(15, 10, 25),        -- Fundo escuro do painel
+            Second = Color3.fromRGB(40, 25, 60),      -- Painel secundário
+            Accent = Color3.fromRGB(170, 110, 255),   -- Cor de destaque (botões/seleção)
+            Stroke = Color3.fromRGB(155, 90, 240),    -- Contorno
+            Divider = Color3.fromRGB(65, 45, 80),     -- Linhas / divisores
+            Text = Color3.fromRGB(245, 245, 255),     -- Texto claro
+            TextDark = Color3.fromRGB(180, 170, 235), -- Texto escuro
+            Background = Color3.fromRGB(15, 10, 20), -- Fundo principal (fora do painel)
+            BackgroundTransparency = 0.18,
+            BackgroundImage = "",
 
-            -- Gradiente (novo)
+            -- Gradiente principal do painel
             MainGradient = ColorSequence.new{
-                ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 10, 45)),
-                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(70, 30, 95)),
-                ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 60, 180))
+                ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 10, 45)),
+                ColorSequenceKeypoint.new(0.5, Color3.fromRGB(95, 40, 130)),
+                ColorSequenceKeypoint.new(1, Color3.fromRGB(30, 10, 45))
             },
-            GradientRotation = 145
+            GradientRotation = 145,
+
+            -- Vidro / blur
+            BlurSize = 12
         }
     },
     SelectedTheme = "Default",
@@ -269,15 +273,45 @@ local function SetTheme()
         end
     end
 
-    -- Aplicar cor de fundo + transparência
+    -- Aplicar cor de fundo + transparência (e um estilo "glass" atualizado)
     if OrionLib.MainWindow then
-        OrionLib.MainWindow.BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Background
-        OrionLib.MainWindow.BackgroundTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage ~= "" and 1 or 0
+        local theme = OrionLib.Themes[OrionLib.SelectedTheme]
+        OrionLib.MainWindow.BackgroundColor3 = theme.Background
+        OrionLib.MainWindow.BackgroundTransparency = theme.BackgroundTransparency or 0
+
+        -- Blur + gradiente para visual moderno
+        local blur = OrionLib.MainWindow:FindFirstChild("OrionBlur")
+        if not blur then
+            blur = Instance.new("UIBlurEffect")
+            blur.Name = "OrionBlur"
+            blur.Parent = OrionLib.MainWindow
+        end
+        blur.Size = theme.BlurSize or 10
+
+        local gradient = OrionLib.MainWindow:FindFirstChild("OrionGradient")
+        if not gradient then
+            gradient = Instance.new("UIGradient")
+            gradient.Name = "OrionGradient"
+            gradient.Parent = OrionLib.MainWindow
+        end
+        gradient.Color = theme.MainGradient or ColorSequence.new(theme.Main, theme.Second)
+        gradient.Rotation = theme.GradientRotation or 135
+        gradient.Transparency = NumberSequence.new{
+            NumberSequenceKeypoint.new(0, 0.3),
+            NumberSequenceKeypoint.new(1, 0.3)
+        }
+
+        -- Update sidebar gradient as well (if present)
+        local sidebarGradient = OrionLib.MainWindow:FindFirstChild("OrionSidebarGradient", true)
+        if sidebarGradient and sidebarGradient:IsA("UIGradient") then
+            sidebarGradient.Color = theme.MainGradient or ColorSequence.new(theme.Main, theme.Second)
+            sidebarGradient.Rotation = theme.GradientRotation or 135
+        end
 
         local bgImg = OrionLib.MainWindow:FindFirstChild("BackgroundImage")
         if bgImg then
-            bgImg.Image = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage
-            bgImg.ImageTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage == "" and 1 or OrionLib.Themes[OrionLib.SelectedTheme].BackgroundTransparency
+            bgImg.Image = theme.BackgroundImage
+            bgImg.ImageTransparency = theme.BackgroundImage == "" and 1 or theme.BackgroundTransparency
         end
     end
 end
@@ -771,13 +805,15 @@ function OrionLib:MakeWindow(WindowConfig)
     local TabContainers = {}
 
     -- Tab Holder (NOVO DESIGN)
-    local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 4), {
+    local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", OrionLib.Themes[OrionLib.SelectedTheme].Accent, 4), {
         Size = UDim2.new(1,0,1,-90),
-        Position = UDim2.new(0,0,0,40)
+        Position = UDim2.new(0,0,0,40),
+        BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second,
+        BackgroundTransparency = 0.35
     }), {
         MakeElement("List", 0, 6),
         MakeElement("Padding", 8, 4, 4, 8)
-    }), "Divider")
+    }), "Second")
 
     AddConnection(TabHolder.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
         TabHolder.CanvasSize = UDim2.new(0,0,0, TabHolder.UIListLayout.AbsoluteContentSize.Y + 16)
@@ -870,6 +906,11 @@ function OrionLib:MakeWindow(WindowConfig)
             BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Stroke,
             BackgroundTransparency = 0.5
         }), "Stroke"),
+        Create("UIGradient", {
+            Name = "OrionSidebarGradient",
+            Color = OrionLib.Themes[OrionLib.SelectedTheme].MainGradient,
+            Rotation = OrionLib.Themes[OrionLib.SelectedTheme].GradientRotation
+        }),
         SearchBar,
         -- Botão de resize lateral
         SetChildren(SetProps(MakeElement("ImageButton"), {
@@ -1009,6 +1050,12 @@ function OrionLib:MakeWindow(WindowConfig)
             ImageTransparency = OrionLib.Themes[OrionLib.SelectedTheme].BackgroundImage == "" and 1 or 0,
             ZIndex = 0,
             Name = "BackgroundImage"
+        }),
+        -- Gradiente de vidro
+        Create("UIGradient", {
+            Name = "OrionWindowGradient",
+            Color = OrionLib.Themes[OrionLib.SelectedTheme].MainGradient,
+            Rotation = OrionLib.Themes[OrionLib.SelectedTheme].GradientRotation
         }),
         MakeElement("Stroke", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 2.5),
         SetChildren(SetProps(MakeElement("TFrame"), {Size = UDim2.new(1,0,0,50), Name = "TopBar"}), {
@@ -1367,8 +1414,13 @@ function OrionLib:MakeWindow(WindowConfig)
 
         local TabFrame = SetChildren(SetProps(MakeElement("Button"), {
             Size = UDim2.new(1,0,0,40),
-            Parent = TabHolder
+            Parent = TabHolder,
+            BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second,
+            BackgroundTransparency = 0.45,
+            AutoButtonColor = false
         }), {
+            Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
+            AddThemeObject(Create("UIStroke", {Thickness = 1, Transparency = 0.6, Name = "TabStroke"}), "Stroke"),
             AddThemeObject(SetProps(MakeElement("Image", TabConfig.Icon), {
                 AnchorPoint = Vector2.new(0,0.5),
                 Size = UDim2.new(0,22,0,22),
@@ -1415,6 +1467,9 @@ function OrionLib:MakeWindow(WindowConfig)
             TabFrame.Ico.ImageTransparency = 0
             TabFrame.Title.TextTransparency = 0
             TabFrame.Title.Font = Enum.Font.GothamBold
+            TabFrame.BackgroundTransparency = 0.25
+            local firstStroke = TabFrame:FindFirstChild("TabStroke")
+            if firstStroke then firstStroke.Transparency = 0.2 end
             Container.Visible = true
         end
 
@@ -1424,6 +1479,11 @@ function OrionLib:MakeWindow(WindowConfig)
                     tab.Title.Font = Enum.Font.GothamSemibold
                     TweenService:Create(tab.Ico, TweenInfo.new(0.25), {ImageTransparency = 0.4}):Play()
                     TweenService:Create(tab.Title, TweenInfo.new(0.25), {TextTransparency = 0.4}):Play()
+                    TweenService:Create(tab, TweenInfo.new(0.25), {BackgroundTransparency = 0.45}):Play()
+                    local tabStroke = tab:FindFirstChild("TabStroke")
+                    if tabStroke then
+                        TweenService:Create(tabStroke, TweenInfo.new(0.25), {Transparency = 0.6}):Play()
+                    end
                 end
             end
             for _, container in next, MainWindow:GetChildren() do
@@ -1431,6 +1491,11 @@ function OrionLib:MakeWindow(WindowConfig)
             end
             TweenService:Create(TabFrame.Ico, TweenInfo.new(0.25), {ImageTransparency = 0}):Play()
             TweenService:Create(TabFrame.Title, TweenInfo.new(0.25), {TextTransparency = 0}):Play()
+            TweenService:Create(TabFrame, TweenInfo.new(0.25), {BackgroundTransparency = 0.25}):Play()
+            local selectedStroke = TabFrame:FindFirstChild("TabStroke")
+            if selectedStroke then
+                TweenService:Create(selectedStroke, TweenInfo.new(0.25), {Transparency = 0.2}):Play()
+            end
             TabFrame.Title.Font = Enum.Font.GothamBold
             Container.Visible = true
         end)
