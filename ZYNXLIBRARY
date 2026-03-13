@@ -1,6 +1,10 @@
 --[[
-    NovaLib - UI Library Moderna
-    Sintaxe compatível com Orion mas com design superior
+    ZYNX LIBRARY v2.0 - UI Library Profissional
+    - Tecla M para abrir/fechar
+    - Sistema de notificações
+    - Redimensionável
+    - Toggles, Sliders, Buttons funcionando
+    - Fundo personalizável
 ]]
 
 local UserInputService = game:GetService("UserInputService")
@@ -11,41 +15,32 @@ local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 local HttpService = game:GetService("HttpService")
 
-local NovaLib = {
+local ZynxLib = {
     Flags = {},
     Windows = {},
-    CurrentTheme = "Dark",
+    Connections = {},
     Themes = {
-        Dark = {
-            Main = Color3.fromRGB(18, 18, 18),        -- Fundo principal mais escuro
-            Second = Color3.fromRGB(25, 25, 25),       -- Cards
-            Accent = Color3.fromRGB(0, 140, 255),       -- Azul vibrante
-            Accent2 = Color3.fromRGB(147, 51, 234),     -- Roxo para gradientes
+        Default = {
+            Main = Color3.fromRGB(25, 5, 25),      -- Roxo escuro
+            Second = Color3.fromRGB(45, 10, 45),   -- Roxo médio
+            Accent = Color3.fromRGB(180, 40, 255), -- Roxo vibrante
+            Stroke = Color3.fromRGB(100, 20, 120), -- Borda
             Text = Color3.fromRGB(255, 255, 255),
-            TextDim = Color3.fromRGB(180, 180, 180),
-            Stroke = Color3.fromRGB(45, 45, 45),
-            Danger = Color3.fromRGB(220, 38, 38),
-            Success = Color3.fromRGB(16, 185, 129)
-        },
-        Light = {
-            Main = Color3.fromRGB(245, 245, 245),
-            Second = Color3.fromRGB(255, 255, 255),
-            Accent = Color3.fromRGB(0, 140, 255),
-            Accent2 = Color3.fromRGB(147, 51, 234),
-            Text = Color3.fromRGB(30, 30, 30),
-            TextDim = Color3.fromRGB(100, 100, 100),
-            Stroke = Color3.fromRGB(220, 220, 220),
-            Danger = Color3.fromRGB(220, 38, 38),
-            Success = Color3.fromRGB(16, 185, 129)
+            TextDim = Color3.fromRGB(200, 200, 255),
+            Success = Color3.fromRGB(50, 255, 100),
+            Danger = Color3.fromRGB(255, 50, 50)
         }
-    }
+    },
+    CurrentTheme = "Default"
 }
 
--- Criar GUI principal
-local Nova = Instance.new("ScreenGui")
-Nova.Name = "NovaLib"
-Nova.Parent = (syn and syn.protect_gui and (function() syn.protect_gui(Nova) return game:GetService("CoreGui") end)() or 
-               (gethui and gethui() or game:GetService("CoreGui")))
+-- GUI Principal
+local ZynxGUI = Instance.new("ScreenGui")
+ZynxGUI.Name = "ZynxLibrary"
+ZynxGUI.Parent = (syn and syn.protect_gui and (function() syn.protect_gui(ZynxGUI) return game:GetService("CoreGui") end)() or 
+                  (gethui and gethui() or game:GetService("CoreGui")))
+ZynxGUI.ResetOnSpawn = false
+ZynxGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ==================================================
 -- FUNÇÕES UTILITÁRIAS
@@ -53,8 +48,8 @@ Nova.Parent = (syn and syn.protect_gui and (function() syn.protect_gui(Nova) ret
 
 local function Create(className, props, children)
     local obj = Instance.new(className)
-    for prop, value in pairs(props or {}) do
-        obj[prop] = value
+    for prop, val in pairs(props or {}) do
+        obj[prop] = val
     end
     for _, child in pairs(children or {}) do
         child.Parent = obj
@@ -63,204 +58,338 @@ local function Create(className, props, children)
 end
 
 local function MakeDraggable(dragPoint, main)
-    local dragging, dragInput, startPos, startMousePos
+    local dragging, startPos, startMousePos
     
     dragPoint.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             startPos = main.Position
-            startMousePos = input.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
+            startMousePos = Vector2.new(input.Position.X, input.Position.Y)
         end
     end)
     
-    dragPoint.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
+    dragPoint.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
         end
     end)
     
     UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - startMousePos
-            main:TweenPosition(UDim2.new(
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = Vector2.new(input.Position.X, input.Position.Y) - startMousePos
+            main.Position = UDim2.new(
                 startPos.X.Scale, startPos.X.Offset + delta.X,
                 startPos.Y.Scale, startPos.Y.Offset + delta.Y
-            ), "Out", "Quint", 0.3, true)
+            )
         end
     end)
 end
 
 -- ==================================================
--- SISTEMA DE FUNDO PERSONALIZADO (igual ao do seu amigo!)
+-- SISTEMA DE FUNDO PERSONALIZADO
 -- ==================================================
 
 local BackgroundController = {
-    CurrentBackground = nil,
-    CurrentType = "none" -- "none", "color", "gradient", "image"
+    Current = nil
 }
 
-function NovaLib:SetBackground(type, ...)
-    -- type: "color", "gradient", "image", "none"
+function ZynxLib:SetBackground(type, ...)
+    if BackgroundController.Current then
+        BackgroundController.Current:Destroy()
+        BackgroundController.Current = nil
+    end
+    
     local args = {...}
     
-    -- Remover background anterior
-    if BackgroundController.CurrentBackground then
-        BackgroundController.CurrentBackground:Destroy()
-        BackgroundController.CurrentBackground = nil
-    end
-    
-    if type == "none" then
-        BackgroundController.CurrentType = "none"
-        return
-    end
-    
     if type == "color" then
-        local color = args[1] or Color3.fromRGB(30, 30, 30)
-        BackgroundController.CurrentBackground = Create("Frame", {
+        local color = args[1] or Color3.fromRGB(30, 0, 30)
+        BackgroundController.Current = Create("Frame", {
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundColor3 = color,
             BackgroundTransparency = 0,
             ZIndex = 0,
-            Parent = Nova
+            Parent = ZynxGUI
         })
-    end
-    
-    if type == "gradient" then
-        local color1 = args[1] or NovaLib.Themes[NovaLib.CurrentTheme].Accent
-        local color2 = args[2] or NovaLib.Themes[NovaLib.CurrentTheme].Accent2
-        local rotation = args[3] or 45
+    elseif type == "gradient" then
+        local color1 = args[1] or Color3.fromRGB(40, 0, 40)
+        local color2 = args[2] or Color3.fromRGB(100, 20, 120)
+        local rotation = args[3] or 135
         
         local frame = Create("Frame", {
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundTransparency = 1,
             ZIndex = 0,
-            Parent = Nova
+            Parent = ZynxGUI
         })
         
         Create("UIGradient", {
             Color = ColorSequence.new({ColorSequenceKeypoint.new(0, color1), ColorSequenceKeypoint.new(1, color2)}),
             Rotation = rotation
-        }, {}).Parent = frame
+        }).Parent = frame
         
-        BackgroundController.CurrentBackground = frame
+        BackgroundController.Current = frame
     end
-    
-    if type == "image" then
-        local imageUrl = args[1] or "rbxassetid://15263889566"
-        local transparency = args[2] or 0.5
-        
-        BackgroundController.CurrentBackground = Create("ImageLabel", {
-            Size = UDim2.new(1, 0, 1, 0),
-            Image = imageUrl,
-            BackgroundTransparency = 1,
-            ImageTransparency = transparency,
-            ScaleType = Enum.ScaleType.Crop,
-            ZIndex = 0,
-            Parent = Nova
-        })
-    end
-    
-    BackgroundController.CurrentType = type
 end
 
 -- ==================================================
--- ELEMENTOS DE UI COM DESIGN MODERNO
+-- SISTEMA DE NOTIFICAÇÕES
 -- ==================================================
 
-function NovaLib:MakeWindow(config)
+local NotificationHolder = Create("Frame", {
+    Name = "NotificationHolder",
+    Parent = ZynxGUI,
+    Size = UDim2.new(0, 300, 1, -40),
+    Position = UDim2.new(1, -310, 0, 20),
+    BackgroundTransparency = 1
+}, {
+    Create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        HorizontalAlignment = Enum.HorizontalAlignment.Center,
+        VerticalAlignment = Enum.VerticalAlignment.Bottom,
+        Padding = UDim.new(0, 8)
+    })
+})
+
+function ZynxLib:MakeNotification(config)
     config = config or {}
-    config.Name = config.Name or "Nova Library"
-    config.Subtitle = config.Subtitle or ""
-    config.Size = config.Size or UDim2.new(0, 700, 0, 450)
+    config.Title = config.Title or config.Name or "Notificação"
+    config.Content = config.Content or "Mensagem"
+    config.Time = config.Time or 5
+    config.Icon = config.Icon or "rbxassetid://127441833735276"
     
-    local minimized = false
-    local currentTab = nil
+    -- Container da notificação
+    local NotifContainer = Create("Frame", {
+        Parent = NotificationHolder,
+        Size = UDim2.new(1, 0, 0, 0),
+        BackgroundTransparency = 1,
+        AutomaticSize = Enum.AutomaticSize.Y
+    })
     
-    -- MAIN WINDOW
-    local MainWindow = Create("Frame", {
-        Name = "MainWindow",
-        Parent = Nova,
-        Size = config.Size,
-        Position = UDim2.new(0.5, -config.Size.X.Offset/2, 0.5, -config.Size.Y.Offset/2),
-        BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Main,
-        BackgroundTransparency = 0,
-        ClipsDescendants = true
+    -- Fundo da notificação
+    local NotifBG = Create("Frame", {
+        Parent = NotifContainer,
+        Size = UDim2.new(1, 0, 0, 0),
+        Position = UDim2.new(1, 50, 0, 0),
+        BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Second,
+        BackgroundTransparency = 0.1,
+        AutomaticSize = Enum.AutomaticSize.Y
     }, {
         Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
         Create("UIStroke", {
-            Color = NovaLib.Themes[NovaLib.CurrentTheme].Stroke,
-            Thickness = 1,
-            Transparency = 0.5
+            Color = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
+            Thickness = 1.5,
+            Transparency = 0.3
+        }),
+        Create("UIPadding", {
+            PaddingTop = UDim.new(0, 12),
+            PaddingBottom = UDim.new(0, 12),
+            PaddingLeft = UDim.new(0, 12),
+            PaddingRight = UDim.new(0, 12)
         })
     })
     
-    -- SHADOW (efeito de sombra moderna)
+    -- Layout interno
+    local Layout = Create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(0, 8)
+    }).Parent = NotifBG
+    
+    -- Título
+    local Title = Create("TextLabel", {
+        Parent = NotifBG,
+        Size = UDim2.new(1, 0, 0, 20),
+        BackgroundTransparency = 1,
+        Text = config.Title,
+        TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text,
+        TextSize = 16,
+        Font = Enum.Font.GothamBold,
+        TextXAlignment = Enum.TextXAlignment.Left
+    })
+    
+    -- Conteúdo
+    local Content = Create("TextLabel", {
+        Parent = NotifBG,
+        Size = UDim2.new(1, 0, 0, 0),
+        BackgroundTransparency = 1,
+        Text = config.Content,
+        TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].TextDim,
+        TextSize = 14,
+        Font = Enum.Font.Gotham,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextWrapped = true,
+        AutomaticSize = Enum.AutomaticSize.Y
+    })
+    
+    -- Ajustar altura do container
+    local function updateHeight()
+        NotifContainer.Size = UDim2.new(1, 0, 0, Title.Size.Y.Offset + Content.Size.Y.Offset + 24)
+    end
+    
+    Content:GetPropertyChangedSignal("Size"):Connect(updateHeight)
+    task.wait()
+    updateHeight()
+    
+    -- Animação de entrada
+    TweenService:Create(NotifBG, TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out), {
+        Position = UDim2.new(0, 0, 0, 0)
+    }):Play()
+    
+    -- Som de notificação
+    local sound = Instance.new("Sound")
+    sound.SoundId = "rbxassetid://9120381531"
+    sound.Volume = 0.5
+    sound.Parent = game:GetService("SoundService")
+    sound:Play()
+    game:GetService("Debris"):AddItem(sound, 2)
+    
+    -- Auto-remoção
+    task.wait(config.Time)
+    
+    TweenService:Create(NotifBG, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
+        Position = UDim2.new(1, 50, 0, 0),
+        BackgroundTransparency = 1
+    }):Play()
+    
+    TweenService:Create(Title, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+    TweenService:Create(Content, TweenInfo.new(0.3), {TextTransparency = 1}):Play()
+    
+    task.wait(0.4)
+    NotifContainer:Destroy()
+end
+
+-- ==================================================
+-- SISTEMA DE REDIMENSIONAMENTO
+-- ==================================================
+
+local function MakeResizable(window, minSize, maxSize)
+    local resizing = false
+    var startSize, startPos
+    
+    local resizeHandle = Create("Frame", {
+        Parent = window,
+        Size = UDim2.new(0, 15, 0, 15),
+        Position = UDim2.new(1, -8, 1, -8),
+        BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
+        BackgroundTransparency = 0.5,
+        ZIndex = 10
+    }, {
+        Create("UICorner", {CornerRadius = UDim.new(1, 0)})
+    })
+    
+    resizeHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = true
+            startSize = window.AbsoluteSize
+            startPos = Vector2.new(input.Position.X, input.Position.Y)
+            
+            TweenService:Create(resizeHandle, TweenInfo.new(0.1), {
+                BackgroundTransparency = 0,
+                Size = UDim2.new(0, 20, 0, 20)
+            }):Play()
+        end
+    end)
+    
+    resizeHandle.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = false
+            TweenService:Create(resizeHandle, TweenInfo.new(0.2), {
+                BackgroundTransparency = 0.5,
+                Size = UDim2.new(0, 15, 0, 15)
+            }):Play()
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = Vector2.new(input.Position.X, input.Position.Y) - startPos
+            local newWidth = math.clamp(startSize.X + delta.X, minSize.X.Offset, maxSize.X.Offset)
+            local newHeight = math.clamp(startSize.Y + delta.Y, minSize.Y.Offset, maxSize.Y.Offset)
+            
+            window.Size = UDim2.new(0, newWidth, 0, newHeight)
+        end
+    end)
+end
+
+-- ==================================================
+-- CRIAÇÃO DA JANELA PRINCIPAL
+-- ==================================================
+
+function ZynxLib:MakeWindow(config)
+    config = config or {}
+    config.Name = config.Name or "Zynx Library"
+    config.Size = config.Size or UDim2.new(0, 700, 0, 450)
+    config.MinSize = config.MinSize or UDim2.new(0, 400, 0, 300)
+    config.Key = config.Key or "M"  -- Tecla M para abrir/fechar!
+    
+    local minimized = false
+    local hidden = false
+    local currentTab = nil
+    
+    -- JANELA PRINCIPAL
+    local MainWindow = Create("Frame", {
+        Name = "MainWindow",
+        Parent = ZynxGUI,
+        Size = config.Size,
+        Position = UDim2.new(0.5, -config.Size.X.Offset/2, 0.5, -config.Size.Y.Offset/2),
+        BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Main,
+        BackgroundTransparency = 0,
+        ClipsDescendants = true,
+        Visible = true,
+        Active = true
+    }, {
+        Create("UICorner", {CornerRadius = UDim.new(0, 16)}),
+        Create("UIStroke", {
+            Color = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
+            Thickness = 2,
+            Transparency = 0.3
+        })
+    })
+    
+    -- SOMBRA
     local Shadow = Create("ImageLabel", {
-        Name = "Shadow",
-        Parent = Nova,
+        Parent = ZynxGUI,
         Size = MainWindow.Size + UDim2.new(0, 20, 0, 20),
         Position = MainWindow.Position - UDim2.new(0, 10, 0, 10),
         BackgroundTransparency = 1,
         Image = "rbxassetid://6015897843",
         ImageColor3 = Color3.new(0, 0, 0),
-        ImageTransparency = 0.7,
+        ImageTransparency = 0.6,
         ZIndex = 0
     })
     
-    -- TOP BAR
+    -- TOP BAR (para arrastar)
     local TopBar = Create("Frame", {
-        Name = "TopBar",
         Parent = MainWindow,
         Size = UDim2.new(1, 0, 0, 45),
-        BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second,
+        BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Second,
         BackgroundTransparency = 0
     }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
+        Create("UICorner", {CornerRadius = UDim.new(0, 16)}),
         Create("UIStroke", {
-            Color = NovaLib.Themes[NovaLib.CurrentTheme].Stroke,
+            Color = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
             Thickness = 1,
             Transparency = 0.5
         })
     })
     
-    -- Título
+    -- TÍTULO
     local Title = Create("TextLabel", {
         Parent = TopBar,
         Size = UDim2.new(0, 200, 1, 0),
         Position = UDim2.new(0, 15, 0, 0),
         BackgroundTransparency = 1,
         Text = config.Name,
-        TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text,
-        TextSize = 18,
-        Font = Enum.Font.GothamBold,
+        TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text,
+        TextSize = 20,
+        Font = Enum.Font.GothamBlack,
         TextXAlignment = Enum.TextXAlignment.Left
     })
     
-    if config.Subtitle ~= "" then
-        local Subtitle = Create("TextLabel", {
-            Parent = TopBar,
-            Size = UDim2.new(0, 200, 1, 0),
-            Position = UDim2.new(0, 15 + Title.TextBounds.X + 10, 0, 0),
-            BackgroundTransparency = 1,
-            Text = config.Subtitle,
-            TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].TextDim,
-            TextSize = 14,
-            Font = Enum.Font.Gotham,
-            TextXAlignment = Enum.TextXAlignment.Left
-        })
-    end
-    
-    -- Botões de controle (Minimizar/Fechar)
+    -- BOTÕES DE CONTROLE
     local Controls = Create("Frame", {
         Parent = TopBar,
-        Size = UDim2.new(0, 70, 0, 30),
-        Position = UDim2.new(1, -80, 0.5, -15),
+        Size = UDim2.new(0, 100, 0, 30),
+        Position = UDim2.new(1, -110, 0.5, -15),
         BackgroundTransparency = 1
     })
     
@@ -270,7 +399,7 @@ function NovaLib:MakeWindow(config)
         Position = UDim2.new(0, 0, 0, 0),
         BackgroundTransparency = 1,
         Image = "rbxassetid://7072719338",
-        ImageColor3 = NovaLib.Themes[NovaLib.CurrentTheme].TextDim
+        ImageColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text
     })
     
     local CloseBtn = Create("ImageButton", {
@@ -279,63 +408,56 @@ function NovaLib:MakeWindow(config)
         Position = UDim2.new(1, -30, 0, 0),
         BackgroundTransparency = 1,
         Image = "rbxassetid://7072725342",
-        ImageColor3 = NovaLib.Themes[NovaLib.CurrentTheme].TextDim
+        ImageColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text
     })
     
-    -- TABS CONTAINER
-    local TabsContainer = Create("Frame", {
+    -- PAINEL DE ABAS (esquerda)
+    local TabsPanel = Create("Frame", {
         Parent = MainWindow,
         Size = UDim2.new(0, 150, 1, -45),
         Position = UDim2.new(0, 0, 0, 45),
-        BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second,
+        BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Second,
         BackgroundTransparency = 0
     }, {
-        Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
+        Create("UICorner", {CornerRadius = UDim.new(0, 16)}),
         Create("UIStroke", {
-            Color = NovaLib.Themes[NovaLib.CurrentTheme].Stroke,
+            Color = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
             Thickness = 1,
             Transparency = 0.5
         })
     })
     
-    -- ScrollingFrame para as abas
+    -- Lista de abas
     local TabsList = Create("ScrollingFrame", {
-        Parent = TabsContainer,
+        Parent = TabsPanel,
         Size = UDim2.new(1, -10, 1, -10),
         Position = UDim2.new(0, 5, 0, 5),
         BackgroundTransparency = 1,
         ScrollBarThickness = 3,
-        ScrollBarImageColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Accent,
-        CanvasSize = UDim2.new(0, 0, 0, 0),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y
+        ScrollBarImageColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
+        CanvasSize = UDim2.new(0, 0, 0, 0)
     }, {
         Create("UIListLayout", {
             SortOrder = Enum.SortOrder.LayoutOrder,
             Padding = UDim.new(0, 5)
-        }),
-        Create("UIPadding", {
-            PaddingTop = UDim.new(0, 5),
-            PaddingBottom = UDim.new(0, 5),
-            PaddingLeft = UDim.new(0, 5),
-            PaddingRight = UDim.new(0, 5)
         })
     })
     
-    -- CONTENT CONTAINER (onde os elementos aparecem)
-    local ContentContainer = Create("Frame", {
+    -- CONTEÚDO DAS ABAS (direita)
+    local ContentPanel = Create("Frame", {
         Parent = MainWindow,
         Size = UDim2.new(1, -160, 1, -55),
         Position = UDim2.new(0, 155, 0, 50),
         BackgroundTransparency = 1
     })
     
-    -- TABS STORAGE
-    local Tabs = {}
-    
-    -- DRAGGING
+    -- Tornar arrastável
     MakeDraggable(TopBar, MainWindow)
     
-    -- UPDATE SHADOW POSITION
+    -- Tornar redimensionável
+    MakeResizable(MainWindow, config.MinSize, UDim2.new(0, 1200, 0, 800))
+    
+    -- Atualizar sombra
     MainWindow:GetPropertyChangedSignal("Position"):Connect(function()
         Shadow.Position = MainWindow.Position - UDim2.new(0, 10, 0, 10)
     end)
@@ -344,31 +466,68 @@ function NovaLib:MakeWindow(config)
         Shadow.Size = MainWindow.Size + UDim2.new(0, 20, 0, 20)
     end)
     
-    -- CONTROLES
+    -- ==================================================
+    -- SISTEMA DE TECLA (M) PARA ABRIR/FECHAR
+    -- ==================================================
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if gpe then return end
+        
+        if input.KeyCode == Enum.KeyCode[config.Key] then
+            if hidden then
+                -- Abrir
+                MainWindow.Visible = true
+                Shadow.Visible = true
+                hidden = false
+                
+                ZynxLib:MakeNotification({
+                    Title = "Interface",
+                    Content = "Interface aberta",
+                    Time = 2
+                })
+            else
+                -- Fechar
+                MainWindow.Visible = false
+                Shadow.Visible = false
+                hidden = true
+                
+                ZynxLib:MakeNotification({
+                    Title = "Interface",
+                    Content = "Interface fechada. Pressione " .. config.Key .. " para abrir",
+                    Time = 3
+                })
+            end
+        end
+    end)
+    
+    -- Botão fechar
+    CloseBtn.MouseButton1Click:Connect(function()
+        MainWindow.Visible = false
+        Shadow.Visible = false
+        hidden = true
+        
+        ZynxLib:MakeNotification({
+            Title = "Interface",
+            Content = "Interface fechada. Pressione " .. config.Key .. " para abrir",
+            Time = 3
+        })
+    end)
+    
+    -- Botão minimizar
     MinimizeBtn.MouseButton1Click:Connect(function()
-        minimized = not minimized
         if minimized then
-            TweenService:Create(MainWindow, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
-                Size = UDim2.new(0, 400, 0, 45)
-            }):Play()
-            MinimizeBtn.Image = "rbxassetid://7072720870"
-        else
+            -- Restaurar
             TweenService:Create(MainWindow, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
                 Size = config.Size
             }):Play()
             MinimizeBtn.Image = "rbxassetid://7072719338"
-        end
-    end)
-    
-    CloseBtn.MouseButton1Click:Connect(function()
-        MainWindow.Visible = false
-        Shadow.Visible = false
-    end)
-    
-    UserInputService.InputBegan:Connect(function(input)
-        if input.KeyCode == Enum.KeyCode.RightShift and not MainWindow.Visible then
-            MainWindow.Visible = true
-            Shadow.Visible = true
+            minimized = false
+        else
+            -- Minimizar
+            TweenService:Create(MainWindow, TweenInfo.new(0.3, Enum.EasingStyle.Quint), {
+                Size = UDim2.new(0, 300, 0, 45)
+            }):Play()
+            MinimizeBtn.Image = "rbxassetid://7072720870"
+            minimized = true
         end
     end)
     
@@ -377,17 +536,18 @@ function NovaLib:MakeWindow(config)
     -- ==================================================
     
     local WindowObj = {}
+    local Tabs = {}
     
     function WindowObj:MakeTab(tabConfig)
         tabConfig = tabConfig or {}
         tabConfig.Name = tabConfig.Name or "Tab"
         tabConfig.Icon = tabConfig.Icon or ""
         
-        -- Criar botão da aba
+        -- Botão da aba
         local TabButton = Create("TextButton", {
             Parent = TabsList,
             Size = UDim2.new(1, 0, 0, 40),
-            BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Main,
+            BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Main,
             BackgroundTransparency = 0.7,
             AutoButtonColor = false,
             Text = ""
@@ -395,39 +555,39 @@ function NovaLib:MakeWindow(config)
             Create("UICorner", {CornerRadius = UDim.new(0, 8)})
         })
         
-        -- Ícone (se fornecido)
+        -- Ícone
         if tabConfig.Icon ~= "" then
-            local Icon = Create("ImageLabel", {
+            Create("ImageLabel", {
                 Parent = TabButton,
                 Size = UDim2.new(0, 20, 0, 20),
                 Position = UDim2.new(0, 10, 0.5, -10),
                 BackgroundTransparency = 1,
                 Image = tabConfig.Icon,
-                ImageColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text
+                ImageColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text
             })
         end
         
-        -- Nome da aba
+        -- Nome
         local TabName = Create("TextLabel", {
             Parent = TabButton,
             Size = UDim2.new(1, -30, 1, 0),
             Position = tabConfig.Icon ~= "" and UDim2.new(0, 35, 0, 0) or UDim2.new(0, 10, 0, 0),
             BackgroundTransparency = 1,
             Text = tabConfig.Name,
-            TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].TextDim,
+            TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].TextDim,
             TextSize = 14,
             Font = Enum.Font.GothamSemibold,
             TextXAlignment = Enum.TextXAlignment.Left
         })
         
-        -- Container para os elementos desta aba
+        -- Container dos elementos
         local TabContent = Create("ScrollingFrame", {
-            Parent = ContentContainer,
+            Parent = ContentPanel,
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundTransparency = 1,
             Visible = false,
-            ScrollBarThickness = 3,
-            ScrollBarImageColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Accent,
+            ScrollBarThickness = 4,
+            ScrollBarImageColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
             CanvasSize = UDim2.new(0, 0, 0, 0)
         }, {
             Create("UIListLayout", {
@@ -442,233 +602,200 @@ function NovaLib:MakeWindow(config)
             })
         })
         
-        -- Atualizar CanvasSize quando o conteúdo mudar
-        local function UpdateCanvasSize()
-            TabContent.CanvasSize = UDim2.new(0, 0, 0, TabContent.UIListLayout.AbsoluteContentSize.Y + 20)
-        end
-        TabContent.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateCanvasSize)
+        -- Atualizar canvas
+        local layout = TabContent.UIListLayout
+        layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+            TabContent.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+        end)
         
         -- Selecionar primeira aba
         if #TabsList:GetChildren() == 1 then
             TabButton.BackgroundTransparency = 0.3
-            TabButton.BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Accent
-            TabName.TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text
+            TabButton.BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent
+            TabName.TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text
             TabContent.Visible = true
             currentTab = TabContent
         end
         
-        -- Função para selecionar esta aba
+        -- Clique na aba
         TabButton.MouseButton1Click:Connect(function()
-            if currentTab then
-                currentTab.Visible = false
-            end
-            -- Resetar todas as abas
+            if currentTab then currentTab.Visible = false end
+            
             for _, btn in pairs(TabsList:GetChildren()) do
                 if btn:IsA("TextButton") then
                     btn.BackgroundTransparency = 0.7
-                    btn.BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Main
+                    btn.BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Main
                     if btn:FindFirstChildOfClass("TextLabel") then
-                        btn:FindFirstChildOfClass("TextLabel").TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].TextDim
+                        btn:FindFirstChildOfClass("TextLabel").TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].TextDim
                     end
                 end
             end
             
-            -- Ativar esta aba
             TabButton.BackgroundTransparency = 0.3
-            TabButton.BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Accent
-            TabName.TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text
+            TabButton.BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent
+            TabName.TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text
             TabContent.Visible = true
             currentTab = TabContent
         end)
         
         -- ==================================================
-        -- MÉTODOS PARA ADICIONAR ELEMENTOS (IGUAL À ORION!)
+        -- MÉTODOS DOS ELEMENTOS
         -- ==================================================
         
         local TabObj = {}
         
-        -- LABEL
-        function TabObj:AddLabel(config)
-            config = config or {}
-            config.Text = config.Text or "Label"
-            
-            local LabelFrame = Create("Frame", {
-                Parent = TabContent,
-                Size = UDim2.new(1, 0, 0, 30),
-                BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second,
-                BackgroundTransparency = 0
-            }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-                Create("UIStroke", {
-                    Color = NovaLib.Themes[NovaLib.CurrentTheme].Stroke,
-                    Thickness = 1,
-                    Transparency = 0.5
-                }),
-                Create("TextLabel", {
-                    Size = UDim2.new(1, -20, 1, 0),
-                    Position = UDim2.new(0, 10, 0, 0),
-                    BackgroundTransparency = 1,
-                    Text = config.Text,
-                    TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text,
-                    TextSize = 14,
-                    Font = Enum.Font.Gotham,
-                    TextXAlignment = Enum.TextXAlignment.Left
-                })
-            })
-            
-            local LabelObj = {}
-            function LabelObj:Set(newText)
-                LabelFrame.TextLabel.Text = newText
-            end
-            return LabelObj
-        end
-        
-        -- BUTTON (exatamente como você quer!)
+        -- BOTÃO
         function TabObj:AddButton(config)
             config = config or {}
             config.Name = config.Name or "Button"
             config.Callback = config.Callback or function() end
             
-            local ButtonFrame = Create("Frame", {
+            local frame = Create("Frame", {
                 Parent = TabContent,
                 Size = UDim2.new(1, 0, 0, 40),
-                BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second,
+                BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Second,
                 BackgroundTransparency = 0
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
                 Create("UIStroke", {
-                    Color = NovaLib.Themes[NovaLib.CurrentTheme].Stroke,
+                    Color = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
                     Thickness = 1,
                     Transparency = 0.5
                 })
             })
             
-            local ButtonText = Create("TextLabel", {
-                Parent = ButtonFrame,
+            local text = Create("TextLabel", {
+                Parent = frame,
                 Size = UDim2.new(1, -20, 1, 0),
                 Position = UDim2.new(0, 10, 0, 0),
                 BackgroundTransparency = 1,
                 Text = config.Name,
-                TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text,
+                TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text,
                 TextSize = 14,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
             
-            local Arrow = Create("ImageLabel", {
-                Parent = ButtonFrame,
+            local arrow = Create("ImageLabel", {
+                Parent = frame,
                 Size = UDim2.new(0, 20, 0, 20),
                 Position = UDim2.new(1, -30, 0.5, -10),
                 BackgroundTransparency = 1,
                 Image = "rbxassetid://5012539380",
-                ImageColor3 = NovaLib.Themes[NovaLib.CurrentTheme].TextDim
+                ImageColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].TextDim
             })
             
-            local Button = Create("TextButton", {
-                Parent = ButtonFrame,
+            local btn = Create("TextButton", {
+                Parent = frame,
                 Size = UDim2.new(1, 0, 1, 0),
                 BackgroundTransparency = 1,
                 Text = ""
             })
             
-            -- Hover effects
-            Button.MouseEnter:Connect(function()
-                TweenService:Create(ButtonFrame, TweenInfo.new(0.2), {BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Main}):Play()
+            btn.MouseEnter:Connect(function()
+                TweenService:Create(frame, TweenInfo.new(0.2), {
+                    BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Main
+                }):Play()
             end)
             
-            Button.MouseLeave:Connect(function()
-                TweenService:Create(ButtonFrame, TweenInfo.new(0.2), {BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second}):Play()
+            btn.MouseLeave:Connect(function()
+                TweenService:Create(frame, TweenInfo.new(0.2), {
+                    BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Second
+                }):Play()
             end)
             
-            Button.MouseButton1Click:Connect(function()
-                TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Accent}):Play()
+            btn.MouseButton1Click:Connect(function()
+                TweenService:Create(frame, TweenInfo.new(0.1), {
+                    BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent
+                }):Play()
                 task.wait(0.1)
-                TweenService:Create(ButtonFrame, TweenInfo.new(0.1), {BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second}):Play()
+                TweenService:Create(frame, TweenInfo.new(0.1), {
+                    BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Second
+                }):Play()
                 config.Callback()
             end)
             
-            return {} -- Retorna objeto vazio pra manter consistência
+            return {}
         end
         
-        -- TOGGLE (EXATAMENTE COMO VOCÊ MOSTROU!)
+        -- TOGGLE
         function TabObj:AddToggle(config)
             config = config or {}
             config.Name = config.Name or "Toggle"
             config.Default = config.Default or false
             config.Callback = config.Callback or function() end
             
-            local toggleValue = config.Default
+            local value = config.Default
             
-            local ToggleFrame = Create("Frame", {
+            local frame = Create("Frame", {
                 Parent = TabContent,
                 Size = UDim2.new(1, 0, 0, 40),
-                BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second,
+                BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Second,
                 BackgroundTransparency = 0
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
                 Create("UIStroke", {
-                    Color = NovaLib.Themes[NovaLib.CurrentTheme].Stroke,
+                    Color = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
                     Thickness = 1,
                     Transparency = 0.5
                 })
             })
             
-            local ToggleText = Create("TextLabel", {
-                Parent = ToggleFrame,
+            local text = Create("TextLabel", {
+                Parent = frame,
                 Size = UDim2.new(1, -60, 1, 0),
                 Position = UDim2.new(0, 10, 0, 0),
                 BackgroundTransparency = 1,
                 Text = config.Name,
-                TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text,
+                TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text,
                 TextSize = 14,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
             
-            local ToggleSwitch = Create("Frame", {
-                Parent = ToggleFrame,
+            local switch = Create("Frame", {
+                Parent = frame,
                 Size = UDim2.new(0, 40, 0, 20),
                 Position = UDim2.new(1, -50, 0.5, -10),
-                BackgroundColor3 = toggleValue and NovaLib.Themes[NovaLib.CurrentTheme].Success or NovaLib.Themes[NovaLib.CurrentTheme].Danger,
+                BackgroundColor3 = value and ZynxLib.Themes[ZynxLib.CurrentTheme].Success or ZynxLib.Themes[ZynxLib.CurrentTheme].Danger,
                 BackgroundTransparency = 0
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)})
             })
             
-            local ToggleKnob = Create("Frame", {
-                Parent = ToggleSwitch,
+            local knob = Create("Frame", {
+                Parent = switch,
                 Size = UDim2.new(0, 16, 0, 16),
-                Position = toggleValue and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
+                Position = value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8),
                 BackgroundColor3 = Color3.new(1, 1, 1)
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)})
             })
             
-            local Button = Create("TextButton", {
-                Parent = ToggleFrame,
+            local btn = Create("TextButton", {
+                Parent = frame,
                 Size = UDim2.new(1, 0, 1, 0),
                 BackgroundTransparency = 1,
                 Text = ""
             })
             
-            -- Função para atualizar o toggle
-            local ToggleObj = {Value = toggleValue}
-            function ToggleObj:Set(newValue)
-                toggleValue = newValue
-                ToggleSwitch.BackgroundColor3 = toggleValue and NovaLib.Themes[NovaLib.CurrentTheme].Success or NovaLib.Themes[NovaLib.CurrentTheme].Danger
+            local toggleObj = {Value = value}
+            
+            function toggleObj:Set(newValue)
+                value = newValue
+                switch.BackgroundColor3 = value and ZynxLib.Themes[ZynxLib.CurrentTheme].Success or ZynxLib.Themes[ZynxLib.CurrentTheme].Danger
                 
-                local newPos = toggleValue and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
-                TweenService:Create(ToggleKnob, TweenInfo.new(0.2, Enum.EasingStyle.Quint), {Position = newPos}):Play()
+                local newPos = value and UDim2.new(1, -18, 0.5, -8) or UDim2.new(0, 2, 0.5, -8)
+                TweenService:Create(knob, TweenInfo.new(0.2), {Position = newPos}):Play()
                 
-                config.Callback(toggleValue)
+                config.Callback(value)
             end
             
-            -- Click handler
-            Button.MouseButton1Click:Connect(function()
-                ToggleObj:Set(not toggleValue)
+            btn.MouseButton1Click:Connect(function()
+                toggleObj:Set(not value)
             end)
             
-            return ToggleObj
+            return toggleObj
         end
         
         -- SLIDER
@@ -680,92 +807,92 @@ function NovaLib:MakeWindow(config)
             config.Default = config.Default or 50
             config.Callback = config.Callback or function() end
             
-            local sliderValue = config.Default
+            local value = config.Default
             local dragging = false
             
-            local SliderFrame = Create("Frame", {
+            local frame = Create("Frame", {
                 Parent = TabContent,
                 Size = UDim2.new(1, 0, 0, 60),
-                BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second,
+                BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Second,
                 BackgroundTransparency = 0
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
                 Create("UIStroke", {
-                    Color = NovaLib.Themes[NovaLib.CurrentTheme].Stroke,
+                    Color = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
                     Thickness = 1,
                     Transparency = 0.5
                 })
             })
             
-            local SliderText = Create("TextLabel", {
-                Parent = SliderFrame,
+            local label = Create("TextLabel", {
+                Parent = frame,
                 Size = UDim2.new(1, -20, 0, 20),
                 Position = UDim2.new(0, 10, 0, 8),
                 BackgroundTransparency = 1,
                 Text = config.Name,
-                TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text,
+                TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Text,
                 TextSize = 14,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
             
-            local ValueLabel = Create("TextLabel", {
-                Parent = SliderFrame,
-                Size = UDim2.new(0, 40, 0, 20),
-                Position = UDim2.new(1, -50, 0, 8),
+            local valueLabel = Create("TextLabel", {
+                Parent = frame,
+                Size = UDim2.new(0, 50, 0, 20),
+                Position = UDim2.new(1, -60, 0, 8),
                 BackgroundTransparency = 1,
-                Text = tostring(config.Default),
-                TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Accent,
+                Text = tostring(value),
+                TextColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent,
                 TextSize = 14,
                 Font = Enum.Font.GothamBold
             })
             
-            local SliderTrack = Create("Frame", {
-                Parent = SliderFrame,
+            local track = Create("Frame", {
+                Parent = frame,
                 Size = UDim2.new(1, -30, 0, 6),
                 Position = UDim2.new(0, 15, 1, -20),
-                BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Main,
+                BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Main,
                 BackgroundTransparency = 0
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)})
             })
             
-            local SliderFill = Create("Frame", {
-                Parent = SliderTrack,
-                Size = UDim2.new((config.Default - config.Min) / (config.Max - config.Min), 0, 1, 0),
-                BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Accent
+            local fill = Create("Frame", {
+                Parent = track,
+                Size = UDim2.new((value - config.Min) / (config.Max - config.Min), 0, 1, 0),
+                BackgroundColor3 = ZynxLib.Themes[ZynxLib.CurrentTheme].Accent
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)})
             })
             
-            local SliderKnob = Create("Frame", {
-                Parent = SliderTrack,
+            local knob = Create("Frame", {
+                Parent = track,
                 Size = UDim2.new(0, 14, 0, 14),
-                Position = UDim2.new((config.Default - config.Min) / (config.Max - config.Min), -7, 0.5, -7),
+                Position = UDim2.new((value - config.Min) / (config.Max - config.Min), -7, 0.5, -7),
                 BackgroundColor3 = Color3.new(1, 1, 1)
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)})
             })
             
-            local function updateSlider(inputPos)
-                local relativePos = math.clamp((inputPos - SliderTrack.AbsolutePosition.X) / SliderTrack.AbsoluteSize.X, 0, 1)
-                sliderValue = config.Min + (config.Max - config.Min) * relativePos
+            local function update(posX)
+                local rel = math.clamp((posX - track.AbsolutePosition.X) / track.AbsoluteSize.X, 0, 1)
+                value = config.Min + (config.Max - config.Min) * rel
                 
-                SliderFill.Size = UDim2.new(relativePos, 0, 1, 0)
-                SliderKnob.Position = UDim2.new(relativePos, -7, 0.5, -7)
-                ValueLabel.Text = math.floor(sliderValue)
+                fill.Size = UDim2.new(rel, 0, 1, 0)
+                knob.Position = UDim2.new(rel, -7, 0.5, -7)
+                valueLabel.Text = math.floor(value)
                 
-                config.Callback(sliderValue)
+                config.Callback(value)
             end
             
-            SliderTrack.InputBegan:Connect(function(input)
+            track.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
                     dragging = true
-                    updateSlider(input.Position.X)
+                    update(input.Position.X)
                 end
             end)
             
-            SliderTrack.InputEnded:Connect(function(input)
+            track.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
                     dragging = false
                 end
@@ -773,169 +900,24 @@ function NovaLib:MakeWindow(config)
             
             UserInputService.InputChanged:Connect(function(input)
                 if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                    updateSlider(input.Position.X)
+                    update(input.Position.X)
                 end
             end)
             
-            local SliderObj = {Value = sliderValue}
-            function SliderObj:Set(newValue)
-                sliderValue = math.clamp(newValue, config.Min, config.Max)
-                local percent = (sliderValue - config.Min) / (config.Max - config.Min)
+            local sliderObj = {Value = value}
+            
+            function sliderObj:Set(newValue)
+                value = math.clamp(newValue, config.Min, config.Max)
+                local rel = (value - config.Min) / (config.Max - config.Min)
                 
-                SliderFill.Size = UDim2.new(percent, 0, 1, 0)
-                SliderKnob.Position = UDim2.new(percent, -7, 0.5, -7)
-                ValueLabel.Text = math.floor(sliderValue)
+                fill.Size = UDim2.new(rel, 0, 1, 0)
+                knob.Position = UDim2.new(rel, -7, 0.5, -7)
+                valueLabel.Text = math.floor(value)
                 
-                config.Callback(sliderValue)
+                config.Callback(value)
             end
             
-            return SliderObj
-        end
-        
-        -- DROPDOWN
-        function TabObj:AddDropdown(config)
-            config = config or {}
-            config.Name = config.Name or "Dropdown"
-            config.Options = config.Options or {}
-            config.Default = config.Default or config.Options[1] or "..."
-            config.Callback = config.Callback or function() end
-            
-            local expanded = false
-            local selected = config.Default
-            
-            local DropdownFrame = Create("Frame", {
-                Parent = TabContent,
-                Size = UDim2.new(1, 0, 0, 40),
-                BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Second,
-                BackgroundTransparency = 0,
-                ClipsDescendants = true
-            }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
-                Create("UIStroke", {
-                    Color = NovaLib.Themes[NovaLib.CurrentTheme].Stroke,
-                    Thickness = 1,
-                    Transparency = 0.5
-                })
-            })
-            
-            local DropdownText = Create("TextLabel", {
-                Parent = DropdownFrame,
-                Size = UDim2.new(1, -50, 0, 40),
-                Position = UDim2.new(0, 10, 0, 0),
-                BackgroundTransparency = 1,
-                Text = config.Name,
-                TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text,
-                TextSize = 14,
-                Font = Enum.Font.Gotham,
-                TextXAlignment = Enum.TextXAlignment.Left
-            })
-            
-            local SelectedText = Create("TextLabel", {
-                Parent = DropdownFrame,
-                Size = UDim2.new(0, 100, 0, 40),
-                Position = UDim2.new(1, -120, 0, 0),
-                BackgroundTransparency = 1,
-                Text = selected,
-                TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].TextDim,
-                TextSize = 14,
-                Font = Enum.Font.Gotham,
-                TextXAlignment = Enum.TextXAlignment.Right
-            })
-            
-            local Arrow = Create("ImageLabel", {
-                Parent = DropdownFrame,
-                Size = UDim2.new(0, 20, 0, 20),
-                Position = UDim2.new(1, -30, 0.5, -10),
-                BackgroundTransparency = 1,
-                Image = "rbxassetid://6031094678",
-                ImageColor3 = NovaLib.Themes[NovaLib.CurrentTheme].TextDim
-            })
-            
-            local DropdownList = Create("Frame", {
-                Parent = DropdownFrame,
-                Size = UDim2.new(1, -20, 0, 0),
-                Position = UDim2.new(0, 10, 0, 45),
-                BackgroundTransparency = 1,
-                Visible = false
-            })
-            
-            local function rebuildOptions()
-                for _, child in pairs(DropdownList:GetChildren()) do
-                    if child:IsA("TextButton") then
-                        child:Destroy()
-                    end
-                end
-                
-                for _, option in pairs(config.Options) do
-                    local OptionBtn = Create("TextButton", {
-                        Parent = DropdownList,
-                        Size = UDim2.new(1, 0, 0, 30),
-                        BackgroundColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Main,
-                        BackgroundTransparency = 0.3,
-                        Text = ""
-                    }, {
-                        Create("UICorner", {CornerRadius = UDim.new(0, 6)}),
-                        Create("TextLabel", {
-                            Size = UDim2.new(1, -10, 1, 0),
-                            Position = UDim2.new(0, 5, 0, 0),
-                            BackgroundTransparency = 1,
-                            Text = option,
-                            TextColor3 = NovaLib.Themes[NovaLib.CurrentTheme].Text,
-                            TextSize = 13,
-                            Font = Enum.Font.Gotham,
-                            TextXAlignment = Enum.TextXAlignment.Left
-                        })
-                    })
-                    
-                    OptionBtn.MouseButton1Click:Connect(function()
-                        selected = option
-                        SelectedText.Text = selected
-                        config.Callback(selected)
-                        
-                        expanded = false
-                        DropdownList.Visible = false
-                        Arrow.Rotation = 0
-                        TweenService:Create(DropdownFrame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, 40)}):Play()
-                    end)
-                end
-                
-                local listHeight = #config.Options * 35
-                DropdownList.Size = UDim2.new(1, -20, 0, listHeight)
-            end
-            
-            rebuildOptions()
-            
-            local DropdownObj = {Value = selected}
-            function DropdownObj:Refresh(newOptions)
-                config.Options = newOptions
-                rebuildOptions()
-            end
-            
-            function DropdownObj:Set(newValue)
-                if table.find(config.Options, newValue) then
-                    selected = newValue
-                    SelectedText.Text = selected
-                    config.Callback(selected)
-                end
-            end
-            
-            local MainButton = Create("TextButton", {
-                Parent = DropdownFrame,
-                Size = UDim2.new(1, 0, 1, 0),
-                BackgroundTransparency = 1,
-                Text = ""
-            })
-            
-            MainButton.MouseButton1Click:Connect(function()
-                expanded = not expanded
-                DropdownList.Visible = expanded
-                Arrow.Rotation = expanded and 180 or 0
-                
-                local newHeight = expanded and 40 + (DropdownList.Size.Y.Offset or 0) + 10 or 40
-                TweenService:Create(DropdownFrame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, newHeight)}):Play()
-            end)
-            
-            return DropdownObj
+            return sliderObj
         end
         
         return TabObj
@@ -944,13 +926,4 @@ function NovaLib:MakeWindow(config)
     return WindowObj
 end
 
--- Função para mudar tema
-function NovaLib:SetTheme(themeName)
-    if self.Themes[themeName] then
-        self.CurrentTheme = themeName
-        -- Atualizar cores da UI atual
-        -- (implementação completa seria extensa)
-    end
-end
-
-return NovaLib
+return ZynxLib
