@@ -1,12 +1,12 @@
 -- ═══════════════════════════════════════════════════════════════
--- ORION ULTRA v3.0 - A MELHOR LIVRARIA QUE VOCÊ JÁ VIU!
--- Design moderno, animações fluidas, 100% funcional
+-- ORION MODDED ULTRA v4.0
+-- Baseada na sua Orion modificada, mas com configurações próprias!
 -- ═══════════════════════════════════════════════════════════════
 
 -- PROTEÇÃO MULTI-INSTÂNCIA
-getgenv().gethui = function() return game.CoreGui end
-if _G.ORION_ULTRA_LOADED then return end
-_G.ORION_ULTRA_LOADED = true
+getgenv().gethui = function() return game:GetService("CoreGui") end
+if _G.ORION_MODDED_LOADED then return end
+_G.ORION_MODDED_LOADED = true
 
 -- SERVIÇOS
 local UserInputService = game:GetService("UserInputService")
@@ -14,105 +14,88 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local UserService = game:GetService("UserService")
-local TextService = game:GetService("TextService")
 local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
 
 -- ═══════════════════════════════════════════════════════════════
--- CONFIGURAÇÕES DE ANIMAÇÃO - SUPER SUAVES!
+-- SISTEMA DE CONFIGURAÇÃO DA LIVRARIA
 -- ═══════════════════════════════════════════════════════════════
-local Animations = {
-    -- Entradas/Saídas
-    SmoothEnter = TweenInfo.new(0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-    SmoothExit = TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.In),
-    
-    -- Hovers
-    HoverIn = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    HoverOut = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-    
-    -- Cliques
-    ClickDown = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
-    ClickUp = TweenInfo.new(0.15, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
-    
-    -- Toggles
-    ToggleOn = TweenInfo.new(0.3, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out),
-    ToggleOff = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-    
-    -- Dropdowns
-    DropdownOpen = TweenInfo.new(0.35, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
-    DropdownClose = TweenInfo.new(0.25, Enum.EasingStyle.Quint, Enum.EasingDirection.In),
-    
-    -- Sliders
-    SliderMove = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    
-    -- Gerais
-    Bounce = TweenInfo.new(0.5, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
-    Elastic = TweenInfo.new(0.45, Enum.EasingStyle.Elastic, Enum.EasingDirection.Out)
-}
-
--- ═══════════════════════════════════════════════════════════════
--- CORES E TEMAS - ÉPICOS!
--- ═══════════════════════════════════════════════════════════════
-local Themes = {
-    Default = {
-        Main = Color3.fromRGB(18, 12, 28),      -- Roxo profundo
-        Second = Color3.fromRGB(28, 18, 38),    -- Roxo médio
-        Accent = Color3.fromRGB(140, 80, 255),  -- Roxo vibrante
-        Accent2 = Color3.fromRGB(200, 100, 255), -- Roxo claro
-        Stroke = Color3.fromRGB(100, 60, 180),   -- Borda
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(200, 180, 240),
-        Success = Color3.fromRGB(80, 255, 120),
-        Danger = Color3.fromRGB(255, 70, 70),
-        Warning = Color3.fromRGB(255, 200, 70),
-        Info = Color3.fromRGB(70, 150, 255),
-        
-        -- Gradiente
-        Gradient = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(28, 12, 38)),
-            ColorSequenceKeypoint.new(0.5, Color3.fromRGB(80, 40, 120)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 70, 200))
+local OrionConfig = {
+    CurrentTheme = "Default",
+    Background = {
+        Type = "gradient", -- "none", "color", "gradient", "image"
+        Color1 = Color3.fromRGB(25, 10, 35),
+        Color2 = Color3.fromRGB(120, 50, 180),
+        Rotation = 135,
+        ImageUrl = "",
+        ImageTransparency = 0.3
+    },
+    Themes = {
+        Default = {
+            Name = "Default",
+            Main = Color3.fromRGB(18, 12, 28),
+            Second = Color3.fromRGB(28, 18, 38),
+            Accent = Color3.fromRGB(140, 80, 255),
+            Accent2 = Color3.fromRGB(200, 100, 255),
+            Stroke = Color3.fromRGB(100, 60, 180),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(200, 180, 240),
+            Success = Color3.fromRGB(80, 255, 120),
+            Danger = Color3.fromRGB(255, 70, 70)
+        },
+        Dark = {
+            Name = "Dark",
+            Main = Color3.fromRGB(10, 10, 15),
+            Second = Color3.fromRGB(18, 18, 25),
+            Accent = Color3.fromRGB(0, 200, 255),
+            Accent2 = Color3.fromRGB(100, 220, 255),
+            Stroke = Color3.fromRGB(40, 100, 200),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(160, 180, 200),
+            Success = Color3.fromRGB(0, 255, 150),
+            Danger = Color3.fromRGB(255, 60, 60)
+        },
+        Light = {
+            Name = "Light",
+            Main = Color3.fromRGB(245, 240, 255),
+            Second = Color3.fromRGB(255, 255, 255),
+            Accent = Color3.fromRGB(120, 80, 255),
+            Accent2 = Color3.fromRGB(160, 120, 255),
+            Stroke = Color3.fromRGB(180, 160, 240),
+            Text = Color3.fromRGB(20, 20, 30),
+            TextDim = Color3.fromRGB(100, 100, 140),
+            Success = Color3.fromRGB(0, 180, 80),
+            Danger = Color3.fromRGB(220, 40, 40)
+        },
+        Purple = {
+            Name = "Purple",
+            Main = Color3.fromRGB(25, 5, 35),
+            Second = Color3.fromRGB(45, 15, 55),
+            Accent = Color3.fromRGB(200, 100, 255),
+            Accent2 = Color3.fromRGB(255, 150, 255),
+            Stroke = Color3.fromRGB(150, 80, 200),
+            Text = Color3.fromRGB(255, 255, 255),
+            TextDim = Color3.fromRGB(220, 180, 255)
         }
     },
-    
-    Dark = {
-        Main = Color3.fromRGB(10, 10, 15),
-        Second = Color3.fromRGB(18, 18, 25),
-        Accent = Color3.fromRGB(0, 200, 255),
-        Accent2 = Color3.fromRGB(100, 220, 255),
-        Stroke = Color3.fromRGB(40, 100, 200),
-        Text = Color3.fromRGB(255, 255, 255),
-        TextDim = Color3.fromRGB(160, 180, 200),
-        Success = Color3.fromRGB(0, 255, 150),
-        Danger = Color3.fromRGB(255, 60, 60),
-        Warning = Color3.fromRGB(255, 200, 50),
-        Info = Color3.fromRGB(0, 160, 255)
-    },
-    
-    Light = {
-        Main = Color3.fromRGB(245, 240, 255),
-        Second = Color3.fromRGB(255, 255, 255),
-        Accent = Color3.fromRGB(120, 80, 255),
-        Accent2 = Color3.fromRGB(160, 120, 255),
-        Stroke = Color3.fromRGB(180, 160, 240),
-        Text = Color3.fromRGB(20, 20, 30),
-        TextDim = Color3.fromRGB(100, 100, 140),
-        Success = Color3.fromRGB(0, 180, 80),
-        Danger = Color3.fromRGB(220, 40, 40),
-        Warning = Color3.fromRGB(240, 180, 0),
-        Info = Color3.fromRGB(0, 120, 240)
+    Settings = {
+        WindowSize = UDim2.new(0, 800, 0, 500),
+        KeyToOpen = "M",
+        Animations = true,
+        Notifications = true,
+        FPSDisplay = true
     }
 }
 
 -- ═══════════════════════════════════════════════════════════════
 -- GUI PRINCIPAL
 -- ═══════════════════════════════════════════════════════════════
-local OrionUltra = Instance.new("ScreenGui")
-OrionUltra.Name = "OrionUltra"
-OrionUltra.Parent = (syn and syn.protect_gui and (function() syn.protect_gui(OrionUltra) return game:GetService("CoreGui") end)() or 
-                    (gethui and gethui() or game:GetService("CoreGui")))
-OrionUltra.ResetOnSpawn = false
-OrionUltra.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+local OrionGUI = Instance.new("ScreenGui")
+OrionGUI.Name = "OrionModded"
+OrionGUI.Parent = (syn and syn.protect_gui and (function() syn.protect_gui(OrionGUI) return game:GetService("CoreGui") end)() or 
+                  (gethui and gethui() or game:GetService("CoreGui")))
+OrionGUI.ResetOnSpawn = false
+OrionGUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 -- ═══════════════════════════════════════════════════════════════
 -- FUNÇÕES UTILITÁRIAS
@@ -134,10 +117,64 @@ local function SoftenColor(color, amount)
 end
 
 -- ═══════════════════════════════════════════════════════════════
--- SISTEMA DE NOTIFICAÇÕES - LINDO DEMAIS!
+-- SISTEMA DE FUNDO PERSONALIZADO
+-- ═══════════════════════════════════════════════════════════════
+local BackgroundController = {
+    Current = nil
+}
+
+function UpdateBackground()
+    if BackgroundController.Current then
+        BackgroundController.Current:Destroy()
+    end
+    
+    local cfg = OrionConfig.Background
+    
+    if cfg.Type == "none" then
+        return
+    elseif cfg.Type == "color" then
+        BackgroundController.Current = Create("Frame", {
+            Parent = OrionGUI,
+            Size = UDim2.new(1, 0, 1, 0),
+            BackgroundColor3 = cfg.Color1,
+            BackgroundTransparency = 0,
+            ZIndex = 0
+        })
+    elseif cfg.Type == "gradient" then
+        local frame = Create("Frame", {
+            Parent = OrionGUI,
+            Size = UDim2.new(1, 0, 1, 0),
+            BackgroundTransparency = 1,
+            ZIndex = 0
+        })
+        
+        Create("UIGradient", {
+            Color = ColorSequence.new({
+                ColorSequenceKeypoint.new(0, cfg.Color1),
+                ColorSequenceKeypoint.new(1, cfg.Color2)
+            }),
+            Rotation = cfg.Rotation
+        }).Parent = frame
+        
+        BackgroundController.Current = frame
+    elseif cfg.Type == "image" and cfg.ImageUrl ~= "" then
+        BackgroundController.Current = Create("ImageLabel", {
+            Parent = OrionGUI,
+            Size = UDim2.new(1, 0, 1, 0),
+            Image = cfg.ImageUrl,
+            BackgroundTransparency = 1,
+            ImageTransparency = cfg.ImageTransparency,
+            ScaleType = Enum.ScaleType.Crop,
+            ZIndex = 0
+        })
+    end
+end
+
+-- ═══════════════════════════════════════════════════════════════
+-- NOTIFICAÇÕES
 -- ═══════════════════════════════════════════════════════════════
 local NotificationHolder = Create("Frame", {
-    Parent = OrionUltra,
+    Parent = OrionGUI,
     Size = UDim2.new(0, 350, 1, -40),
     Position = UDim2.new(1, -370, 0, 20),
     BackgroundTransparency = 1
@@ -150,18 +187,9 @@ local NotificationHolder = Create("Frame", {
     })
 })
 
--- ═══════════════════════════════════════════════════════════════
--- ORION ULTRA LIBRARY
--- ═══════════════════════════════════════════════════════════════
-local OrionUltraLib = {
-    Flags = {},
-    Windows = {},
-    CurrentTheme = "Default",
-    Themes = Themes
-}
-
--- NOTIFICAÇÃO
-function OrionUltraLib:Notify(config)
+function OrionModded:Notify(config)
+    if not OrionConfig.Settings.Notifications then return end
+    
     config = config or {}
     config.Title = config.Title or config.Name or "Notificação"
     config.Content = config.Content or "Mensagem"
@@ -179,320 +207,197 @@ function OrionUltraLib:Notify(config)
         Parent = container,
         Size = UDim2.new(1, 0, 0, 0),
         Position = UDim2.new(1, 50, 0, 0),
-        BackgroundColor3 = Themes[OrionUltraLib.CurrentTheme].Second,
+        BackgroundColor3 = OrionConfig.Themes[OrionConfig.CurrentTheme].Second,
         BackgroundTransparency = 0.1,
         AutomaticSize = Enum.AutomaticSize.Y
     }, {
         Create("UICorner", {CornerRadius = UDim.new(0, 16)}),
-        Create("UIStroke", {
-            Color = Themes[OrionUltraLib.CurrentTheme].Accent,
-            Thickness = 2,
-            Transparency = 0.3
-        }),
-        Create("UIPadding", {
-            PaddingTop = UDim.new(0, 15),
-            PaddingBottom = UDim.new(0, 15),
-            PaddingLeft = UDim.new(0, 15),
-            PaddingRight = UDim.new(0, 15)
-        })
+        Create("UIStroke", {Color = OrionConfig.Themes[OrionConfig.CurrentTheme].Accent, Thickness = 2, Transparency = 0.3}),
+        Create("UIPadding", {PaddingTop = UDim.new(0, 15), PaddingBottom = UDim.new(0, 15), PaddingLeft = UDim.new(0, 15), PaddingRight = UDim.new(0, 15)})
     })
     
-    -- Ícone
-    Create("ImageLabel", {
-        Parent = notif,
-        Size = UDim2.new(0, 30, 0, 30),
-        Position = UDim2.new(0, 0, 0.5, -15),
-        BackgroundTransparency = 1,
-        Image = config.Icon,
-        ImageColor3 = Themes[OrionUltraLib.CurrentTheme].Text
-    })
-    
-    -- Título
     Create("TextLabel", {
         Parent = notif,
-        Size = UDim2.new(1, -40, 0, 20),
-        Position = UDim2.new(0, 40, 0, 0),
+        Size = UDim2.new(1, 0, 0, 20),
         BackgroundTransparency = 1,
         Text = config.Title,
-        TextColor3 = Themes[OrionUltraLib.CurrentTheme].Text,
+        TextColor3 = OrionConfig.Themes[OrionConfig.CurrentTheme].Text,
         TextSize = 16,
         Font = Enum.Font.GothamBold,
         TextXAlignment = Enum.TextXAlignment.Left
     })
     
-    -- Conteúdo
     local content = Create("TextLabel", {
         Parent = notif,
-        Size = UDim2.new(1, -40, 0, 0),
-        Position = UDim2.new(0, 40, 0, 22),
+        Size = UDim2.new(1, 0, 0, 0),
+        Position = UDim2.new(0, 0, 0, 22),
         BackgroundTransparency = 1,
         Text = config.Content,
-        TextColor3 = Themes[OrionUltraLib.CurrentTheme].TextDim,
+        TextColor3 = OrionConfig.Themes[OrionConfig.CurrentTheme].TextDim,
         TextSize = 14,
         Font = Enum.Font.Gotham,
-        TextXAlignment = Enum.TextXAlignment.Left,
         TextWrapped = true,
         AutomaticSize = Enum.AutomaticSize.Y
     })
     
-    -- Som
-    local sound = Instance.new("Sound")
-    sound.SoundId = "rbxassetid://9120381531"
-    sound.Volume = 0.3
-    sound.Parent = game:GetService("SoundService")
-    sound:Play()
-    game:GetService("Debris"):AddItem(sound, 2)
+    TweenService:Create(notif, TweenInfo.new(0.4, Enum.EasingStyle.Back), {Position = UDim2.new(0, 0, 0, 0)}):Play()
     
-    -- Animação de entrada
-    TweenService:Create(notif, Animations.SmoothEnter, {
-        Position = UDim2.new(0, 0, 0, 0)
-    }):Play()
-    
-    -- Auto-remoção
     task.wait(config.Time)
-    
-    TweenService:Create(notif, Animations.SmoothExit, {
-        Position = UDim2.new(1, 50, 0, 0),
-        BackgroundTransparency = 1
-    }):Play()
-    
-    TweenService:Create(content, Animations.SmoothExit, {TextTransparency = 1}):Play()
+    TweenService:Create(notif, TweenInfo.new(0.3), {Position = UDim2.new(1, 50, 0, 0)}):Play()
     task.wait(0.3)
     container:Destroy()
 end
 
--- FUNDO PERSONALIZADO
-function OrionUltraLib:SetBackground(type, ...)
-    local args = {...}
-    
-    if OrionUltraLib.Background then
-        OrionUltraLib.Background:Destroy()
-    end
-    
-    if type == "gradient" then
-        local color1 = args[1] or Themes[OrionUltraLib.CurrentTheme].Main
-        local color2 = args[2] or Themes[OrionUltraLib.CurrentTheme].Accent
-        local rotation = args[3] or 135
-        
-        local frame = Create("Frame", {
-            Parent = OrionUltra,
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundTransparency = 1,
-            ZIndex = 0
-        })
-        
-        Create("UIGradient", {
-            Color = ColorSequence.new({ColorSequenceKeypoint.new(0, color1), ColorSequenceKeypoint.new(1, color2)}),
-            Rotation = rotation
-        }).Parent = frame
-        
-        OrionUltraLib.Background = frame
-    end
-end
-
 -- ═══════════════════════════════════════════════════════════════
--- CRIAÇÃO DA JANELA - ÉPICA!
+-- CRIAÇÃO DA JANELA PRINCIPAL
 -- ═══════════════════════════════════════════════════════════════
-function OrionUltraLib:MakeWindow(config)
+function OrionModded:MakeWindow(config)
     config = config or {}
-    config.Name = config.Name or "Orion Ultra"
-    config.Size = config.Size or UDim2.new(0, 750, 0, 500)
-    config.MinSize = config.MinSize or UDim2.new(0, 500, 0, 350)
-    config.Key = config.Key or "M"
+    config.Name = config.Name or "Orion Modded"
+    config.Size = OrionConfig.Settings.WindowSize
+    config.Key = config.Key or OrionConfig.Settings.KeyToOpen
     
     local minimized = false
     local hidden = false
     local currentTab = nil
-    local currentTheme = OrionUltraLib.CurrentTheme
+    local theme = OrionConfig.Themes[OrionConfig.CurrentTheme]
     
     -- JANELA PRINCIPAL
     local MainWindow = Create("Frame", {
-        Parent = OrionUltra,
+        Parent = OrionGUI,
         Size = config.Size,
         Position = UDim2.new(0.5, -config.Size.X.Offset/2, 0.5, -config.Size.Y.Offset/2),
-        BackgroundColor3 = Themes[currentTheme].Main,
-        BackgroundTransparency = 0,
+        BackgroundColor3 = theme.Main,
         ClipsDescendants = true,
         Active = true
     }, {
         Create("UICorner", {CornerRadius = UDim.new(0, 20)}),
-        Create("UIStroke", {
-            Color = Themes[currentTheme].Accent,
-            Thickness = 2.5,
-            Transparency = 0.3
-        })
+        Create("UIStroke", {Color = theme.Accent, Thickness = 2, Transparency = 0.3})
     })
     
-    -- SOMBRA
-    local Shadow = Create("ImageLabel", {
-        Parent = OrionUltra,
-        Size = MainWindow.Size + UDim2.new(0, 30, 0, 30),
-        Position = MainWindow.Position - UDim2.new(0, 15, 0, 15),
-        BackgroundTransparency = 1,
-        Image = "rbxassetid://6015897843",
-        ImageColor3 = Color3.new(0, 0, 0),
-        ImageTransparency = 0.7,
-        ZIndex = 0
-    })
-    
-    -- TOP BAR (arrastar)
+    -- TOP BAR
     local TopBar = Create("Frame", {
         Parent = MainWindow,
-        Size = UDim2.new(1, 0, 0, 55),
-        BackgroundColor3 = Themes[currentTheme].Second,
-        BackgroundTransparency = 0,
-        ZIndex = 2
+        Size = UDim2.new(1, 0, 0, 50),
+        BackgroundColor3 = theme.Second
     }, {
         Create("UICorner", {CornerRadius = UDim.new(0, 20)}),
-        Create("UIStroke", {
-            Color = Themes[currentTheme].Accent,
-            Thickness = 1.5,
-            Transparency = 0.5
-        })
+        Create("UIStroke", {Color = theme.Accent, Thickness = 1, Transparency = 0.5})
     })
     
-    -- TÍTULO ANIMADO
-    local TitleContainer = Create("Frame", {
+    -- TÍTULO
+    local Title = Create("TextLabel", {
         Parent = TopBar,
-        Size = UDim2.new(0, 400, 0, 35),
-        Position = UDim2.new(0, 20, 0.5, -17),
-        BackgroundTransparency = 1
+        Size = UDim2.new(0, 300, 1, 0),
+        Position = UDim2.new(0, 20, 0, 0),
+        BackgroundTransparency = 1,
+        Text = config.Name,
+        TextColor3 = theme.Text,
+        TextSize = 20,
+        Font = Enum.Font.GothamBlack,
+        TextXAlignment = Enum.TextXAlignment.Left
     })
-    
-    -- Letras individuais para animação
-    local titleLetters = {}
-    for i = 1, #config.Name do
-        local letter = config.Name:sub(i, i)
-        local width = letter == " " and 10 or 16
-        
-        local letterLabel = Create("TextLabel", {
-            Parent = TitleContainer,
-            Size = UDim2.new(0, width, 1, 0),
-            Position = UDim2.new(0, (i-1) * width, 0, 0),
-            BackgroundTransparency = 1,
-            Text = letter,
-            TextColor3 = Themes[currentTheme].Text,
-            TextSize = 24,
-            Font = Enum.Font.GothamBlack,
-            TextXAlignment = Enum.TextXAlignment.Left
-        })
-        
-        table.insert(titleLetters, letterLabel)
-    end
-    
-    -- Animação das letras
-    task.spawn(function()
-        while true do
-            task.wait(5)
-            for i = #titleLetters, 1, -1 do
-                TweenService:Create(titleLetters[i], Animations.SmoothExit, {TextTransparency = 1}):Play()
-                task.wait(0.1)
-            end
-            task.wait(0.5)
-            for i = 1, #titleLetters do
-                TweenService:Create(titleLetters[i], Animations.SmoothEnter, {TextTransparency = 0}):Play()
-                task.wait(0.1)
-            end
-        end
-    end)
     
     -- INFO (FPS/PING)
     local InfoLabel = Create("TextLabel", {
         Parent = TopBar,
         Size = UDim2.new(0, 200, 0, 20),
-        Position = UDim2.new(1, -220, 0.5, -10),
+        Position = UDim2.new(1, -320, 0.5, -10),
         BackgroundTransparency = 1,
         Text = "00:00 | 60 FPS | 0ms",
-        TextColor3 = Themes[currentTheme].TextDim,
+        TextColor3 = theme.TextDim,
         TextSize = 13,
         Font = Enum.Font.GothamBold,
         TextXAlignment = Enum.TextXAlignment.Right
     })
     
     -- Atualizar info
-    task.spawn(function()
-        while true do
-            local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
-            local time = os.date("%H:%M")
-            local fps = math.floor(1 / RunService.RenderStepped:Wait())
-            InfoLabel.Text = string.format("%s | %d FPS | %dms", time, fps, ping)
-            task.wait(0.5)
-        end
-    end)
+    if OrionConfig.Settings.FPSDisplay then
+        task.spawn(function()
+            while true do
+                local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+                local time = os.date("%H:%M")
+                local fps = math.floor(1 / RunService.RenderStepped:Wait())
+                InfoLabel.Text = string.format("%s | %d FPS | %dms", time, fps, ping)
+                task.wait(0.5)
+            end
+        end)
+    end
     
     -- BOTÕES DE CONTROLE
     local ControlBtns = Create("Frame", {
         Parent = TopBar,
-        Size = UDim2.new(0, 80, 0, 35),
-        Position = UDim2.new(1, -100, 0.5, -17),
+        Size = UDim2.new(0, 120, 0, 35),
+        Position = UDim2.new(1, -140, 0.5, -17),
         BackgroundTransparency = 1
+    })
+    
+    -- BOTÃO DE CONFIGURAÇÕES DA LIVRARIA (NOVO!)
+    local SettingsBtn = Create("ImageButton", {
+        Parent = ControlBtns,
+        Size = UDim2.new(0, 35, 0, 35),
+        Position = UDim2.new(0, 0, 0, 0),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://7072720794", -- Ícone de engrenagem
+        ImageColor3 = theme.TextDim
     })
     
     local MinimizeBtn = Create("ImageButton", {
         Parent = ControlBtns,
         Size = UDim2.new(0, 35, 0, 35),
-        Position = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.new(0, 40, 0, 0),
         BackgroundTransparency = 1,
         Image = "rbxassetid://7072719338",
-        ImageColor3 = Themes[currentTheme].TextDim
+        ImageColor3 = theme.TextDim
     })
     
     local CloseBtn = Create("ImageButton", {
         Parent = ControlBtns,
         Size = UDim2.new(0, 35, 0, 35),
-        Position = UDim2.new(1, -35, 0, 0),
+        Position = UDim2.new(0, 80, 0, 0),
         BackgroundTransparency = 1,
         Image = "rbxassetid://7072725342",
-        ImageColor3 = Themes[currentTheme].TextDim
+        ImageColor3 = theme.TextDim
     })
     
-    -- PAINEL DE ABAS (esquerda)
+    -- PAINEL DE ABAS
     local TabsPanel = Create("Frame", {
         Parent = MainWindow,
-        Size = UDim2.new(0, 200, 1, -55),
-        Position = UDim2.new(0, 0, 0, 55),
-        BackgroundColor3 = Themes[currentTheme].Second,
-        BackgroundTransparency = 0
+        Size = UDim2.new(0, 200, 1, -50),
+        Position = UDim2.new(0, 0, 0, 50),
+        BackgroundColor3 = theme.Second
     }, {
         Create("UICorner", {CornerRadius = UDim.new(0, 20)}),
-        Create("UIStroke", {
-            Color = Themes[currentTheme].Accent,
-            Thickness = 1,
-            Transparency = 0.5
-        })
+        Create("UIStroke", {Color = theme.Accent, Thickness = 1, Transparency = 0.5})
     })
     
-    -- Search Bar
+    -- SEARCH BAR
     local SearchBox = Create("TextBox", {
         Parent = TabsPanel,
         Size = UDim2.new(1, -20, 0, 35),
         Position = UDim2.new(0, 10, 0, 10),
-        BackgroundColor3 = Themes[currentTheme].Main,
+        BackgroundColor3 = theme.Main,
         BackgroundTransparency = 0.5,
         Text = "",
         PlaceholderText = "🔍 Search tabs...",
-        PlaceholderColor3 = Themes[currentTheme].TextDim,
-        TextColor3 = Themes[currentTheme].Text,
+        PlaceholderColor3 = theme.TextDim,
+        TextColor3 = theme.Text,
         TextSize = 14,
         Font = Enum.Font.Gotham,
         ClearTextOnFocus = false
     }, {
         Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
-        Create("UIStroke", {
-            Color = Themes[currentTheme].Accent,
-            Thickness = 1,
-            Transparency = 0.7
-        })
+        Create("UIStroke", {Color = theme.Accent, Thickness = 1, Transparency = 0.7})
     })
     
-    -- Lista de abas
+    -- LISTA DE ABAS
     local TabsList = Create("ScrollingFrame", {
         Parent = TabsPanel,
         Size = UDim2.new(1, -20, 1, -60),
         Position = UDim2.new(0, 10, 0, 50),
         BackgroundTransparency = 1,
         ScrollBarThickness = 4,
-        ScrollBarImageColor3 = Themes[currentTheme].Accent,
+        ScrollBarImageColor3 = theme.Accent,
         CanvasSize = UDim2.new(0, 0, 0, 0)
     }, {
         Create("UIListLayout", {
@@ -501,7 +406,6 @@ function OrionUltraLib:MakeWindow(config)
         })
     })
     
-    -- Atualizar canvas
     TabsList.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
         TabsList.CanvasSize = UDim2.new(0, 0, 0, TabsList.UIListLayout.AbsoluteContentSize.Y + 10)
     end)
@@ -509,8 +413,8 @@ function OrionUltraLib:MakeWindow(config)
     -- CONTEÚDO DAS ABAS
     local ContentPanel = Create("Frame", {
         Parent = MainWindow,
-        Size = UDim2.new(1, -220, 1, -75),
-        Position = UDim2.new(0, 210, 0, 65),
+        Size = UDim2.new(1, -220, 1, -70),
+        Position = UDim2.new(0, 210, 0, 60),
         BackgroundTransparency = 1
     })
     
@@ -540,64 +444,6 @@ function OrionUltraLib:MakeWindow(config)
                     windowStart.X.Scale, windowStart.X.Offset + delta.X,
                     windowStart.Y.Scale, windowStart.Y.Offset + delta.Y
                 )
-                Shadow.Position = MainWindow.Position - UDim2.new(0, 15, 0, 15)
-            end
-        end)
-    end
-    
-    -- REDIMENSIONAR
-    do
-        local resizing = false
-        local startSize, startPos
-        
-        local ResizeHandle = Create("ImageButton", {
-            Parent = MainWindow,
-            Size = UDim2.new(0, 20, 0, 20),
-            Position = UDim2.new(1, -10, 1, -10),
-            BackgroundTransparency = 1,
-            Image = "rbxassetid://6031094678",
-            ImageColor3 = Themes[currentTheme].TextDim,
-            ImageTransparency = 0.5,
-            ZIndex = 10
-        })
-        
-        ResizeHandle.MouseEnter:Connect(function()
-            TweenService:Create(ResizeHandle, Animations.HoverIn, {ImageTransparency = 0, Size = UDim2.new(0, 24, 0, 24)}):Play()
-        end)
-        
-        ResizeHandle.MouseLeave:Connect(function()
-            TweenService:Create(ResizeHandle, Animations.HoverOut, {ImageTransparency = 0.5, Size = UDim2.new(0, 20, 0, 20)}):Play()
-        end)
-        
-        ResizeHandle.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                resizing = true
-                startSize = MainWindow.AbsoluteSize
-                startPos = Vector2.new(input.Position.X, input.Position.Y)
-                TweenService:Create(ResizeHandle, Animations.ClickDown, {ImageTransparency = 0, Size = UDim2.new(0, 26, 0, 26)}):Play()
-            end
-        end)
-        
-        ResizeHandle.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                resizing = false
-                TweenService:Create(ResizeHandle, Animations.ClickUp, {ImageTransparency = 0.5, Size = UDim2.new(0, 20, 0, 20)}):Play()
-            end
-        end)
-        
-        UserInputService.InputChanged:Connect(function(input)
-            if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
-                local delta = Vector2.new(input.Position.X, input.Position.Y) - startPos
-                local newWidth = math.max(config.MinSize.X.Offset, math.min(1200, startSize.X + delta.X))
-                local newHeight = math.max(config.MinSize.Y.Offset, math.min(800, startSize.Y + delta.Y))
-                
-                MainWindow.Size = UDim2.new(0, newWidth, 0, newHeight)
-                Shadow.Size = MainWindow.Size + UDim2.new(0, 30, 0, 30)
-                
-                -- Ajustar painel lateral
-                TabsPanel.Size = UDim2.new(0, math.min(200, newWidth * 0.3), 1, -55)
-                ContentPanel.Size = UDim2.new(1, -TabsPanel.Size.X.Offset - 20, 1, -75)
-                ContentPanel.Position = UDim2.new(0, TabsPanel.Size.X.Offset + 10, 0, 65)
             end
         end)
     end
@@ -608,9 +454,7 @@ function OrionUltraLib:MakeWindow(config)
         if input.KeyCode == Enum.KeyCode[config.Key] then
             hidden = not hidden
             MainWindow.Visible = not hidden
-            Shadow.Visible = not hidden
-            
-            OrionUltraLib:Notify({
+            OrionModded:Notify({
                 Title = "Interface",
                 Content = hidden and "Fechada. Pressione " .. config.Key .. " para abrir" or "Aberta",
                 Time = 2
@@ -622,8 +466,7 @@ function OrionUltraLib:MakeWindow(config)
     CloseBtn.MouseButton1Click:Connect(function()
         hidden = true
         MainWindow.Visible = false
-        Shadow.Visible = false
-        OrionUltraLib:Notify({
+        OrionModded:Notify({
             Title = "Interface",
             Content = "Fechada. Pressione " .. config.Key .. " para abrir",
             Time = 3
@@ -634,12 +477,12 @@ function OrionUltraLib:MakeWindow(config)
     MinimizeBtn.MouseButton1Click:Connect(function()
         minimized = not minimized
         if minimized then
-            TweenService:Create(MainWindow, Animations.SmoothExit, {Size = UDim2.new(0, 400, 0, 55)}):Play()
+            TweenService:Create(MainWindow, TweenInfo.new(0.3), {Size = UDim2.new(0, 400, 0, 50)}):Play()
             MinimizeBtn.Image = "rbxassetid://7072720870"
             TabsPanel.Visible = false
             ContentPanel.Visible = false
         else
-            TweenService:Create(MainWindow, Animations.SmoothEnter, {Size = config.Size}):Play()
+            TweenService:Create(MainWindow, TweenInfo.new(0.3), {Size = config.Size}):Play()
             MinimizeBtn.Image = "rbxassetid://7072719338"
             task.wait(0.3)
             TabsPanel.Visible = true
@@ -648,112 +491,254 @@ function OrionUltraLib:MakeWindow(config)
     end)
     
     -- ═══════════════════════════════════════════════════════════
-    -- CRIAÇÃO DE ABAS
+    -- ABA DE CONFIGURAÇÕES DA LIVRARIA (NOVA!)
+    -- ═══════════════════════════════════════════════════════════
+    local SettingsTab = {
+        Name = "⚙️ Orion Config",
+        Elements = {}
+    }
+    
+    -- Botão de engrenagem abre esta aba
+    SettingsBtn.MouseButton1Click:Connect(function()
+        -- Criar a aba de configurações se não existir
+        if not SettingsTab.Window then
+            SettingsTab.Window = WindowObj:MakeTab({
+                Name = "⚙️ Orion Config",
+                Icon = "rbxassetid://7072720794"
+            })
+            
+            -- BACKGROUND TYPE
+            SettingsTab.Window:AddDropdown({
+                Name = "Fundo Type",
+                Options = {"none", "color", "gradient", "image"},
+                Default = OrionConfig.Background.Type,
+                Callback = function(v)
+                    OrionConfig.Background.Type = v
+                    UpdateBackground()
+                end
+            })
+            
+            -- COR 1
+            SettingsTab.Window:AddColorpicker({
+                Name = "Cor 1",
+                Default = OrionConfig.Background.Color1,
+                Callback = function(v)
+                    OrionConfig.Background.Color1 = v
+                    UpdateBackground()
+                end
+            })
+            
+            -- COR 2 (para gradiente)
+            SettingsTab.Window:AddColorpicker({
+                Name = "Cor 2",
+                Default = OrionConfig.Background.Color2,
+                Callback = function(v)
+                    OrionConfig.Background.Color2 = v
+                    UpdateBackground()
+                end
+            })
+            
+            -- ROTAÇÃO DO GRADIENTE
+            SettingsTab.Window:AddSlider({
+                Name = "Rotação",
+                Min = 0,
+                Max = 360,
+                Default = OrionConfig.Background.Rotation,
+                Callback = function(v)
+                    OrionConfig.Background.Rotation = v
+                    UpdateBackground()
+                end
+            })
+            
+            SettingsTab.Window:AddLabel("───────── Temas ─────────")
+            
+            -- SELETOR DE TEMA
+            local themeNames = {}
+            for name, _ in pairs(OrionConfig.Themes) do
+                table.insert(themeNames, name)
+            end
+            
+            SettingsTab.Window:AddDropdown({
+                Name = "Theme",
+                Options = themeNames,
+                Default = OrionConfig.CurrentTheme,
+                Callback = function(v)
+                    OrionConfig.CurrentTheme = v
+                    -- Atualizar cores da interface
+                    OrionModded:Notify({
+                        Title = "Theme",
+                        Content = "Tema alterado para " .. v,
+                        Time = 2
+                    })
+                end
+            })
+            
+            SettingsTab.Window:AddLabel("───────── Salvamento ─────────")
+            
+            -- BOTÃO SALVAR CONFIG
+            SettingsTab.Window:AddButton({
+                Name = "💾 Salvar Configuração",
+                Callback = function()
+                    local data = HttpService:JSONEncode(OrionConfig)
+                    if writefile then
+                        writefile("OrionConfig.json", data)
+                        OrionModded:Notify({
+                            Title = "Config",
+                            Content = "Configuração salva com sucesso!",
+                            Time = 2
+                        })
+                    end
+                end
+            })
+            
+            -- BOTÃO CARREGAR CONFIG
+            SettingsTab.Window:AddButton({
+                Name = "📂 Carregar Configuração",
+                Callback = function()
+                    if isfile and isfile("OrionConfig.json") then
+                        local data = readfile("OrionConfig.json")
+                        local loaded = HttpService:JSONDecode(data)
+                        if loaded then
+                            OrionConfig = loaded
+                            UpdateBackground()
+                            OrionModded:Notify({
+                                Title = "Config",
+                                Content = "Configuração carregada!",
+                                Time = 2
+                            })
+                        end
+                    end
+                end
+            })
+            
+            SettingsTab.Window:AddLabel("───────── Opções ─────────")
+            
+            -- TOGGLE ANIMAÇÕES
+            SettingsTab.Window:AddToggle({
+                Name = "Animações",
+                Default = OrionConfig.Settings.Animations,
+                Callback = function(v)
+                    OrionConfig.Settings.Animations = v
+                end
+            })
+            
+            -- TOGGLE NOTIFICAÇÕES
+            SettingsTab.Window:AddToggle({
+                Name = "Notificações",
+                Default = OrionConfig.Settings.Notifications,
+                Callback = function(v)
+                    OrionConfig.Settings.Notifications = v
+                end
+            })
+            
+            -- TOGGLE FPS DISPLAY
+            SettingsTab.Window:AddToggle({
+                Name = "Mostrar FPS",
+                Default = OrionConfig.Settings.FPSDisplay,
+                Callback = function(v)
+                    OrionConfig.Settings.FPSDisplay = v
+                    InfoLabel.Visible = v
+                end
+            })
+            
+            -- TECLA PARA ABRIR
+            SettingsTab.Window:AddTextbox({
+                Name = "Tecla Abrir/Fechar",
+                Default = OrionConfig.Settings.KeyToOpen,
+                Callback = function(v)
+                    OrionConfig.Settings.KeyToOpen = v
+                end
+            })
+        else
+            -- Se já existe, só muda para ela
+            -- (isso seria gerenciado pelo sistema de abas)
+        end
+    end)
+    
+    -- ═══════════════════════════════════════════════════════════
+    -- CRIAÇÃO DE ABAS (para o usuário)
     -- ═══════════════════════════════════════════════════════════
     local WindowObj = {}
-    local Tabs = {}
     
     function WindowObj:MakeTab(tabConfig)
         tabConfig = tabConfig or {}
         tabConfig.Name = tabConfig.Name or "Tab"
         tabConfig.Icon = tabConfig.Icon or ""
         
-        -- Botão da aba
+        -- BOTÃO DA ABA
         local TabButton = Create("TextButton", {
             Parent = TabsList,
-            Size = UDim2.new(1, 0, 0, 45),
-            BackgroundColor3 = Themes[currentTheme].Main,
+            Size = UDim2.new(1, 0, 0, 40),
+            BackgroundColor3 = theme.Main,
             BackgroundTransparency = 0.5,
             AutoButtonColor = false,
             Text = ""
         }, {
-            Create("UICorner", {CornerRadius = UDim.new(0, 12)})
+            Create("UICorner", {CornerRadius = UDim.new(0, 10)})
         })
         
-        -- Ícone
+        -- ÍCONE
         if tabConfig.Icon ~= "" then
             Create("ImageLabel", {
                 Parent = TabButton,
-                Size = UDim2.new(0, 22, 0, 22),
-                Position = UDim2.new(0, 12, 0.5, -11),
+                Size = UDim2.new(0, 20, 0, 20),
+                Position = UDim2.new(0, 10, 0.5, -10),
                 BackgroundTransparency = 1,
                 Image = tabConfig.Icon,
-                ImageColor3 = Themes[currentTheme].TextDim
+                ImageColor3 = theme.TextDim
             })
         end
         
-        -- Nome
+        -- NOME
         local TabName = Create("TextLabel", {
             Parent = TabButton,
-            Size = UDim2.new(1, -44, 1, 0),
-            Position = UDim2.new(0, 40, 0, 0),
+            Size = UDim2.new(1, -35, 1, 0),
+            Position = UDim2.new(0, 35, 0, 0),
             BackgroundTransparency = 1,
             Text = tabConfig.Name,
-            TextColor3 = Themes[currentTheme].TextDim,
-            TextSize = 15,
+            TextColor3 = theme.TextDim,
+            TextSize = 14,
             Font = Enum.Font.GothamSemibold,
             TextXAlignment = Enum.TextXAlignment.Left
         })
         
-        -- Container de elementos
+        -- CONTEÚDO DA ABA
         local TabContent = Create("ScrollingFrame", {
             Parent = ContentPanel,
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundTransparency = 1,
             Visible = false,
             ScrollBarThickness = 5,
-            ScrollBarImageColor3 = Themes[currentTheme].Accent,
+            ScrollBarImageColor3 = theme.Accent,
             CanvasSize = UDim2.new(0, 0, 0, 0)
         }, {
             Create("UIListLayout", {
                 SortOrder = Enum.SortOrder.LayoutOrder,
-                Padding = UDim.new(0, 10)
+                Padding = UDim.new(0, 8)
             }),
             Create("UIPadding", {
-                PaddingTop = UDim.new(0, 15),
-                PaddingBottom = UDim.new(0, 15),
-                PaddingLeft = UDim.new(0, 15),
-                PaddingRight = UDim.new(0, 15)
+                PaddingTop = UDim.new(0, 10),
+                PaddingBottom = UDim.new(0, 10),
+                PaddingLeft = UDim.new(0, 10),
+                PaddingRight = UDim.new(0, 10)
             })
         })
         
-        -- Atualizar canvas
         local layout = TabContent.UIListLayout
         layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-            TabContent.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 30)
+            TabContent.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
         end)
         
-        -- Selecionar primeira aba
-        if #TabsList:GetChildren() == 0 then
+        -- SELECIONAR PRIMEIRA ABA
+        if #TabsList:GetChildren() == 1 then
             TabButton.BackgroundTransparency = 0.2
-            TabButton.BackgroundColor3 = Themes[currentTheme].Accent
-            TabName.TextColor3 = Themes[currentTheme].Text
+            TabButton.BackgroundColor3 = theme.Accent
+            TabName.TextColor3 = theme.Text
             TabContent.Visible = true
             currentTab = TabContent
         end
         
-        -- Clique na aba
-        TabButton.MouseButton1Click:Connect(function()
-            if currentTab then currentTab.Visible = false end
-            
-            for _, btn in pairs(TabsList:GetChildren()) do
-                if btn:IsA("TextButton") then
-                    btn.BackgroundTransparency = 0.5
-                    btn.BackgroundColor3 = Themes[currentTheme].Main
-                    if btn:FindFirstChildOfClass("TextLabel") then
-                        btn:FindFirstChildOfClass("TextLabel").TextColor3 = Themes[currentTheme].TextDim
-                    end
-                end
-            end
-            
-            TabButton.BackgroundTransparency = 0.2
-            TabButton.BackgroundColor3 = Themes[currentTheme].Accent
-            TabName.TextColor3 = Themes[currentTheme].Text
-            TabContent.Visible = true
-            currentTab = TabContent
-        end)
-        
-        -- Sistema de busca
+        -- SISTEMA DE BUSCA
         SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
             local search = SearchBox.Text:lower()
             if search == "" then
@@ -763,10 +748,65 @@ function OrionUltraLib:MakeWindow(config)
             end
         end)
         
+        -- CLIQUE NA ABA
+        TabButton.MouseButton1Click:Connect(function()
+            if currentTab then currentTab.Visible = false end
+            
+            for _, btn in pairs(TabsList:GetChildren()) do
+                if btn:IsA("TextButton") then
+                    btn.BackgroundTransparency = 0.5
+                    btn.BackgroundColor3 = theme.Main
+                    if btn:FindFirstChildOfClass("TextLabel") then
+                        btn:FindFirstChildOfClass("TextLabel").TextColor3 = theme.TextDim
+                    end
+                end
+            end
+            
+            TabButton.BackgroundTransparency = 0.2
+            TabButton.BackgroundColor3 = theme.Accent
+            TabName.TextColor3 = theme.Text
+            TabContent.Visible = true
+            currentTab = TabContent
+        end)
+        
         -- ═══════════════════════════════════════════════════════
-        -- ELEMENTOS DA ABA
+        -- ELEMENTOS DA ABA (IGUAL AO SEU ORION MODIFICADO!)
         -- ═══════════════════════════════════════════════════════
         local TabObj = {}
+        
+        -- LABEL
+        function TabObj:AddLabel(config)
+            config = config or {}
+            config.Text = config.Text or "Label"
+            
+            local frame = Create("Frame", {
+                Parent = TabContent,
+                Size = UDim2.new(1, 0, 0, 35),
+                BackgroundColor3 = theme.Second,
+                BackgroundTransparency = 0
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+                Create("UIStroke", {Color = theme.Accent, Thickness = 1, Transparency = 0.5})
+            })
+            
+            local text = Create("TextLabel", {
+                Parent = frame,
+                Size = UDim2.new(1, -20, 1, 0),
+                Position = UDim2.new(0, 10, 0, 0),
+                BackgroundTransparency = 1,
+                Text = config.Text,
+                TextColor3 = theme.Text,
+                TextSize = 14,
+                Font = Enum.Font.Gotham,
+                TextXAlignment = Enum.TextXAlignment.Left
+            })
+            
+            local obj = {}
+            function obj:Set(newText)
+                text.Text = newText
+            end
+            return obj
+        end
         
         -- BOTÃO
         function TabObj:AddButton(config)
@@ -776,16 +816,12 @@ function OrionUltraLib:MakeWindow(config)
             
             local frame = Create("Frame", {
                 Parent = TabContent,
-                Size = UDim2.new(1, 0, 0, 45),
-                BackgroundColor3 = Themes[currentTheme].Second,
+                Size = UDim2.new(1, 0, 0, 40),
+                BackgroundColor3 = theme.Second,
                 BackgroundTransparency = 0
             }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
-                Create("UIStroke", {
-                    Color = Themes[currentTheme].Accent,
-                    Thickness = 1.5,
-                    Transparency = 0.5
-                })
+                Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+                Create("UIStroke", {Color = theme.Accent, Thickness = 1.5, Transparency = 0.5})
             })
             
             local text = Create("TextLabel", {
@@ -794,7 +830,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(0, 15, 0, 0),
                 BackgroundTransparency = 1,
                 Text = config.Name,
-                TextColor3 = Themes[currentTheme].Text,
+                TextColor3 = theme.Text,
                 TextSize = 15,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Left
@@ -806,7 +842,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(1, -35, 0.5, -10),
                 BackgroundTransparency = 1,
                 Image = "rbxassetid://5012539380",
-                ImageColor3 = Themes[currentTheme].TextDim
+                ImageColor3 = theme.TextDim
             })
             
             local btn = Create("TextButton", {
@@ -817,30 +853,17 @@ function OrionUltraLib:MakeWindow(config)
             })
             
             btn.MouseEnter:Connect(function()
-                TweenService:Create(frame, Animations.HoverIn, {
-                    BackgroundColor3 = SoftenColor(Themes[currentTheme].Second, 0.1)
-                }):Play()
+                TweenService:Create(frame, TweenInfo.new(0.2), {BackgroundColor3 = SoftenColor(theme.Second, 0.1)}):Play()
             end)
             
             btn.MouseLeave:Connect(function()
-                TweenService:Create(frame, Animations.HoverOut, {
-                    BackgroundColor3 = Themes[currentTheme].Second
-                }):Play()
+                TweenService:Create(frame, TweenInfo.new(0.2), {BackgroundColor3 = theme.Second}):Play()
             end)
             
             btn.MouseButton1Click:Connect(function()
-                TweenService:Create(frame, Animations.ClickDown, {
-                    BackgroundColor3 = Themes[currentTheme].Accent,
-                    Size = UDim2.new(1, 0, 0, 42)
-                }):Play()
-                
+                TweenService:Create(frame, TweenInfo.new(0.1), {BackgroundColor3 = theme.Accent}):Play()
                 task.wait(0.1)
-                
-                TweenService:Create(frame, Animations.ClickUp, {
-                    BackgroundColor3 = Themes[currentTheme].Second,
-                    Size = UDim2.new(1, 0, 0, 45)
-                }):Play()
-                
+                TweenService:Create(frame, TweenInfo.new(0.1), {BackgroundColor3 = theme.Second}):Play()
                 config.Callback()
             end)
             
@@ -859,15 +882,11 @@ function OrionUltraLib:MakeWindow(config)
             local frame = Create("Frame", {
                 Parent = TabContent,
                 Size = UDim2.new(1, 0, 0, 45),
-                BackgroundColor3 = Themes[currentTheme].Second,
+                BackgroundColor3 = theme.Second,
                 BackgroundTransparency = 0
             }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
-                Create("UIStroke", {
-                    Color = Themes[currentTheme].Accent,
-                    Thickness = 1.5,
-                    Transparency = 0.5
-                })
+                Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+                Create("UIStroke", {Color = theme.Accent, Thickness = 1.5, Transparency = 0.5})
             })
             
             local text = Create("TextLabel", {
@@ -876,18 +895,17 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(0, 15, 0, 0),
                 BackgroundTransparency = 1,
                 Text = config.Name,
-                TextColor3 = Themes[currentTheme].Text,
+                TextColor3 = theme.Text,
                 TextSize = 15,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Left
             })
             
-            -- Switch moderno
             local switch = Create("Frame", {
                 Parent = frame,
                 Size = UDim2.new(0, 50, 0, 24),
-                Position = UDim2.new(1, -60, 0.5, -12),
-                BackgroundColor3 = value and Themes[currentTheme].Success or Themes[currentTheme].Danger,
+                Position = UDim2.new(1, -65, 0.5, -12),
+                BackgroundColor3 = value and theme.Success or theme.Danger,
                 BackgroundTransparency = 0
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)})
@@ -910,17 +928,11 @@ function OrionUltraLib:MakeWindow(config)
             })
             
             local toggleObj = {Value = value}
-            
             function toggleObj:Set(newValue)
                 value = newValue
-                
-                TweenService:Create(switch, Animations.ToggleOn, {
-                    BackgroundColor3 = value and Themes[currentTheme].Success or Themes[currentTheme].Danger
-                }):Play()
-                
+                TweenService:Create(switch, TweenInfo.new(0.3), {BackgroundColor3 = value and theme.Success or theme.Danger}):Play()
                 local newPos = value and UDim2.new(1, -22, 0.5, -10) or UDim2.new(0, 2, 0.5, -10)
-                TweenService:Create(knob, Animations.ToggleOff, {Position = newPos}):Play()
-                
+                TweenService:Create(knob, TweenInfo.new(0.3), {Position = newPos}):Play()
                 config.Callback(value)
             end
             
@@ -946,15 +958,11 @@ function OrionUltraLib:MakeWindow(config)
             local frame = Create("Frame", {
                 Parent = TabContent,
                 Size = UDim2.new(1, 0, 0, 70),
-                BackgroundColor3 = Themes[currentTheme].Second,
+                BackgroundColor3 = theme.Second,
                 BackgroundTransparency = 0
             }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
-                Create("UIStroke", {
-                    Color = Themes[currentTheme].Accent,
-                    Thickness = 1.5,
-                    Transparency = 0.5
-                })
+                Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+                Create("UIStroke", {Color = theme.Accent, Thickness = 1.5, Transparency = 0.5})
             })
             
             local label = Create("TextLabel", {
@@ -963,7 +971,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(0, 15, 0, 8),
                 BackgroundTransparency = 1,
                 Text = config.Name,
-                TextColor3 = Themes[currentTheme].Text,
+                TextColor3 = theme.Text,
                 TextSize = 15,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Left
@@ -975,7 +983,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(1, -65, 0, 8),
                 BackgroundTransparency = 1,
                 Text = tostring(value),
-                TextColor3 = Themes[currentTheme].Accent,
+                TextColor3 = theme.Accent,
                 TextSize = 15,
                 Font = Enum.Font.GothamBold
             })
@@ -984,7 +992,7 @@ function OrionUltraLib:MakeWindow(config)
                 Parent = frame,
                 Size = UDim2.new(1, -30, 0, 6),
                 Position = UDim2.new(0, 15, 1, -25),
-                BackgroundColor3 = Themes[currentTheme].Main,
+                BackgroundColor3 = theme.Main,
                 BackgroundTransparency = 0
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)})
@@ -993,7 +1001,7 @@ function OrionUltraLib:MakeWindow(config)
             local fill = Create("Frame", {
                 Parent = track,
                 Size = UDim2.new((value - config.Min) / (config.Max - config.Min), 0, 1, 0),
-                BackgroundColor3 = Themes[currentTheme].Accent
+                BackgroundColor3 = theme.Accent
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)})
             })
@@ -1005,10 +1013,7 @@ function OrionUltraLib:MakeWindow(config)
                 BackgroundColor3 = Color3.new(1, 1, 1)
             }, {
                 Create("UICorner", {CornerRadius = UDim.new(1, 0)}),
-                Create("UIStroke", {
-                    Color = Themes[currentTheme].Accent,
-                    Thickness = 2
-                })
+                Create("UIStroke", {Color = theme.Accent, Thickness = 2})
             })
             
             local function update(posX)
@@ -1054,44 +1059,6 @@ function OrionUltraLib:MakeWindow(config)
             return sliderObj
         end
         
-        -- LABEL
-        function TabObj:AddLabel(config)
-            config = config or {}
-            config.Text = config.Text or "Label"
-            
-            local frame = Create("Frame", {
-                Parent = TabContent,
-                Size = UDim2.new(1, 0, 0, 35),
-                BackgroundColor3 = Themes[currentTheme].Second,
-                BackgroundTransparency = 0
-            }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
-                Create("UIStroke", {
-                    Color = Themes[currentTheme].Accent,
-                    Thickness = 1,
-                    Transparency = 0.5
-                })
-            })
-            
-            local text = Create("TextLabel", {
-                Parent = frame,
-                Size = UDim2.new(1, -20, 1, 0),
-                Position = UDim2.new(0, 10, 0, 0),
-                BackgroundTransparency = 1,
-                Text = config.Text,
-                TextColor3 = Themes[currentTheme].Text,
-                TextSize = 14,
-                Font = Enum.Font.Gotham,
-                TextXAlignment = Enum.TextXAlignment.Left
-            })
-            
-            local labelObj = {}
-            function labelObj:Set(newText)
-                text.Text = newText
-            end
-            return labelObj
-        end
-        
         -- DROPDOWN NORMAL
         function TabObj:AddDropdown(config)
             config = config or {}
@@ -1106,16 +1073,12 @@ function OrionUltraLib:MakeWindow(config)
             local frame = Create("Frame", {
                 Parent = TabContent,
                 Size = UDim2.new(1, 0, 0, 45),
-                BackgroundColor3 = Themes[currentTheme].Second,
+                BackgroundColor3 = theme.Second,
                 BackgroundTransparency = 0,
                 ClipsDescendants = true
             }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
-                Create("UIStroke", {
-                    Color = Themes[currentTheme].Accent,
-                    Thickness = 1.5,
-                    Transparency = 0.5
-                })
+                Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+                Create("UIStroke", {Color = theme.Accent, Thickness = 1.5, Transparency = 0.5})
             })
             
             local text = Create("TextLabel", {
@@ -1124,7 +1087,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(0, 15, 0, 0),
                 BackgroundTransparency = 1,
                 Text = config.Name,
-                TextColor3 = Themes[currentTheme].Text,
+                TextColor3 = theme.Text,
                 TextSize = 15,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Left
@@ -1136,7 +1099,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(1, -165, 0, 0),
                 BackgroundTransparency = 1,
                 Text = selected,
-                TextColor3 = Themes[currentTheme].TextDim,
+                TextColor3 = theme.TextDim,
                 TextSize = 14,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Right
@@ -1148,7 +1111,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(1, -35, 0.5, -10),
                 BackgroundTransparency = 1,
                 Image = "rbxassetid://6031094678",
-                ImageColor3 = Themes[currentTheme].TextDim
+                ImageColor3 = theme.TextDim
             })
             
             local list = Create("Frame", {
@@ -1170,7 +1133,7 @@ function OrionUltraLib:MakeWindow(config)
                     local btn = Create("TextButton", {
                         Parent = list,
                         Size = UDim2.new(1, 0, 0, 35),
-                        BackgroundColor3 = Themes[currentTheme].Main,
+                        BackgroundColor3 = theme.Main,
                         BackgroundTransparency = 0.5,
                         Text = ""
                     }, {
@@ -1180,7 +1143,7 @@ function OrionUltraLib:MakeWindow(config)
                             Position = UDim2.new(0, 5, 0, 0),
                             BackgroundTransparency = 1,
                             Text = option,
-                            TextColor3 = Themes[currentTheme].Text,
+                            TextColor3 = theme.Text,
                             TextSize = 14,
                             Font = Enum.Font.Gotham,
                             TextXAlignment = Enum.TextXAlignment.Left
@@ -1195,7 +1158,7 @@ function OrionUltraLib:MakeWindow(config)
                         expanded = false
                         list.Visible = false
                         arrow.Rotation = 0
-                        TweenService:Create(frame, Animations.DropdownClose, {Size = UDim2.new(1, 0, 0, 45)}):Play()
+                        TweenService:Create(frame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, 45)}):Play()
                     end)
                 end
                 
@@ -1231,7 +1194,7 @@ function OrionUltraLib:MakeWindow(config)
                 arrow.Rotation = expanded and 180 or 0
                 
                 local newHeight = expanded and 45 + list.Size.Y.Offset + 10 or 45
-                TweenService:Create(frame, Animations.DropdownOpen, {Size = UDim2.new(1, 0, 0, newHeight)}):Play()
+                TweenService:Create(frame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, newHeight)}):Play()
             end)
             
             return dropdownObj
@@ -1251,16 +1214,12 @@ function OrionUltraLib:MakeWindow(config)
             local frame = Create("Frame", {
                 Parent = TabContent,
                 Size = UDim2.new(1, 0, 0, 55),
-                BackgroundColor3 = Themes[currentTheme].Second,
+                BackgroundColor3 = theme.Second,
                 BackgroundTransparency = 0,
                 ClipsDescendants = true
             }, {
-                Create("UICorner", {CornerRadius = UDim.new(0, 12)}),
-                Create("UIStroke", {
-                    Color = Themes[currentTheme].Accent,
-                    Thickness = 1.5,
-                    Transparency = 0.5
-                })
+                Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+                Create("UIStroke", {Color = theme.Accent, Thickness = 1.5, Transparency = 0.5})
             })
             
             local text = Create("TextLabel", {
@@ -1269,7 +1228,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(0, 15, 0, 0),
                 BackgroundTransparency = 1,
                 Text = config.Name,
-                TextColor3 = Themes[currentTheme].Text,
+                TextColor3 = theme.Text,
                 TextSize = 15,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Left
@@ -1281,7 +1240,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(1, -165, 0, 0),
                 BackgroundTransparency = 1,
                 Text = "Select...",
-                TextColor3 = Themes[currentTheme].TextDim,
+                TextColor3 = theme.TextDim,
                 TextSize = 14,
                 Font = Enum.Font.Gotham,
                 TextXAlignment = Enum.TextXAlignment.Right
@@ -1293,7 +1252,7 @@ function OrionUltraLib:MakeWindow(config)
                 Position = UDim2.new(1, -35, 0.5, -10),
                 BackgroundTransparency = 1,
                 Image = "rbxassetid://6031094678",
-                ImageColor3 = Themes[currentTheme].TextDim
+                ImageColor3 = theme.TextDim
             })
             
             local list = Create("ScrollingFrame", {
@@ -1303,7 +1262,7 @@ function OrionUltraLib:MakeWindow(config)
                 BackgroundTransparency = 1,
                 Visible = false,
                 ScrollBarThickness = 4,
-                ScrollBarImageColor3 = Themes[currentTheme].Accent,
+                ScrollBarImageColor3 = theme.Accent,
                 CanvasSize = UDim2.new(0, 0, 0, 0)
             }, {
                 Create("UIListLayout", {
@@ -1323,8 +1282,8 @@ function OrionUltraLib:MakeWindow(config)
                     if plr ~= LocalPlayer then
                         local btn = Create("TextButton", {
                             Parent = list,
-                            Size = UDim2.new(1, 0, 0, 45),
-                            BackgroundColor3 = Themes[currentTheme].Main,
+                            Size = UDim2.new(1, 0, 0, 50),
+                            BackgroundColor3 = theme.Main,
                             BackgroundTransparency = 0.5,
                             Text = ""
                         }, {
@@ -1334,8 +1293,8 @@ function OrionUltraLib:MakeWindow(config)
                         -- Avatar
                         Create("ImageLabel", {
                             Parent = btn,
-                            Size = UDim2.new(0, 30, 0, 30),
-                            Position = UDim2.new(0, 8, 0.5, -15),
+                            Size = UDim2.new(0, 35, 0, 35),
+                            Position = UDim2.new(0, 8, 0.5, -17),
                             BackgroundTransparency = 1,
                             Image = "https://www.roblox.com/headshot-thumbnail/image?userId=".. plr.UserId .."&width=420&height=420&format=png"
                         }, {
@@ -1346,10 +1305,10 @@ function OrionUltraLib:MakeWindow(config)
                         Create("TextLabel", {
                             Parent = btn,
                             Size = UDim2.new(1, -50, 0, 20),
-                            Position = UDim2.new(0, 45, 0, 8),
+                            Position = UDim2.new(0, 50, 0, 8),
                             BackgroundTransparency = 1,
                             Text = plr.DisplayName,
-                            TextColor3 = Themes[currentTheme].Text,
+                            TextColor3 = theme.Text,
                             TextSize = 14,
                             Font = Enum.Font.GothamBold,
                             TextXAlignment = Enum.TextXAlignment.Left
@@ -1359,10 +1318,10 @@ function OrionUltraLib:MakeWindow(config)
                         Create("TextLabel", {
                             Parent = btn,
                             Size = UDim2.new(1, -50, 0, 18),
-                            Position = UDim2.new(0, 45, 0, 28),
+                            Position = UDim2.new(0, 50, 0, 28),
                             BackgroundTransparency = 1,
                             Text = "@" .. plr.Name,
-                            TextColor3 = Themes[currentTheme].TextDim,
+                            TextColor3 = theme.TextDim,
                             TextSize = 12,
                             Font = Enum.Font.Gotham,
                             TextXAlignment = Enum.TextXAlignment.Left
@@ -1372,10 +1331,10 @@ function OrionUltraLib:MakeWindow(config)
                             if config.Multiple then
                                 if selected[plr] then
                                     selected[plr] = nil
-                                    btn.BackgroundColor3 = Themes[currentTheme].Main
+                                    btn.BackgroundColor3 = theme.Main
                                 else
                                     selected[plr] = true
-                                    btn.BackgroundColor3 = Themes[currentTheme].Accent
+                                    btn.BackgroundColor3 = theme.Accent
                                 end
                                 
                                 local names = {}
@@ -1392,7 +1351,7 @@ function OrionUltraLib:MakeWindow(config)
                                 expanded = false
                                 list.Visible = false
                                 arrow.Rotation = 0
-                                TweenService:Create(frame, Animations.DropdownClose, {Size = UDim2.new(1, 0, 0, 55)}):Play()
+                                TweenService:Create(frame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, 55)}):Play()
                             end
                         end)
                     end
@@ -1424,10 +1383,137 @@ function OrionUltraLib:MakeWindow(config)
                 arrow.Rotation = expanded and 180 or 0
                 
                 local newHeight = expanded and 55 + 210 or 55
-                TweenService:Create(frame, Animations.DropdownOpen, {Size = UDim2.new(1, 0, 0, newHeight)}):Play()
+                TweenService:Create(frame, TweenInfo.new(0.2), {Size = UDim2.new(1, 0, 0, newHeight)}):Play()
             end)
             
             return dropdownObj
+        end
+        
+        -- COLORPICKER (para as configurações)
+        function TabObj:AddColorpicker(config)
+            config = config or {}
+            config.Name = config.Name or "Color"
+            config.Default = config.Default or Color3.fromRGB(255,255,255)
+            config.Callback = config.Callback or function() end
+            
+            local picking = false
+            local color = config.Default
+            
+            local frame = Create("Frame", {
+                Parent = TabContent,
+                Size = UDim2.new(1, 0, 0, 45),
+                BackgroundColor3 = theme.Second,
+                BackgroundTransparency = 0
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+                Create("UIStroke", {Color = theme.Accent, Thickness = 1.5, Transparency = 0.5})
+            })
+            
+            local text = Create("TextLabel", {
+                Parent = frame,
+                Size = UDim2.new(1, -60, 1, 0),
+                Position = UDim2.new(0, 15, 0, 0),
+                BackgroundTransparency = 1,
+                Text = config.Name,
+                TextColor3 = theme.Text,
+                TextSize = 15,
+                Font = Enum.Font.Gotham,
+                TextXAlignment = Enum.TextXAlignment.Left
+            })
+            
+            local colorBox = Create("Frame", {
+                Parent = frame,
+                Size = UDim2.new(0, 30, 0, 30),
+                Position = UDim2.new(1, -40, 0.5, -15),
+                BackgroundColor3 = color
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 8)}),
+                Create("UIStroke", {Color = theme.Text, Thickness = 2})
+            })
+            
+            local btn = Create("TextButton", {
+                Parent = frame,
+                Size = UDim2.new(1, 0, 1, 0),
+                BackgroundTransparency = 1,
+                Text = ""
+            })
+            
+            local colorObj = {Value = color}
+            function colorObj:Set(newColor)
+                color = newColor
+                colorBox.BackgroundColor3 = color
+                config.Callback(color)
+            end
+            
+            -- Simples: clicar abre seletor básico
+            btn.MouseButton1Click:Connect(function()
+                -- Aqui você pode implementar um seletor de cores completo
+                -- Por simplicidade, vamos só notificar
+                OrionModded:Notify({
+                    Title = "Color Picker",
+                    Content = "Implementar seletor de cores",
+                    Time = 2
+                })
+            end)
+            
+            return colorObj
+        end
+        
+        -- TEXTBOX
+        function TabObj:AddTextbox(config)
+            config = config or {}
+            config.Name = config.Name or "Textbox"
+            config.Default = config.Default or ""
+            config.Callback = config.Callback or function() end
+            
+            local frame = Create("Frame", {
+                Parent = TabContent,
+                Size = UDim2.new(1, 0, 0, 45),
+                BackgroundColor3 = theme.Second,
+                BackgroundTransparency = 0
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 10)}),
+                Create("UIStroke", {Color = theme.Accent, Thickness = 1.5, Transparency = 0.5})
+            })
+            
+            local text = Create("TextLabel", {
+                Parent = frame,
+                Size = UDim2.new(1, -120, 1, 0),
+                Position = UDim2.new(0, 15, 0, 0),
+                BackgroundTransparency = 1,
+                Text = config.Name,
+                TextColor3 = theme.Text,
+                TextSize = 15,
+                Font = Enum.Font.Gotham,
+                TextXAlignment = Enum.TextXAlignment.Left
+            })
+            
+            local box = Create("TextBox", {
+                Parent = frame,
+                Size = UDim2.new(0, 100, 0, 30),
+                Position = UDim2.new(1, -115, 0.5, -15),
+                BackgroundColor3 = theme.Main,
+                BackgroundTransparency = 0.5,
+                Text = config.Default,
+                PlaceholderText = "Digite...",
+                PlaceholderColor3 = theme.TextDim,
+                TextColor3 = theme.Text,
+                TextSize = 14,
+                Font = Enum.Font.Gotham,
+                ClearTextOnFocus = false
+            }, {
+                Create("UICorner", {CornerRadius = UDim.new(0, 8)})
+            })
+            
+            box.FocusLost:Connect(function()
+                config.Callback(box.Text)
+            end)
+            
+            local obj = {}
+            function obj:Set(newText)
+                box.Text = newText
+            end
+            return obj
         end
         
         return TabObj
@@ -1436,4 +1522,9 @@ function OrionUltraLib:MakeWindow(config)
     return WindowObj
 end
 
-return OrionUltraLib
+-- Inicializar fundo
+UpdateBackground()
+
+-- Retornar a livraria
+OrionModded = OrionModded or {}
+return OrionModded
