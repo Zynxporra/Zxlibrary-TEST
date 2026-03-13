@@ -74,7 +74,7 @@ end
 -- GUI PRINCIPAL (com novo nome)
 -- ═══════════════════════════════════════════════════════════════
 local Orion = Instance.new("ScreenGui")
-Orion.Name = "OrionNova"
+Orion.Name = "NovaHub"
 
 -- Proteção da GUI
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
@@ -536,8 +536,12 @@ CreateElement("Stroke", function(Color, Thickness)
     return Create("UIStroke", {Color = Color or Color3.fromRGB(255,255,255), Thickness = Thickness or 1})
 end)
 
-CreateElement("List", function(Scale, Offset)
-    return Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(Scale or 0, Offset or 0)})
+CreateElement("List", function(Scale, Offset, Direction)
+    return Create("UIListLayout", {
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Padding = UDim.new(Scale or 0, Offset or 0),
+        FillDirection = Direction or Enum.FillDirection.Vertical
+    })
 end)
 
 CreateElement("Padding", function(Bottom, Left, Right, Top)
@@ -754,14 +758,14 @@ function OrionLib:MakeWindow(WindowConfig)
     local UIHidden = false
 
     WindowConfig = WindowConfig or {}
-    WindowConfig.Name = WindowConfig.Name or "Orion Library"
+    WindowConfig.Name = WindowConfig.Name or "Nova Hub"
     WindowConfig.ConfigFolder = WindowConfig.ConfigFolder or WindowConfig.Name
     WindowConfig.SaveConfig = WindowConfig.SaveConfig or true
     WindowConfig.HidePremium = WindowConfig.HidePremium or false
     WindowConfig.IntroEnabled = WindowConfig.IntroEnabled == nil and true or WindowConfig.IntroEnabled
     WindowConfig.FreeMouse = WindowConfig.FreeMouse or false
     WindowConfig.KeyToOpenWindow = WindowConfig.KeyToOpenWindow or "RightShift"
-    WindowConfig.IntroText = WindowConfig.IntroText or "Orion Library"
+    WindowConfig.IntroText = WindowConfig.IntroText or "Nova Hub"
     WindowConfig.CloseCallback = WindowConfig.CloseCallback or function() end
     WindowConfig.ShowIcon = WindowConfig.ShowIcon or false
     WindowConfig.Icon = WindowConfig.Icon or "rbxassetid://8834748103"
@@ -804,19 +808,20 @@ function OrionLib:MakeWindow(WindowConfig)
     local Tabs = {}
     local TabContainers = {}
 
-    -- Tab Holder (NOVO DESIGN)
+    -- Tab Holder (NOVO DESIGN) - barra de abas no topo
     local TabHolder = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", OrionLib.Themes[OrionLib.SelectedTheme].Accent, 4), {
-        Size = UDim2.new(1,0,1,-90),
-        Position = UDim2.new(0,0,0,40),
-        BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second,
-        BackgroundTransparency = 0.35
+        Size = UDim2.new(1, -40, 1, 0),
+        Position = UDim2.new(0, 20, 0, 0),
+        BackgroundTransparency = 0.55,
+        ScrollBarThickness = 0,
+        AutomaticCanvasSize = Enum.AutomaticSize.X
     }), {
-        MakeElement("List", 0, 6),
-        MakeElement("Padding", 8, 4, 4, 8)
+        MakeElement("List", 0, 6, Enum.FillDirection.Horizontal),
+        MakeElement("Padding", 10, 10, 10, 10)
     }), "Second")
 
     AddConnection(TabHolder.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-        TabHolder.CanvasSize = UDim2.new(0,0,0, TabHolder.UIListLayout.AbsoluteContentSize.Y + 16)
+        TabHolder.CanvasSize = UDim2.new(0, TabHolder.UIListLayout.AbsoluteContentSize.X + 20, 0, 0)
     end)
 
     -- Search Bar (NOVO DESIGN)
@@ -897,8 +902,8 @@ function OrionLib:MakeWindow(WindowConfig)
 
     -- Painel lateral (NOVO DESIGN)
     local WindowStuff = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", OrionLib.Themes[OrionLib.SelectedTheme].Second, 0, 20), {
-        Size = UDim2.new(0, 180, 1, -50),
-        Position = UDim2.new(0, 0, 0, 50)
+        Size = UDim2.new(0, 180, 1, -94),
+        Position = UDim2.new(0, 0, 0, 94)
     }), {
         AddThemeObject(SetProps(MakeElement("Frame"), {
             Size = UDim2.new(0, 1, 1, 0),
@@ -1090,6 +1095,24 @@ function OrionLib:MakeWindow(WindowConfig)
     }), "Background")
     OrionLib.MainWindow = MainWindow
 
+    -- Barra de abas (topo)
+    local TabBar = SetChildren(SetProps(MakeElement("Frame"), {
+        Parent = MainWindow,
+        Size = UDim2.new(1, 0, 0, 44),
+        Position = UDim2.new(0, 0, 0, 50),
+        BackgroundTransparency = 0.55,
+        BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second
+    }), {
+        AddThemeObject(SetProps(Create("UIGradient", {
+            Color = OrionLib.Themes[OrionLib.SelectedTheme].MainGradient,
+            Rotation = OrionLib.Themes[OrionLib.SelectedTheme].GradientRotation
+        }), {
+            Transparency = NumberSequence.new{NumberSequenceKeypoint.new(0, 0.4), NumberSequenceKeypoint.new(1, 0.4)}
+        }), "Main")
+    })
+
+    TabHolder.Parent = TabBar
+
     WindowNameContainer.Parent = MainWindow.TopBar
 
     if WindowConfig.ShowIcon then
@@ -1130,11 +1153,11 @@ function OrionLib:MakeWindow(WindowConfig)
                     local NewWidth = math.max(600, math.min(1200, StartSize.X + Delta.X))
                     local NewHeight = math.max(350, math.min(800, StartSize.Y + Delta.Y))
                     MainWindow.Size = UDim2.new(0, NewWidth, 0, NewHeight)
-                    WindowStuff.Size = UDim2.new(0, math.min(250, NewWidth * 0.3), 1, -50)
+                    WindowStuff.Size = UDim2.new(0, math.min(250, NewWidth * 0.3), 1, -94)
                     for _, container in pairs(MainWindow:GetChildren()) do
                         if container.Name == "ItemContainer" then
-                            container.Size = UDim2.new(1, -WindowStuff.Size.X.Offset - 20, 1, -50)
-                            container.Position = UDim2.new(0, WindowStuff.Size.X.Offset + 10, 0, 50)
+                            container.Size = UDim2.new(1, -WindowStuff.Size.X.Offset - 20, 1, -94)
+                            container.Position = UDim2.new(0, WindowStuff.Size.X.Offset + 10, 0, 94)
                         end
                     end
                 end
@@ -1176,11 +1199,11 @@ function OrionLib:MakeWindow(WindowConfig)
                 if SideResizing and Input.UserInputType == Enum.UserInputType.MouseMovement then
                     local Delta = Input.Position.X - StartPos.X
                     local NewWidth = math.max(120, math.min(300, StartWidth + Delta))
-                    WindowStuff.Size = UDim2.new(0, NewWidth, 1, -50)
+                    WindowStuff.Size = UDim2.new(0, NewWidth, 1, -94)
                     for _, container in pairs(MainWindow:GetChildren()) do
                         if container.Name == "ItemContainer" then
-                            container.Size = UDim2.new(1, -NewWidth - 20, 1, -50)
-                            container.Position = UDim2.new(0, NewWidth + 10, 0, 50)
+                            container.Size = UDim2.new(1, -NewWidth - 20, 1, -94)
+                            container.Position = UDim2.new(0, NewWidth + 10, 0, 94)
                         end
                     end
                 end
@@ -1271,11 +1294,11 @@ function OrionLib:MakeWindow(WindowConfig)
             WindowStuff.Visible = true
             WindowTopBarLine.Visible = true
             if savedSideWidth then
-                WindowStuff.Size = UDim2.new(0, savedSideWidth, 1, -50)
+                WindowStuff.Size = UDim2.new(0, savedSideWidth, 1, -94)
                 for _, container in pairs(MainWindow:GetChildren()) do
                     if container.Name == "ItemContainer" then
-                        container.Size = UDim2.new(1, -savedSideWidth - 20, 1, -50)
-                        container.Position = UDim2.new(0, savedSideWidth + 10, 0, 50)
+                        container.Size = UDim2.new(1, -savedSideWidth - 20, 1, -94)
+                        container.Position = UDim2.new(0, savedSideWidth + 10, 0, 94)
                     end
                 end
             end
@@ -1413,7 +1436,7 @@ function OrionLib:MakeWindow(WindowConfig)
         TabConfig.PremiumOnly = TabConfig.PremiumOnly or false
 
         local TabFrame = SetChildren(SetProps(MakeElement("Button"), {
-            Size = UDim2.new(1,0,0,40),
+            Size = UDim2.new(0, 140, 1, 0),
             Parent = TabHolder,
             BackgroundColor3 = OrionLib.Themes[OrionLib.SelectedTheme].Second,
             BackgroundTransparency = 0.45,
@@ -1444,8 +1467,8 @@ function OrionLib:MakeWindow(WindowConfig)
         Tabs[TabConfig.Name] = TabFrame
 
         local Container = AddThemeObject(SetChildren(SetProps(MakeElement("ScrollFrame", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 5), {
-            Size = UDim2.new(1, -WindowStuff.Size.X.Offset - 20, 1, -50),
-            Position = UDim2.new(0, WindowStuff.Size.X.Offset + 10, 0, 50),
+            Size = UDim2.new(1, -WindowStuff.Size.X.Offset - 20, 1, -94),
+            Position = UDim2.new(0, WindowStuff.Size.X.Offset + 10, 0, 94),
             Parent = MainWindow,
             Visible = false,
             Name = "ItemContainer",
