@@ -151,21 +151,14 @@ local OrionLib = {
 	ThemeObjects = {},
 	Themes = {
 		Default = {
-			Main = Color3.fromRGB(40, 5, 5),      -- Roxo escuro principal
-			Second = Color3.fromRGB(55, 5, 7),    -- Roxo médio
-			Stroke = Color3.fromRGB(150, 5, 2),  -- Roxo claro para bordas
-			Divider = Color3.fromRGB(90, 5, 1),  -- Roxo médio-escuro
-			Text = Color3.fromRGB(240, 5, 2),   -- Texto branco
-			TextDark = Color3.fromRGB(200, 5, 2),
-
-			-- 🌌 Gradient do fundo
-			MainGradient = ColorSequence.new{
-				ColorSequenceKeypoint.new(0, Color3.fromRGB(25, 0, 40)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(60, 20, 80)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 40, 160))
-			},
-
-			GradientRotation = 135
+			Main = Color3.fromRGB(20, 20, 30),
+			Second = Color3.fromRGB(30, 30, 40),
+			Stroke = Color3.fromRGB(60, 60, 80),
+			Divider = Color3.fromRGB(40, 40, 50),
+			Text = Color3.fromRGB(255, 255, 255),
+			TextDark = Color3.fromRGB(200, 200, 220),
+			MainGradient = ColorSequence.new(Color3.fromRGB(15, 15, 25), Color3.fromRGB(35, 35, 45)),
+			GradientRotation = 90
 		},
 		Dark = {
 			Main = Color3.fromRGB(25, 25, 25),
@@ -766,6 +759,13 @@ CreateElement("Label", function(Text, TextSize, Transparency)
 	return Label
 end)
 
+CreateElement("Gradient", function(ColorSequence, Rotation)
+	local Gradient = Instance.new("UIGradient")
+	Gradient.Color = ColorSequence
+	Gradient.Rotation = Rotation or 0
+	return Gradient
+end)
+
 local NotificationHolder = SetProps(SetChildren(MakeElement("TFrame"), {
 	SetProps(MakeElement("List"), {
 		HorizontalAlignment = Enum.HorizontalAlignment.Center,
@@ -1228,15 +1228,34 @@ function OrionLib:MakeWindow(WindowConfig)
 		Position = UDim2.new(0, 0, 1, -1)
 	}), "Stroke")
 
-	local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 16), {
+	local MainWindow = AddThemeObject(SetChildren(SetProps(MakeElement("Frame", Color3.fromRGB(255, 255, 255)), {
 		Parent = Orion,
 		Position = UDim2.new(0.5, -307, 0.5, -172),
 		Size = UDim2.new(0, 615, 0, 344),
 		ClipsDescendants = true,
-		BackgroundTransparency = 0.02, -- Levemente transparente para efeito moderno
-		Active = true -- Bloqueia cliques que passam através do hub
+		BackgroundTransparency = 0.02,
+		Active = true
 	}), {
-		MakeElement("Stroke", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 2.5), -- Borda colorida grossa!
+		MakeElement("Corner", 0, 12),
+		-- Shadow for depth effect
+		SetProps(MakeElement("Frame"), {
+			Size = UDim2.new(1, 20, 1, 20),
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+			BackgroundTransparency = 0.7,
+			ZIndex = -1
+		}),
+		SetProps(MakeElement("Frame"), {
+			Size = UDim2.new(1, 10, 1, 10),
+			Position = UDim2.new(0.5, 0, 0.5, 0),
+			AnchorPoint = Vector2.new(0.5, 0.5),
+			BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+			BackgroundTransparency = 0.8,
+			ZIndex = -1
+		}),
+		MakeElement("Stroke", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 2.5),
+		MakeElement("Gradient", OrionLib.Themes[OrionLib.SelectedTheme].MainGradient, OrionLib.Themes[OrionLib.SelectedTheme].GradientRotation),
 		SetChildren(SetProps(MakeElement("TFrame"), {
 			Size = UDim2.new(1, 0, 0, 50),
 			Name = "TopBar"
@@ -1244,10 +1263,11 @@ function OrionLib:MakeWindow(WindowConfig)
 			WindowName,
 			StatsLabel,
 			WindowTopBarLine,
-			AddThemeObject(SetChildren(SetProps(MakeElement("RoundFrame", Color3.fromRGB(255, 255, 255), 0, 7), {
+			AddThemeObject(SetChildren(SetProps(MakeElement("Frame", Color3.fromRGB(255, 255, 255)), {
 				Size = UDim2.new(0, 70, 0, 30),
 				Position = UDim2.new(1, -90, 0, 10)
 			}), {
+				MakeElement("Corner", 0, 6),
 				AddThemeObject(MakeElement("Stroke"), "Stroke"),
 				AddThemeObject(SetProps(MakeElement("Frame"), {
 					Size = UDim2.new(0, 1, 1, 0),
@@ -1930,10 +1950,12 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 		TabConfig.Icon = TabConfig.Icon or ""
 		TabConfig.PremiumOnly = TabConfig.PremiumOnly or false
 
-		local TabFrame = SetChildren(SetProps(MakeElement("Button"), {
+		local TabFrame = AddThemeObject(SetChildren(SetProps(MakeElement("Button"), {
 			Size = UDim2.new(1, 0, 0, 30),
 			Parent = TabHolder
 		}), {
+			MakeElement("Corner", 0, 6),
+			MakeElement("Stroke", OrionLib.Themes[OrionLib.SelectedTheme].Stroke, 1),
 			AddThemeObject(SetProps(MakeElement("Image", TabConfig.Icon), {
 				AnchorPoint = Vector2.new(0, 0.5),
 				Size = UDim2.new(0, 18, 0, 18),
@@ -1948,7 +1970,7 @@ AddConnection(MinimizeBtn.MouseButton1Up, function()
 				TextTransparency = 1,
 				Name = "Title"
 			}), "Text")
-		})
+		}), "Second")
 
 		if GetIcon(TabConfig.Icon) ~= nil then
 			TabFrame.Ico.Image = GetIcon(TabConfig.Icon)
