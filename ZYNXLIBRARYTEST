@@ -1,2657 +1,1567 @@
--- ═══════════════════════════════════════════════════════════════
--- NEXUSLIB v2.2 — Hub UI Library
--- Fixes: Slider drag, toggle key open/close, background consistency,
---        proportions, mouse unlock, tab highlight
--- ═══════════════════════════════════════════════════════════════
+-- ╔══════════════════════════════════════════════════════════════╗
+-- ║  NEXUSLIB  v3.0  ·  Industrial Neon Hub UI                  ║
+-- ║  Design: Dark Industrial + Neon Accent + Glass panels        ║
+-- ║  Fixes: Sliders, toggle key, layout, bg image, gradients     ║
+-- ╚══════════════════════════════════════════════════════════════╝
 
--- ═══════════════════════════════════════════════════════════════
--- MULTI-INSTANCE PROTECTION
--- ═══════════════════════════════════════════════════════════════
 getgenv().gethui = function() return game.CoreGui end
-
-if _G.__NexusActive then
-	warn("[NexusLib] Already running — blocked duplicate injection.")
-	return
-end
+if _G.__NexusActive then warn("[NexusLib] Already running.") return end
 _G.__NexusActive = true
 
--- ═══════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════════════════════════
 -- SERVICES
--- ═══════════════════════════════════════════════════════════════
-local UserInputService = game:GetService("UserInputService")
-local TweenService     = game:GetService("TweenService")
-local RunService       = game:GetService("RunService")
-local HttpService      = game:GetService("HttpService")
-local Players          = game:GetService("Players")
-local UserService      = game:GetService("UserService")
-local SoundService     = game:GetService("SoundService")
+-- ══════════════════════════════════════════════════════════════
+local UIS     = game:GetService("UserInputService")
+local TS      = game:GetService("TweenService")
+local RS      = game:GetService("RunService")
+local HTTP    = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local USvc    = game:GetService("UserService")
+local SS      = game:GetService("SoundService")
 
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui   = LocalPlayer:WaitForChild("PlayerGui")
+local LP  = Players.LocalPlayer
+local PGui= LP:WaitForChild("PlayerGui")
 
--- ═══════════════════════════════════════════════════════════════
--- TWEEN PRESETS
--- ═══════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════════════════════════
+-- TWEEN HELPERS
+-- ══════════════════════════════════════════════════════════════
 local TW = {
-	Snap    = TweenInfo.new(0.08, Enum.EasingStyle.Linear),
-	Fast    = TweenInfo.new(0.18, Enum.EasingStyle.Quint,       Enum.EasingDirection.Out),
-	Mid     = TweenInfo.new(0.28, Enum.EasingStyle.Quint,       Enum.EasingDirection.Out),
-	Smooth  = TweenInfo.new(0.40, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
-	Slow    = TweenInfo.new(0.55, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
-	Spring  = TweenInfo.new(0.45, Enum.EasingStyle.Elastic,     Enum.EasingDirection.Out),
-	Back    = TweenInfo.new(0.32, Enum.EasingStyle.Back,        Enum.EasingDirection.Out),
-	Sine    = TweenInfo.new(0.50, Enum.EasingStyle.Sine,        Enum.EasingDirection.InOut),
+	Snap   = TweenInfo.new(0.06, Enum.EasingStyle.Linear),
+	Fast   = TweenInfo.new(0.15, Enum.EasingStyle.Quint,       Enum.EasingDirection.Out),
+	Mid    = TweenInfo.new(0.25, Enum.EasingStyle.Quint,       Enum.EasingDirection.Out),
+	Smooth = TweenInfo.new(0.38, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out),
+	Back   = TweenInfo.new(0.30, Enum.EasingStyle.Back,        Enum.EasingDirection.Out),
+	Spring = TweenInfo.new(0.42, Enum.EasingStyle.Elastic,     Enum.EasingDirection.Out),
 }
-local function T(obj, info, props) return TweenService:Create(obj, info, props) end
-local function TPlay(obj, info, props) T(obj, info, props):Play() end
+local function Tween(o,i,p) TS:Create(o,i,p):Play() end
 
--- ═══════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════════════════════════
 -- UTILITY
--- ═══════════════════════════════════════════════════════════════
-local function New(class, props, children)
-	local o = Instance.new(class)
-	for k,v in pairs(props or {}) do o[k] = v end
-	for _,c in pairs(children or {}) do c.Parent = o end
+-- ══════════════════════════════════════════════════════════════
+local function New(cls, props, children)
+	local o = Instance.new(cls)
+	for k,v in pairs(props or {}) do o[k]=v end
+	for _,c in pairs(children or {}) do c.Parent=o end
 	return o
 end
 
-local function ColorPack(c)
-	return { R = math.round(c.R*255), G = math.round(c.G*255), B = math.round(c.B*255) }
-end
-local function ColorUnpack(t)
-	if type(t) == "table" then
-		return Color3.fromRGB(math.clamp(t.R,0,255), math.clamp(t.G,0,255), math.clamp(t.B,0,255))
-	end
-	return Color3.fromRGB(200,200,200)
-end
-
-local function Round(n, f)
-	if f == 0 then return n end
-	local r = math.floor(n/f + (math.sign(n) * 0.5)) * f
-	if r < 0 then r = r + f end
+local function Round(n,f)
+	if not f or f==0 then return n end
+	local r = math.floor(n/f + math.sign(n)*0.5)*f
+	if r<0 then r=r+f end
 	return r
 end
 
-local function PlaySound(id, vol)
-	local s = New("Sound", {SoundId = id, Volume = vol or 0.5, Parent = SoundService})
-	s:Play()
-	game.Debris:AddItem(s, 4)
+local function CPack(c) return {R=math.round(c.R*255),G=math.round(c.G*255),B=math.round(c.B*255)} end
+local function CUnpack(t)
+	if type(t)~="table" then return Color3.fromRGB(200,200,200) end
+	return Color3.fromRGB(math.clamp(t.R,0,255),math.clamp(t.G,0,255),math.clamp(t.B,0,255))
 end
 
--- ═══════════════════════════════════════════════════════════════
+local function Lerp3(a,b,t)
+	return Color3.fromRGB(
+		math.floor(a.R*255+(b.R*255-a.R*255)*t),
+		math.floor(a.G*255+(b.G*255-a.G*255)*t),
+		math.floor(a.B*255+(b.B*255-a.B*255)*t)
+	)
+end
+
+local function Sound(id,vol)
+	local s=New("Sound",{SoundId=id,Volume=vol or 0.4,Parent=SS})
+	s:Play(); game.Debris:AddItem(s,4)
+end
+
+-- ══════════════════════════════════════════════════════════════
 -- GUI ROOT
--- ═══════════════════════════════════════════════════════════════
-local Root = New("ScreenGui", {
-	Name             = "NexusLib",
-	ResetOnSpawn     = false,
-	ZIndexBehavior   = Enum.ZIndexBehavior.Sibling,
-	IgnoreGuiInset   = true,
+-- ══════════════════════════════════════════════════════════════
+local Root = New("ScreenGui",{
+	Name="NexusLib", ResetOnSpawn=false,
+	ZIndexBehavior=Enum.ZIndexBehavior.Sibling,
+	IgnoreGuiInset=true,
 })
-
-local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
-local GuiParent  = (gethui and gethui()) or game:GetService("CoreGui") or PlayerGui
-Root.Parent = GuiParent
-ProtectGui(Root)
-
-local function CleanDuplicates()
-	for _, g in ipairs(GuiParent:GetChildren()) do
-		if g.Name == "NexusLib" and g ~= Root then g:Destroy() end
-	end
+local PGui2   = (gethui and gethui()) or game:GetService("CoreGui") or PGui
+Root.Parent   = PGui2
+;(protectgui or (syn and syn.protect_gui) or function()end)(Root)
+for _,g in ipairs(PGui2:GetChildren()) do
+	if g.Name=="NexusLib" and g~=Root then g:Destroy() end
 end
-CleanDuplicates()
 
--- Modal blocker (mouse unlock) — FIX: usando TextButton com Modal=true para liberar cursor
-local ModalBtn = New("TextButton", {
-	Name = "__NexusModal", Size = UDim2.new(0,0,0,0),
-	BackgroundTransparency = 1, Text = "", Modal = true,
-	Parent = Root, Visible = true, Active = true,
+-- Modal para desbloquear cursor
+local Modal = New("TextButton",{
+	Name="__NModal", Size=UDim2.new(0,0,0,0),
+	BackgroundTransparency=1, Text="", Modal=true,
+	Parent=Root, Visible=true, Active=true,
 })
 
--- ═══════════════════════════════════════════════════════════════
--- DEFAULT THEME
--- ═══════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════════════════════════
+-- DEFAULT THEME  (todos os valores que o sistema usa)
+-- ══════════════════════════════════════════════════════════════
 local DefaultTheme = {
-	BgDeep    = Color3.fromRGB(8,   8,  12),
-	BgBase    = Color3.fromRGB(14,  14, 20),
-	BgPanel   = Color3.fromRGB(18,  18, 26),
-	BgCard    = Color3.fromRGB(22,  22, 32),
-	BgHover   = Color3.fromRGB(28,  28, 40),
+	-- Fundos unificados — MESMA família de cor
+	BgWindow  = Color3.fromRGB(10,  10, 16),   -- janela inteira
+	BgSidebar = Color3.fromRGB(12,  12, 18),   -- sidebar (levemente distinto)
+	BgContent = Color3.fromRGB(10,  10, 16),   -- área de conteúdo (= janela)
+	BgCard    = Color3.fromRGB(18,  18, 28),
+	BgCardAlt = Color3.fromRGB(22,  22, 34),
+	BgHover   = Color3.fromRGB(26,  26, 38),
+	BgDeep    = Color3.fromRGB(6,    6, 10),
+	BgTopbar  = Color3.fromRGB(10,  10, 16),
 
-	Accent    = Color3.fromRGB(0,  220, 180),
-	AccentDim = Color3.fromRGB(0,  140, 115),
-	AccentGlow= Color3.fromRGB(0,  255, 210),
+	-- Accent principal
+	Accent     = Color3.fromRGB(0,  210, 255),
+	AccentDim  = Color3.fromRGB(0,  120, 160),
+	AccentGlow = Color3.fromRGB(80, 240, 255),
+	AccentDark = Color3.fromRGB(0,   40,  60),
 
-	Border    = Color3.fromRGB(40,  42,  60),
-	BorderLit = Color3.fromRGB(0,  200, 165),
+	-- Gradiente de fundo da janela (dois pontos de cor)
+	GradA = Color3.fromRGB(10, 10, 16),
+	GradB = Color3.fromRGB(14, 10, 22),
 
-	TextPrimary  = Color3.fromRGB(230, 232, 240),
-	TextSecondary= Color3.fromRGB(130, 135, 160),
-	TextMuted    = Color3.fromRGB(70,  75,  100),
+	-- Bordas
+	Border    = Color3.fromRGB(35, 38, 58),
+	BorderLit = Color3.fromRGB(0, 180, 220),
 
-	-- FIX: Sidebar usa mesma base do BgBase para consistência visual
-	SidebarBg    = Color3.fromRGB(14, 14, 20),
-	SidebarWidth = 160,
+	-- Texto
+	TxtPri = Color3.fromRGB(225, 228, 242),
+	TxtSec = Color3.fromRGB(110, 118, 150),
+	TxtMut = Color3.fromRGB(55,  60,  88),
 
-	TabActive = Color3.fromRGB(0, 220, 180),
-	ScrollBar = Color3.fromRGB(0, 180, 150),
-
-	-- FIX: Topbar usa mesma base
-	TopbarBg = Color3.fromRGB(14, 14, 20),
-	TopbarHeight = 48,
+	-- Misc
+	ScrollBar   = Color3.fromRGB(0, 180, 220),
+	SidebarW    = 168,
+	TopbarH     = 48,
 }
 
--- ═══════════════════════════════════════════════════════════════
--- NEXUSLIB MAIN TABLE
--- ═══════════════════════════════════════════════════════════════
-local NexusLib = {
-	Flags       = {},
-	Connections = {},
-	Theme       = {},
-	_ThemeWatchers = {},
-	SaveEnabled = false,
-	SaveFolder  = "nexus_configs",
+-- ══════════════════════════════════════════════════════════════
+-- NEXUSLIB TABLE
+-- ══════════════════════════════════════════════════════════════
+local NL = {
+	Flags={}, Connections={}, Theme={},
+	_Watchers={}, SaveEnabled=false, SaveFolder="nexus_cfg",
 }
+for k,v in pairs(DefaultTheme) do NL.Theme[k]=v end
 
-for k,v in pairs(DefaultTheme) do NexusLib.Theme[k] = v end
-
--- ═══════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════════════════════════
 -- CONNECTION MANAGER
--- ═══════════════════════════════════════════════════════════════
-local function IsAlive()
-	return Root and Root.Parent ~= nil
-end
+-- ══════════════════════════════════════════════════════════════
+local function Alive() return Root and Root.Parent~=nil end
 
-local function Connect(signal, fn)
-	if not IsAlive() then return end
-	local c = signal:Connect(fn)
-	table.insert(NexusLib.Connections, c)
+local function Conn(sig,fn)
+	if not Alive() then return end
+	local c=sig:Connect(fn)
+	table.insert(NL.Connections,c)
 	return c
 end
 
 task.spawn(function()
-	while IsAlive() do task.wait(0.5) end
-	for _, c in pairs(NexusLib.Connections) do pcall(function() c:Disconnect() end) end
-	_G.__NexusActive = nil
+	while Alive() do task.wait(0.5) end
+	for _,c in pairs(NL.Connections) do pcall(function() c:Disconnect() end) end
+	_G.__NexusActive=nil
 end)
 
--- ═══════════════════════════════════════════════════════════════
--- THEME LIVE UPDATE
--- ═══════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════════════════════════
+-- THEME ENGINE
+-- ══════════════════════════════════════════════════════════════
 local function ApplyTheme()
-	for _, fn in pairs(NexusLib._ThemeWatchers) do
-		pcall(fn)
-	end
+	for _,fn in pairs(NL._Watchers) do pcall(fn) end
 end
 
-function NexusLib:SetThemeColor(key, color)
-	if NexusLib.Theme[key] ~= nil then
-		NexusLib.Theme[key] = color
-		ApplyTheme()
-	end
+function NL:SetColor(key,col)
+	if NL.Theme[key]~=nil then NL.Theme[key]=col; ApplyTheme() end
 end
 
-local function ThemeBind(obj, prop, key, transform)
-	table.insert(NexusLib._ThemeWatchers, function()
+local function Bind(obj,prop,key,xf)
+	table.insert(NL._Watchers,function()
 		if not obj or not obj.Parent then return end
-		local val = NexusLib.Theme[key]
-		obj[prop] = transform and transform(val) or val
+		local v=NL.Theme[key]
+		obj[prop]=xf and xf(v) or v
 	end)
-	local val = NexusLib.Theme[key]
-	obj[prop] = transform and transform(val) or val
+	local v=NL.Theme[key]
+	obj[prop]=xf and xf(v) or v
 	return obj
 end
 
--- ═══════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════════════════════════
 -- DRAG SYSTEM
--- ═══════════════════════════════════════════════════════════════
-local function MakeDraggable(handle, target)
+-- ══════════════════════════════════════════════════════════════
+local function MakeDraggable(handle,target)
 	pcall(function()
-		local dragging, dragStart, startPos = false
-		Connect(handle.InputBegan, function(inp)
-			if inp.UserInputType == Enum.UserInputType.MouseButton1
-			or inp.UserInputType == Enum.UserInputType.Touch then
-				dragging  = true
-				dragStart = inp.Position
-				startPos  = target.Position
-				inp.Changed:Connect(function()
-					if inp.UserInputState == Enum.UserInputState.End then
-						dragging = false
-					end
-				end)
+		local drag,ds,sp=false
+		Conn(handle.InputBegan,function(i)
+			if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then
+				drag=true; ds=i.Position; sp=target.Position
+				i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then drag=false end end)
 			end
 		end)
-		Connect(UserInputService.InputChanged, function(inp)
-			if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement
-			or inp.UserInputType == Enum.UserInputType.Touch) then
-				local d = inp.Position - dragStart
-				target.Position = UDim2.new(
-					startPos.X.Scale, startPos.X.Offset + d.X,
-					startPos.Y.Scale, startPos.Y.Offset + d.Y
-				)
+		Conn(UIS.InputChanged,function(i)
+			if drag and (i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch) then
+				local d=i.Position-ds
+				target.Position=UDim2.new(sp.X.Scale,sp.X.Offset+d.X,sp.Y.Scale,sp.Y.Offset+d.Y)
 			end
 		end)
 	end)
 end
 
--- ═══════════════════════════════════════════════════════════════
--- CONFIG SAVE/LOAD
--- ═══════════════════════════════════════════════════════════════
-local saveDebounce = 0
-local savePending  = false
-
-local function SaveConfig(name)
-	if not NexusLib.SaveEnabled or not writefile then return end
-	local now = tick()
-	if now - saveDebounce < 1.5 then
-		if not savePending then
-			savePending = true
-			task.delay(1.5, function()
-				savePending = false
-				SaveConfig(name)
-			end)
-		end
+-- ══════════════════════════════════════════════════════════════
+-- CONFIG SAVE / LOAD
+-- ══════════════════════════════════════════════════════════════
+local sDb,sPend=0,false
+local function SaveCfg(name)
+	if not NL.SaveEnabled or not writefile then return end
+	local now=tick()
+	if now-sDb<1.5 then
+		if not sPend then sPend=true; task.delay(1.5,function() sPend=false; SaveCfg(name) end) end
 		return
 	end
-	saveDebounce = now
+	sDb=now
 	task.spawn(function()
 		if not isfolder then return end
-		if not isfolder(NexusLib.SaveFolder) then makefolder(NexusLib.SaveFolder) end
-		local data = { Flags = {}, Theme = {} }
-		for k, flag in pairs(NexusLib.Flags) do
-			if flag.Save then
-				if flag.Type == "Colorpicker" then
-					data.Flags[k] = { Type = "Colorpicker", Value = ColorPack(flag.Value) }
-				else
-					data.Flags[k] = { Type = flag.Type or "?", Value = flag.Value }
-				end
+		if not isfolder(NL.SaveFolder) then makefolder(NL.SaveFolder) end
+		local d={Flags={},Theme={}}
+		for k,f in pairs(NL.Flags) do
+			if f.Save then
+				d.Flags[k]=f.Type=="Colorpicker" and {Type="Colorpicker",Value=CPack(f.Value)} or {Type=f.Type,Value=f.Value}
 			end
 		end
-		for k, v in pairs(NexusLib.Theme) do
-			if typeof(v) == "Color3" then
-				data.Theme[k] = ColorPack(v)
-			end
-		end
-		pcall(writefile, NexusLib.SaveFolder.."/"..name..".json", HttpService:JSONEncode(data))
+		for k,v in pairs(NL.Theme) do if typeof(v)=="Color3" then d.Theme[k]=CPack(v) end end
+		pcall(writefile,NL.SaveFolder.."/"..name..".json",HTTP:JSONEncode(d))
 	end)
 end
 
-local function LoadConfig(name)
+local function LoadCfg(name)
 	if not readfile or not isfile then return end
-	local path = NexusLib.SaveFolder.."/"..name..".json"
-	if not isfile(path) then return end
-	local ok, data = pcall(function() return HttpService:JSONDecode(readfile(path)) end)
+	local p=NL.SaveFolder.."/"..name..".json"
+	if not isfile(p) then return end
+	local ok,d=pcall(function() return HTTP:JSONDecode(readfile(p)) end)
 	if not ok then return end
-	if data.Theme then
-		for k, v in pairs(data.Theme) do
-			if NexusLib.Theme[k] ~= nil then
-				NexusLib.Theme[k] = ColorUnpack(v)
-			end
-		end
+	if d.Theme then
+		for k,v in pairs(d.Theme) do if NL.Theme[k]~=nil then NL.Theme[k]=CUnpack(v) end end
 		ApplyTheme()
 	end
 	task.defer(function()
-		for k, fd in pairs(data.Flags or {}) do
-			if NexusLib.Flags[k] then
+		for k,fd in pairs(d.Flags or {}) do
+			if NL.Flags[k] then
 				task.spawn(function()
-					if fd.Type == "Colorpicker" then
-						NexusLib.Flags[k]:Set(ColorUnpack(fd.Value))
-					elseif fd.Value ~= nil then
-						NexusLib.Flags[k]:Set(fd.Value)
-					end
+					if fd.Type=="Colorpicker" then NL.Flags[k]:Set(CUnpack(fd.Value))
+					elseif fd.Value~=nil then NL.Flags[k]:Set(fd.Value) end
 				end)
 			end
 		end
 	end)
 end
 
--- ═══════════════════════════════════════════════════════════════
--- NOTIFICATION SYSTEM
--- ═══════════════════════════════════════════════════════════════
-local NotifHolder = New("Frame", {
-	Parent           = Root,
-	Size             = UDim2.new(0, 320, 1, -20),
-	Position         = UDim2.new(1, -330, 0, 10),
-	BackgroundTransparency = 1,
-	AnchorPoint      = Vector2.new(1, 0),
-}, {
-	New("UIListLayout", {
-		SortOrder             = Enum.SortOrder.LayoutOrder,
-		VerticalAlignment     = Enum.VerticalAlignment.Bottom,
-		HorizontalAlignment   = Enum.HorizontalAlignment.Center,
-		Padding               = UDim.new(0, 6),
-	})
+-- ══════════════════════════════════════════════════════════════
+-- NOTIFICATIONS
+-- ══════════════════════════════════════════════════════════════
+local NH=New("Frame",{Parent=Root,Size=UDim2.new(0,300,1,-20),
+	Position=UDim2.new(1,-310,0,10),BackgroundTransparency=1,AnchorPoint=Vector2.new(1,0)},{
+	New("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,
+		VerticalAlignment=Enum.VerticalAlignment.Bottom,
+		HorizontalAlignment=Enum.HorizontalAlignment.Center,Padding=UDim.new(0,6)}),
 })
 
-function NexusLib:Notify(cfg)
-	cfg = cfg or {}
-	cfg.Title   = cfg.Title   or "Notice"
-	cfg.Message = cfg.Message or ""
-	cfg.Icon    = cfg.Icon    or "rbxassetid://16913919445"
-	cfg.Duration= cfg.Duration or 5
-
-	PlaySound("rbxassetid://9118776541", 0.4)
-
+function NL:Notify(cfg)
+	cfg=cfg or {}; cfg.Title=cfg.Title or "Notice"; cfg.Message=cfg.Message or ""
+	cfg.Duration=cfg.Duration or 5; cfg.Icon=cfg.Icon or "rbxassetid://16913919445"
+	Sound("rbxassetid://9118776541",0.35)
 	task.spawn(function()
-		local T_ = NexusLib.Theme
-
-		local Wrap = New("Frame", {
-			Parent = NotifHolder,
-			Size   = UDim2.new(1, 0, 0, 0),
-			BackgroundTransparency = 1,
-			AutomaticSize = Enum.AutomaticSize.Y,
-			ClipsDescendants = false,
+		local T=NL.Theme
+		local wrap=New("Frame",{Parent=NH,Size=UDim2.new(1,0,0,0),BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y})
+		local card=New("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
+			BackgroundColor3=T.BgCard,BorderSizePixel=0,Position=UDim2.new(1,15,0,0),ClipsDescendants=false},{
+			New("UICorner",{CornerRadius=UDim.new(0,8)}),
+			New("UIStroke",{Color=T.Border,Thickness=1}),
+			New("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),PaddingTop=UDim.new(0,11),PaddingBottom=UDim.new(0,11)}),
+			-- Barra lateral colorida
+			New("Frame",{Size=UDim2.new(0,3,1,-18),Position=UDim2.new(0,-14,0,9),
+				BackgroundColor3=T.Accent,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})}),
 		})
-
-		local Card = New("Frame", {
-			Parent             = Wrap,
-			Size               = UDim2.new(1, 0, 0, 0),
-			AutomaticSize      = Enum.AutomaticSize.Y,
-			BackgroundColor3   = T_.BgCard,
-			BorderSizePixel    = 0,
-			Position           = UDim2.new(1, 10, 0, 0),
-			ClipsDescendants   = false,
-		}, {
-			New("UICorner",  { CornerRadius = UDim.new(0, 8) }),
-			New("UIStroke",  { Color = T_.Border, Thickness = 1 }),
-			New("UIPadding", { PaddingLeft = UDim.new(0,12), PaddingRight = UDim.new(0,12),
-			                   PaddingTop  = UDim.new(0,10), PaddingBottom = UDim.new(0,10) }),
-			New("Frame", {
-				Size             = UDim2.new(0, 3, 1, -16),
-				Position         = UDim2.new(0, -12, 0, 8),
-				BackgroundColor3 = T_.Accent,
-				BorderSizePixel  = 0,
-			}, { New("UICorner", {CornerRadius = UDim.new(1,0)}) }),
-		})
-
-		local IconImg = New("ImageLabel", {
-			Parent             = Card,
-			Size               = UDim2.new(0, 20, 0, 20),
-			Position           = UDim2.new(0, 0, 0, 0),
-			BackgroundTransparency = 1,
-			Image              = cfg.Icon,
-			ImageColor3        = T_.Accent,
-		})
-		local TitleLbl = New("TextLabel", {
-			Parent             = Card,
-			Size               = UDim2.new(1, -28, 0, 20),
-			Position           = UDim2.new(0, 28, 0, 0),
-			BackgroundTransparency = 1,
-			Text               = cfg.Title,
-			Font               = Enum.Font.GothamBlack,
-			TextSize           = 14,
-			TextColor3         = T_.TextPrimary,
-			TextXAlignment     = Enum.TextXAlignment.Left,
-		})
-		local MsgLbl = New("TextLabel", {
-			Parent             = Card,
-			Size               = UDim2.new(1, 0, 0, 0),
-			Position           = UDim2.new(0, 0, 0, 26),
-			BackgroundTransparency = 1,
-			Text               = cfg.Message,
-			Font               = Enum.Font.GothamMedium,
-			TextSize           = 13,
-			TextColor3         = T_.TextSecondary,
-			TextXAlignment     = Enum.TextXAlignment.Left,
-			TextWrapped        = true,
-			AutomaticSize      = Enum.AutomaticSize.Y,
-		})
-		local PBar = New("Frame", {
-			Parent           = Card,
-			Size             = UDim2.new(1, 0, 0, 2),
-			Position         = UDim2.new(0, 0, 1, 6),
-			BackgroundColor3 = T_.AccentDim,
-			BorderSizePixel  = 0,
-		}, { New("UICorner", {CornerRadius = UDim.new(1,0)}) })
-
-		TPlay(Card, TW.Back, { Position = UDim2.new(0, 0, 0, 0) })
-		TPlay(PBar, TweenInfo.new(cfg.Duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0,0,0,2) })
-
-		task.wait(cfg.Duration - 0.5)
-		TPlay(Card, TW.Mid, { BackgroundTransparency = 1 })
-		TPlay(IconImg, TW.Mid, { ImageTransparency = 1 })
-		TPlay(TitleLbl, TW.Mid, { TextTransparency = 1 })
-		TPlay(MsgLbl, TW.Mid, { TextTransparency = 1 })
-		task.wait(0.35)
-		TPlay(Card, TW.Mid, { Position = UDim2.new(1, 10, 0, 0) })
-		task.wait(0.35)
-		Wrap:Destroy()
+		-- Gradiente sutil no card
+		New("UIGradient",{Parent=card,Color=ColorSequence.new{
+			ColorSequenceKeypoint.new(0,Color3.fromRGB(30,30,46)),
+			ColorSequenceKeypoint.new(1,Color3.fromRGB(18,18,28))},Rotation=135})
+		New("ImageLabel",{Parent=card,Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,
+			Image=cfg.Icon,ImageColor3=T.Accent})
+		New("TextLabel",{Parent=card,Size=UDim2.new(1,-26,0,18),Position=UDim2.new(0,26,0,0),
+			BackgroundTransparency=1,Text=cfg.Title,Font=Enum.Font.GothamBlack,TextSize=14,
+			TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+		New("TextLabel",{Parent=card,Size=UDim2.new(1,0,0,0),Position=UDim2.new(0,0,0,24),
+			BackgroundTransparency=1,Text=cfg.Message,Font=Enum.Font.GothamMedium,TextSize=12,
+			TextColor3=T.TxtSec,TextXAlignment=Enum.TextXAlignment.Left,TextWrapped=true,
+			AutomaticSize=Enum.AutomaticSize.Y})
+		local pb=New("Frame",{Parent=card,Size=UDim2.new(1,0,0,2),Position=UDim2.new(0,0,1,7),
+			BackgroundColor3=T.AccentDim,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+		Tween(card,TW.Back,{Position=UDim2.new(0,0,0,0)})
+		Tween(pb,TweenInfo.new(cfg.Duration,Enum.EasingStyle.Linear),{Size=UDim2.new(0,0,0,2)})
+		task.wait(cfg.Duration-0.5)
+		Tween(card,TW.Mid,{BackgroundTransparency=1}); task.wait(0.3)
+		Tween(card,TW.Mid,{Position=UDim2.new(1,15,0,0)}); task.wait(0.4)
+		wrap:Destroy()
 	end)
 end
 
--- ═══════════════════════════════════════════════════════════════
--- ELEMENT FACTORY (shared helpers)
--- ═══════════════════════════════════════════════════════════════
-local function MakeScrollFrame(parent)
-	local sf = New("ScrollingFrame", {
-		Parent                   = parent,
-		BackgroundTransparency   = 1,
-		BorderSizePixel          = 0,
-		ScrollBarThickness       = 3,
-		ScrollBarImageColor3     = NexusLib.Theme.ScrollBar,
-		CanvasSize               = UDim2.new(0,0,0,0),
-		ScrollingDirection       = Enum.ScrollingDirection.Y,
-		MidImage                 = "rbxassetid://7445543667",
-		TopImage                 = "rbxassetid://7445543667",
-		BottomImage              = "rbxassetid://7445543667",
-		ElasticBehavior          = Enum.ElasticBehavior.Never,
+-- ══════════════════════════════════════════════════════════════
+-- SHARED ELEMENT BUILDERS
+-- ══════════════════════════════════════════════════════════════
+local function MakeScroll(parent)
+	local sf=New("ScrollingFrame",{Parent=parent,BackgroundTransparency=1,BorderSizePixel=0,
+		ScrollBarThickness=3,ScrollBarImageColor3=NL.Theme.ScrollBar,
+		CanvasSize=UDim2.new(0,0,0,0),ScrollingDirection=Enum.ScrollingDirection.Y,
+		MidImage="rbxassetid://7445543667",TopImage="rbxassetid://7445543667",
+		BottomImage="rbxassetid://7445543667",ElasticBehavior=Enum.ElasticBehavior.Never,
 	})
-	ThemeBind(sf, "ScrollBarImageColor3", "ScrollBar")
+	Bind(sf,"ScrollBarImageColor3","ScrollBar")
 	return sf
 end
 
 local function MakeCard(parent)
-	local f = New("Frame", {
-		Parent           = parent,
-		BackgroundColor3 = NexusLib.Theme.BgCard,
-		BorderSizePixel  = 0,
-		Size             = UDim2.new(1,0,0,36),
-	}, {
-		New("UICorner",  { CornerRadius = UDim.new(0, 6) }),
-		New("UIStroke",  { Color = NexusLib.Theme.Border, Thickness = 1 }),
+	local f=New("Frame",{Parent=parent,BackgroundColor3=NL.Theme.BgCard,BorderSizePixel=0,Size=UDim2.new(1,0,0,36)},{
+		New("UICorner",{CornerRadius=UDim.new(0,7)}),
+		New("UIStroke",{Color=NL.Theme.Border,Thickness=1}),
 	})
-	ThemeBind(f, "BackgroundColor3", "BgCard")
-	ThemeBind(f:FindFirstChildOfClass("UIStroke"), "Color", "Border")
+	Bind(f,"BackgroundColor3","BgCard")
+	Bind(f:FindFirstChildOfClass("UIStroke"),"Color","Border")
 	return f
 end
 
--- ═══════════════════════════════════════════════════════════════
--- WINDOW
--- ═══════════════════════════════════════════════════════════════
-function NexusLib:MakeWindow(cfg)
-	cfg = cfg or {}
-	cfg.Title          = cfg.Title          or "NexusLib"
-	cfg.SubTitle       = cfg.SubTitle       or ""
-	cfg.ConfigName     = cfg.ConfigName     or cfg.Title
-	cfg.SaveConfig     = cfg.SaveConfig     ~= false
-	cfg.IntroEnabled   = cfg.IntroEnabled   ~= false
-	cfg.IntroText      = cfg.IntroText      or cfg.Title
-	cfg.ToggleKey      = cfg.ToggleKey      or "RightShift"
-	cfg.BackgroundImage = cfg.BackgroundImage or ""
-	cfg.BackgroundImageTransparency = cfg.BackgroundImageTransparency or 0.85
-	cfg.Icon           = cfg.Icon           or ""
-	cfg.CloseCallback  = cfg.CloseCallback  or function() end
-	-- FIX: tamanho padrão mais proporcional (16:10 aproximado)
-	cfg.Size           = cfg.Size           or Vector2.new(780, 480)
+-- ══════════════════════════════════════════════════════════════
+-- MAKE WINDOW
+-- ══════════════════════════════════════════════════════════════
+function NL:MakeWindow(wCfg)
+	wCfg=wCfg or {}
+	wCfg.Title         = wCfg.Title         or "NexusLib"
+	wCfg.SubTitle      = wCfg.SubTitle      or ""
+	wCfg.ConfigName    = wCfg.ConfigName    or wCfg.Title
+	wCfg.SaveConfig    = wCfg.SaveConfig    ~= false
+	wCfg.IntroEnabled  = wCfg.IntroEnabled  ~= false
+	wCfg.IntroText     = wCfg.IntroText     or wCfg.Title
+	wCfg.ToggleKey     = wCfg.ToggleKey     or "RightShift"
+	wCfg.BgImage       = wCfg.BgImage       or ""
+	wCfg.BgImageAlpha  = wCfg.BgImageAlpha  or 0.82
+	wCfg.Icon          = wCfg.Icon          or ""
+	wCfg.CloseCallback = wCfg.CloseCallback or function()end
+	wCfg.Size          = wCfg.Size          or Vector2.new(820, 500)
 
-	NexusLib.SaveEnabled = cfg.SaveConfig
+	-- Retro-compat: aceitar BackgroundImage também
+	if wCfg.BackgroundImage and wCfg.BackgroundImage~="" then
+		wCfg.BgImage=wCfg.BackgroundImage
+	end
 
-	local T_ = NexusLib.Theme
-	local Hidden   = false
-	local Minimized= false
-	local ActiveTab= nil
-	local AllTabs  = {}
+	NL.SaveEnabled=wCfg.SaveConfig
 
-	-- ── MAIN WINDOW FRAME ──────────────────────────────────────
-	local Win = New("Frame", {
-		Parent           = Root,
-		Size             = UDim2.new(0, cfg.Size.X, 0, cfg.Size.Y),
-		Position         = UDim2.new(0.5, -cfg.Size.X/2, 0.5, -cfg.Size.Y/2),
-		BackgroundColor3 = T_.BgBase,
-		BorderSizePixel  = 0,
-		Active           = true,
-		ClipsDescendants = true,
-	}, {
-		New("UICorner", { CornerRadius = UDim.new(0, 10) }),
-		New("UIStroke", { Color = T_.Border, Thickness = 1.5 }),
+	local T=NL.Theme
+	local Hidden,Minimized,ActiveTab=false,false,nil
+	local AllTabs={}
+
+	-- ── JANELA PRINCIPAL ───────────────────────────────────────
+	-- ClipsDescendants=false para que o brilho externo funcione
+	local Win=New("Frame",{Parent=Root,
+		Size=UDim2.new(0,wCfg.Size.X,0,wCfg.Size.Y),
+		Position=UDim2.new(0.5,-wCfg.Size.X/2,0.5,-wCfg.Size.Y/2),
+		BackgroundColor3=T.BgWindow,BorderSizePixel=0,
+		Active=true,ClipsDescendants=true,
+	},{
+		New("UICorner",{CornerRadius=UDim.new(0,12)}),
+		New("UIStroke",{Color=T.Border,Thickness=1.5}),
 	})
-	ThemeBind(Win, "BackgroundColor3", "BgBase")
-	ThemeBind(Win:FindFirstChildOfClass("UIStroke"), "Color", "Border")
+	Bind(Win,"BackgroundColor3","BgWindow")
+	Bind(Win:FindFirstChildOfClass("UIStroke"),"Color","Border")
 
-	-- Background image
-	local BgImage = New("ImageLabel", {
-		Parent             = Win,
-		Size               = UDim2.new(1, 0, 1, 0),
-		Position           = UDim2.new(0, 0, 0, 0),
-		BackgroundTransparency = 1,
-		Image              = cfg.BackgroundImage ~= "" and "rbxassetid://" .. cfg.BackgroundImage or "",
-		ImageTransparency  = cfg.BackgroundImageTransparency,
-		ScaleType          = Enum.ScaleType.Crop,
-		ZIndex             = 1,
+	-- ── GRADIENTE DE FUNDO DA JANELA ────────────────────────────
+	-- Gradiente diagonal que cobre a janela inteira
+	local WinGrad=New("Frame",{Parent=Win,Size=UDim2.new(1,0,1,0),
+		BackgroundColor3=T.GradA,BorderSizePixel=0,ZIndex=1})
+	New("UIGradient",{Parent=WinGrad,
+		Color=ColorSequence.new{
+			ColorSequenceKeypoint.new(0,T.GradA),
+			ColorSequenceKeypoint.new(1,T.GradB),
+		},Rotation=135})
+	Bind(WinGrad,"BackgroundColor3","GradA")
+	-- Atualizar gradiente quando tema muda
+	table.insert(NL._Watchers,function()
+		if not WinGrad or not WinGrad.Parent then return end
+		local g=WinGrad:FindFirstChildOfClass("UIGradient")
+		if g then
+			g.Color=ColorSequence.new{
+				ColorSequenceKeypoint.new(0,NL.Theme.GradA),
+				ColorSequenceKeypoint.new(1,NL.Theme.GradB),
+			}
+		end
+	end)
+
+	-- ── IMAGEM DE FUNDO (cobre janela INTEIRA, ZIndex=2) ────────
+	local BgImg=New("ImageLabel",{Parent=Win,
+		Size=UDim2.new(1,0,1,0),Position=UDim2.new(0,0,0,0),
+		BackgroundTransparency=1,
+		Image=wCfg.BgImage~="" and "rbxassetid://"..wCfg.BgImage or "",
+		ImageTransparency=wCfg.BgImageAlpha,
+		ScaleType=Enum.ScaleType.Crop,ZIndex=2,
 	})
-	local BgDim = New("Frame", {
-		Parent             = Win,
-		Size               = UDim2.new(1, 0, 1, 0),
-		BackgroundColor3   = Color3.fromRGB(0, 0, 0),
-		BackgroundTransparency = cfg.BackgroundImage ~= "" and 0.55 or 1,
-		BorderSizePixel    = 0,
-		ZIndex             = 1,
-	})
-
-	-- ── TOPBAR ─────────────────────────────────────────────────
-	local Topbar = New("Frame", {
-		Parent           = Win,
-		Size             = UDim2.new(1, 0, 0, T_.TopbarHeight),
-		BackgroundColor3 = T_.TopbarBg,
-		BackgroundTransparency = 0,
-		BorderSizePixel  = 0,
-		ZIndex           = 5,
-	}, {
-		New("UICorner", { CornerRadius = UDim.new(0, 10) }),
-		-- Retângulo inferior para tapar o arredondamento inferior da topbar
-		New("Frame", {
-			Size             = UDim2.new(1, 0, 0.5, 0),
-			Position         = UDim2.new(0, 0, 0.5, 0),
-			BackgroundColor3 = T_.TopbarBg,
-			BorderSizePixel  = 0,
-		}),
-	})
-	ThemeBind(Topbar, "BackgroundColor3", "TopbarBg")
-
-	local TopbarFill = Topbar:FindFirstChild("Frame")
-	ThemeBind(TopbarFill, "BackgroundColor3", "TopbarBg")
-
-	-- Separador topbar/conteúdo
-	New("Frame", {
-		Parent           = Win,
-		Position         = UDim2.new(0, 0, 0, T_.TopbarHeight),
-		Size             = UDim2.new(1, 0, 0, 1),
-		BackgroundColor3 = T_.Border,
-		BorderSizePixel  = 0,
-		ZIndex           = 6,
+	-- Dim sobre a imagem
+	local BgDim=New("Frame",{Parent=Win,Size=UDim2.new(1,0,1,0),
+		BackgroundColor3=Color3.fromRGB(0,0,0),
+		BackgroundTransparency=wCfg.BgImage~="" and 0.5 or 1,
+		BorderSizePixel=0,ZIndex=2,
 	})
 
-	-- Ícone opcional
-	local titleX = 16
-	if cfg.Icon ~= "" then
-		New("ImageLabel", {
-			Parent             = Topbar,
-			Size               = UDim2.new(0, 22, 0, 22),
-			Position           = UDim2.new(0, 14, 0.5, -11),
-			BackgroundTransparency = 1,
-			Image              = cfg.Icon,
-			ZIndex             = 6,
-		})
-		titleX = 44
+	-- Linha decorativa no topo (glow accent)
+	local TopGlow=New("Frame",{Parent=Win,Size=UDim2.new(1,0,0,2),
+		Position=UDim2.new(0,0,0,0),BackgroundColor3=T.Accent,
+		BorderSizePixel=0,ZIndex=10})
+	New("UIGradient",{Parent=TopGlow,
+		Color=ColorSequence.new{
+			ColorSequenceKeypoint.new(0,Color3.fromRGB(0,0,0)),
+			ColorSequenceKeypoint.new(0.2,T.Accent),
+			ColorSequenceKeypoint.new(0.8,T.Accent),
+			ColorSequenceKeypoint.new(1,Color3.fromRGB(0,0,0)),
+		}})
+	Bind(TopGlow,"BackgroundColor3","Accent")
+	table.insert(NL._Watchers,function()
+		if not TopGlow or not TopGlow.Parent then return end
+		local g=TopGlow:FindFirstChildOfClass("UIGradient")
+		if g then
+			local a=NL.Theme.Accent
+			g.Color=ColorSequence.new{
+				ColorSequenceKeypoint.new(0,Color3.fromRGB(0,0,0)),
+				ColorSequenceKeypoint.new(0.2,a),
+				ColorSequenceKeypoint.new(0.8,a),
+				ColorSequenceKeypoint.new(1,Color3.fromRGB(0,0,0)),
+			}
+		end
+	end)
+
+	-- ── TOPBAR (ZIndex=8, acima do BgImg) ──────────────────────
+	local TB=New("Frame",{Parent=Win,
+		Size=UDim2.new(1,0,0,T.TopbarH),
+		BackgroundColor3=T.BgTopbar,BorderSizePixel=0,ZIndex=8,
+	},{
+		New("UICorner",{CornerRadius=UDim.new(0,12)}),
+		-- Retângulo para tapar o arredondamento inferior
+		New("Frame",{Size=UDim2.new(1,0,0.5,0),Position=UDim2.new(0,0,0.5,0),
+			BackgroundColor3=T.BgTopbar,BorderSizePixel=0,ZIndex=8,Name="TBFill"}),
+	})
+	Bind(TB,"BackgroundColor3","BgTopbar")
+	Bind(TB:FindFirstChild("TBFill"),"BackgroundColor3","BgTopbar")
+
+	-- Separador topbar
+	local TBSep=New("Frame",{Parent=Win,Position=UDim2.new(0,0,0,T.TopbarH),
+		Size=UDim2.new(1,0,0,1),BackgroundColor3=T.Border,BorderSizePixel=0,ZIndex=9})
+	Bind(TBSep,"BackgroundColor3","Border")
+
+	-- Ícone
+	local titleX=16
+	if wCfg.Icon~="" then
+		New("ImageLabel",{Parent=TB,Size=UDim2.new(0,22,0,22),Position=UDim2.new(0,14,0.5,-11),
+			BackgroundTransparency=1,Image=wCfg.Icon,ZIndex=9})
+		titleX=44
 	end
 
 	-- Título
-	local TitleLbl = New("TextLabel", {
-		Parent             = Topbar,
-		Position           = UDim2.new(0, titleX, 0, 0),
-		Size               = UDim2.new(0, 300, 1, 0),
-		BackgroundTransparency = 1,
-		Text               = cfg.Title,
-		Font               = Enum.Font.GothamBlack,
-		TextSize           = 16,
-		TextColor3         = T_.TextPrimary,
-		TextXAlignment     = Enum.TextXAlignment.Left,
-		ZIndex             = 6,
-	})
-	ThemeBind(TitleLbl, "TextColor3", "TextPrimary")
+	local TitleL=New("TextLabel",{Parent=TB,Position=UDim2.new(0,titleX,0,0),
+		Size=UDim2.new(0,280,1,0),BackgroundTransparency=1,Text=wCfg.Title,
+		Font=Enum.Font.GothamBlack,TextSize=16,TextColor3=T.TxtPri,
+		TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9})
+	Bind(TitleL,"TextColor3","TxtPri")
 
-	if cfg.SubTitle ~= "" then
-		New("TextLabel", {
-			Parent             = Topbar,
-			Position           = UDim2.new(0, titleX + 200, 0, 0),
-			Size               = UDim2.new(0, 200, 1, 0),
-			BackgroundTransparency = 1,
-			Text               = cfg.SubTitle,
-			Font               = Enum.Font.Gotham,
-			TextSize           = 13,
-			TextColor3         = T_.TextMuted,
-			TextXAlignment     = Enum.TextXAlignment.Left,
-			ZIndex             = 6,
-		})
+	if wCfg.SubTitle~="" then
+		New("TextLabel",{Parent=TB,Position=UDim2.new(0,titleX+200,0,0),Size=UDim2.new(0,200,1,0),
+			BackgroundTransparency=1,Text=wCfg.SubTitle,Font=Enum.Font.Gotham,TextSize=12,
+			TextColor3=T.TxtMut,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9})
 	end
 
-	-- Stats
-	local StatsLbl = New("TextLabel", {
-		Parent             = Topbar,
-		Position           = UDim2.new(1, -320, 0, 0),
-		Size               = UDim2.new(0, 210, 1, 0),
-		BackgroundTransparency = 1,
-		Text               = "60 FPS | 0ms | 00:00",
-		Font               = Enum.Font.GothamMedium,
-		TextSize           = 12,
-		TextColor3         = T_.TextMuted,
-		TextXAlignment     = Enum.TextXAlignment.Right,
-		ZIndex             = 6,
-	})
-	ThemeBind(StatsLbl, "TextColor3", "TextMuted")
+	-- Stats FPS/Ping/Hora
+	local StatsL=New("TextLabel",{Parent=TB,Position=UDim2.new(1,-310,0,0),Size=UDim2.new(0,200,1,0),
+		BackgroundTransparency=1,Text="— FPS | —ms | --:--",Font=Enum.Font.GothamMedium,TextSize=11,
+		TextColor3=T.TxtMut,TextXAlignment=Enum.TextXAlignment.Right,ZIndex=9})
+	Bind(StatsL,"TextColor3","TxtMut")
 
-	local _fps, _fpsH = 60, {}
-	Connect(RunService.RenderStepped, function(dt)
-		table.insert(_fpsH, 1/dt)
-		if #_fpsH > 30 then table.remove(_fpsH,1) end
-		local s=0; for _,v in ipairs(_fpsH) do s=s+v end
-		_fps = math.floor(s/#_fpsH)
+	local _fps,_fh=60,{}
+	Conn(RS.RenderStepped,function(dt)
+		table.insert(_fh,1/dt); if #_fh>30 then table.remove(_fh,1) end
+		local s=0; for _,v in ipairs(_fh) do s=s+v end; _fps=math.floor(s/#_fh)
 	end)
 	task.spawn(function()
-		while IsAlive() do
-			local ping = 0
-			pcall(function()
-				ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
+		while Alive() do
+			local ping=0; pcall(function()
+				ping=math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
 			end)
-			local t = os.date("*t")
-			StatsLbl.Text = string.format("%d FPS | %dms | %02d:%02d", _fps, ping, t.hour, t.min)
+			local t=os.date("*t")
+			StatsL.Text=string.format("%d FPS  |  %dms  |  %02d:%02d",_fps,ping,t.hour,t.min)
 			task.wait(1)
 		end
 	end)
 
-	-- Botões da janela
-	local function MakeWinBtn(icon, xOff)
-		local btn = New("TextButton", {
-			Parent             = Topbar,
-			Position           = UDim2.new(1, xOff, 0.5, -14),
-			Size               = UDim2.new(0, 28, 0, 28),
-			BackgroundColor3   = T_.BgHover,
-			BorderSizePixel    = 0,
-			Text               = "",
-			AutoButtonColor    = false,
-			ZIndex             = 8,
-		}, {
-			New("UICorner",   { CornerRadius = UDim.new(0,6) }),
-			New("ImageLabel", {
-				Size = UDim2.new(0,14,0,14), Position = UDim2.new(0.5,-7,0.5,-7),
-				BackgroundTransparency = 1, Image = icon,
-				ImageColor3 = T_.TextSecondary, Name = "Ico",
-			}),
+	-- ── BOTÕES DA JANELA ────────────────────────────────────────
+	-- Agrupados dentro do topbar para nunca sair da janela
+	local BtnGroup=New("Frame",{Parent=TB,
+		Position=UDim2.new(1,-80,0.5,-14),Size=UDim2.new(0,72,0,28),
+		BackgroundTransparency=1,ZIndex=12,
+	})
+
+	local function MakeWinBtn(icon,xOff,iconColor)
+		local btn=New("TextButton",{Parent=BtnGroup,
+			Position=UDim2.new(0,xOff,0,0),Size=UDim2.new(0,28,0,28),
+			BackgroundColor3=T.BgCardAlt,BorderSizePixel=0,Text="",
+			AutoButtonColor=false,ZIndex=13,
+		},{
+			New("UICorner",{CornerRadius=UDim.new(0,7)}),
+			New("ImageLabel",{Size=UDim2.new(0,13,0,13),Position=UDim2.new(0.5,-6.5,0.5,-6.5),
+				BackgroundTransparency=1,Image=icon,
+				ImageColor3=iconColor or T.TxtSec,Name="Ico",ZIndex=14}),
 		})
-		ThemeBind(btn, "BackgroundColor3", "BgHover")
-		Connect(btn.MouseEnter, function() TPlay(btn, TW.Fast, {BackgroundColor3 = T_.BgCard}) end)
-		Connect(btn.MouseLeave, function() TPlay(btn, TW.Fast, {BackgroundColor3 = T_.BgHover}) end)
+		Bind(btn,"BackgroundColor3","BgCardAlt")
+		Conn(btn.MouseEnter,function() Tween(btn,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
+		Conn(btn.MouseLeave,function() Tween(btn,TW.Fast,{BackgroundColor3=NL.Theme.BgCardAlt}) end)
 		return btn
 	end
 
-	local CloseBtn    = MakeWinBtn("rbxassetid://7072725342", -10)
-	local MinimizeBtn = MakeWinBtn("rbxassetid://7072719338", -44)
-	CloseBtn:FindFirstChild("Ico").ImageColor3 = Color3.fromRGB(255, 90, 90)
+	-- Minimizar à esquerda, Fechar à direita
+	local MinBtn=MakeWinBtn("rbxassetid://7072719338",0)
+	local ClsBtn=MakeWinBtn("rbxassetid://7072725342",44,Color3.fromRGB(255,80,80))
 
-	MakeDraggable(Topbar, Win)
+	MakeDraggable(TB,Win)
 
-	-- ── SIDEBAR ────────────────────────────────────────────────
-	local sw = T_.SidebarWidth
+	-- ── SIDEBAR (ZIndex=6) ──────────────────────────────────────
+	local sw=T.SidebarW
+	local Sidebar=New("Frame",{Parent=Win,
+		Position=UDim2.new(0,0,0,T.TopbarH+1),
+		Size=UDim2.new(0,sw,1,-(T.TopbarH+1)),
+		BackgroundColor3=T.BgSidebar,BorderSizePixel=0,ClipsDescendants=true,ZIndex=6,
+	},{
+		New("UICorner",{CornerRadius=UDim.new(0,12)}),
+		New("Frame",{Size=UDim2.new(0.6,0,1,0),Position=UDim2.new(0.4,0,0,0),
+			BackgroundColor3=T.BgSidebar,BorderSizePixel=0,Name="SFill"}),
+		New("Frame",{Position=UDim2.new(1,-1,0,0),Size=UDim2.new(0,1,1,0),
+			BackgroundColor3=T.Border,BorderSizePixel=0}),
+	})
+	Bind(Sidebar,"BackgroundColor3","BgSidebar")
+	Bind(Sidebar:FindFirstChild("SFill"),"BackgroundColor3","BgSidebar")
 
-	-- FIX: Sidebar usa BgBase (mesma cor do fundo da janela) para consistência
-	-- A separação visual é feita pela borda direita, não por cor diferente
-	local Sidebar = New("Frame", {
-		Parent           = Win,
-		Position         = UDim2.new(0, 0, 0, T_.TopbarHeight + 1),
-		Size             = UDim2.new(0, sw, 1, -(T_.TopbarHeight + 1)),
-		BackgroundColor3 = T_.BgPanel,
-		BorderSizePixel  = 0,
-		ClipsDescendants = true,
-	}, {
-		New("UICorner", { CornerRadius = UDim.new(0, 10) }),
-		-- Retângulo para tapar arredondamento do lado direito
-		New("Frame", {
-			Size             = UDim2.new(0.5, 0, 1, 0),
-			Position         = UDim2.new(0.5, 0, 0, 0),
-			BackgroundColor3 = T_.BgPanel,
-			BorderSizePixel  = 0,
-			Name             = "SidebarFill",
-		}),
-		-- Borda direita da sidebar
-		New("Frame", {
-			Position         = UDim2.new(1, -1, 0, 0),
-			Size             = UDim2.new(0, 1, 1, 0),
-			BackgroundColor3 = T_.Border,
-			BorderSizePixel  = 0,
-		}),
-	})
-	ThemeBind(Sidebar, "BackgroundColor3", "BgPanel")
-	local SidebarFill = Sidebar:FindFirstChild("SidebarFill")
-	ThemeBind(SidebarFill, "BackgroundColor3", "BgPanel")
+	-- Gradiente sutil na sidebar
+	New("UIGradient",{Parent=Sidebar,
+		Color=ColorSequence.new{
+			ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),
+			ColorSequenceKeypoint.new(1,Color3.fromRGB(240,240,255)),
+		},Transparency=NumberSequence.new{
+			NumberSequenceKeypoint.new(0,0),
+			NumberSequenceKeypoint.new(1,0.05),
+		},Rotation=180})
 
-	-- Avatar no rodapé da sidebar
-	local AvatarFrame = New("Frame", {
-		Parent           = Sidebar,
-		Position         = UDim2.new(0, 0, 1, -64),
-		Size             = UDim2.new(1, 0, 0, 64),
-		BackgroundTransparency = 1,
-		ZIndex           = 3,
-	})
-	New("ImageLabel", {
-		Parent             = AvatarFrame,
-		Position           = UDim2.new(0.5, -18, 0, 6),
-		Size               = UDim2.new(0, 36, 0, 36),
-		BackgroundTransparency = 1,
-		Image              = "https://www.roblox.com/headshot-thumbnail/image?userId="..LocalPlayer.UserId.."&width=420&height=420&format=png",
-	}, {
-		New("UICorner", { CornerRadius = UDim.new(1, 0) }),
-		New("UIStroke", { Color = T_.Border, Thickness = 1.5 }),
-	})
-	local AvatarName = New("TextLabel", {
-		Parent             = AvatarFrame,
-		Position           = UDim2.new(0, 6, 0, 44),
-		Size               = UDim2.new(1, -12, 0, 14),
-		BackgroundTransparency = 1,
-		Text               = LocalPlayer.DisplayName,
-		Font               = Enum.Font.GothamBold,
-		TextSize           = 11,
-		TextColor3         = T_.TextSecondary,
-		TextXAlignment     = Enum.TextXAlignment.Center,
-		TextTruncate       = Enum.TextTruncate.AtEnd,
-	})
-	ThemeBind(AvatarName, "TextColor3", "TextSecondary")
+	-- Avatar + nome na sidebar
+	local AvatarF=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,0,1,-70),
+		Size=UDim2.new(1,0,0,70),BackgroundTransparency=1,ZIndex=7})
+	New("Frame",{Parent=AvatarF,Size=UDim2.new(1,-16,0,1),Position=UDim2.new(0,8,0,0),
+		BackgroundColor3=T.Border,BorderSizePixel=0})
+	New("ImageLabel",{Parent=AvatarF,Position=UDim2.new(0.5,-20,0,8),Size=UDim2.new(0,40,0,40),
+		BackgroundTransparency=1,
+		Image="https://www.roblox.com/headshot-thumbnail/image?userId="..LP.UserId.."&width=420&height=420&format=png",
+		ZIndex=8,
+	},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=T.Accent,Thickness=1.5})})
+	local AvName=New("TextLabel",{Parent=AvatarF,Position=UDim2.new(0,4,0,50),
+		Size=UDim2.new(1,-8,0,16),BackgroundTransparency=1,Text=LP.DisplayName,
+		Font=Enum.Font.GothamBold,TextSize=11,TextColor3=T.TxtSec,
+		TextXAlignment=Enum.TextXAlignment.Center,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=8})
+	Bind(AvName,"TextColor3","TxtSec")
 
-	-- Barra de busca
-	local SearchFrame = New("Frame", {
-		Parent           = Sidebar,
-		Position         = UDim2.new(0, 8, 0, 8),
-		Size             = UDim2.new(1, -16, 0, 30),
-		BackgroundColor3 = T_.BgCard,
-		BorderSizePixel  = 0,
-	}, {
-		New("UICorner", { CornerRadius = UDim.new(0, 6) }),
-		New("UIStroke", { Color = T_.Border, Thickness = 1 }),
+	-- Search box
+	local SrchF=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,8,0,8),
+		Size=UDim2.new(1,-16,0,30),BackgroundColor3=T.BgCard,BorderSizePixel=0,ZIndex=7},{
+		New("UICorner",{CornerRadius=UDim.new(0,7)}),
+		New("UIStroke",{Color=T.Border,Thickness=1}),
 	})
-	ThemeBind(SearchFrame, "BackgroundColor3", "BgCard")
-	ThemeBind(SearchFrame:FindFirstChildOfClass("UIStroke"), "Color", "Border")
+	Bind(SrchF,"BackgroundColor3","BgCard")
+	Bind(SrchF:FindFirstChildOfClass("UIStroke"),"Color","Border")
+	New("ImageLabel",{Parent=SrchF,Position=UDim2.new(0,8,0.5,-8),Size=UDim2.new(0,14,0,14),
+		BackgroundTransparency=1,Image="rbxassetid://3926305904",ImageColor3=T.TxtMut,ZIndex=8})
+	local SrchBox=New("TextBox",{Parent=SrchF,Position=UDim2.new(0,28,0,0),Size=UDim2.new(1,-34,1,0),
+		BackgroundTransparency=1,PlaceholderText="Buscar tabs...",PlaceholderColor3=T.TxtMut,
+		Text="",Font=Enum.Font.GothamMedium,TextSize=12,TextColor3=T.TxtPri,ClearTextOnFocus=false,ZIndex=8})
+	Bind(SrchBox,"TextColor3","TxtPri")
 
-	New("ImageLabel", {
-		Parent = SearchFrame,
-		Position = UDim2.new(0, 8, 0.5, -8),
-		Size = UDim2.new(0, 16, 0, 16),
-		BackgroundTransparency = 1,
-		Image = "rbxassetid://3926305904",
-		ImageColor3 = T_.TextMuted,
-	})
-	local SearchBox = New("TextBox", {
-		Parent             = SearchFrame,
-		Position           = UDim2.new(0, 30, 0, 0),
-		Size               = UDim2.new(1, -36, 1, 0),
-		BackgroundTransparency = 1,
-		PlaceholderText    = "Buscar...",
-		PlaceholderColor3  = T_.TextMuted,
-		Text               = "",
-		Font               = Enum.Font.GothamMedium,
-		TextSize           = 12,
-		TextColor3         = T_.TextPrimary,
-		ClearTextOnFocus   = false,
-	})
-	ThemeBind(SearchBox, "TextColor3", "TextPrimary")
-
-	-- Lista de tabs com scroll
-	local TabScroll = MakeScrollFrame(Sidebar)
-	TabScroll.Position = UDim2.new(0, 0, 0, 46)
-	TabScroll.Size     = UDim2.new(1, 0, 1, -110)
-	New("UIListLayout", {
-		Parent    = TabScroll,
-		SortOrder = Enum.SortOrder.LayoutOrder,
-		Padding   = UDim.new(0, 2),
-	})
-	New("UIPadding", {
-		Parent        = TabScroll,
-		PaddingLeft   = UDim.new(0, 6),
-		PaddingRight  = UDim.new(0, 6),
-		PaddingTop    = UDim.new(0, 4),
-		PaddingBottom = UDim.new(0, 4),
-	})
-	Connect(TabScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-		TabScroll.CanvasSize = UDim2.new(0, 0, 0, TabScroll.UIListLayout.AbsoluteContentSize.Y + 8)
+	-- Tab scroll
+	local TabScroll=MakeScroll(Sidebar)
+	TabScroll.Position=UDim2.new(0,0,0,46); TabScroll.Size=UDim2.new(1,0,1,-116)
+	TabScroll.ZIndex=7
+	New("UIListLayout",{Parent=TabScroll,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,3)})
+	New("UIPadding",{Parent=TabScroll,PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7),
+		PaddingTop=UDim.new(0,5),PaddingBottom=UDim.new(0,5)})
+	Conn(TabScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),function()
+		TabScroll.CanvasSize=UDim2.new(0,0,0,TabScroll.UIListLayout.AbsoluteContentSize.Y+10)
 	end)
-
-	Connect(SearchBox:GetPropertyChangedSignal("Text"), function()
-		local q = SearchBox.Text:lower()
-		for name, tabData in pairs(AllTabs) do
-			tabData.Btn.Visible = q == "" or name:lower():find(q, 1, true) ~= nil
+	Conn(SrchBox:GetPropertyChangedSignal("Text"),function()
+		local q=SrchBox.Text:lower()
+		for name,td in pairs(AllTabs) do
+			td.Btn.Visible=(q=="" or name:lower():find(q,1,true)~=nil)
 		end
 	end)
 
-	-- ── ÁREA DE CONTEÚDO ────────────────────────────────────────
-	-- FIX: Área de conteúdo usa BgBase (mesma cor da janela), não transparente
-	local ContentArea = New("Frame", {
-		Parent           = Win,
-		Position         = UDim2.new(0, sw, 0, T_.TopbarHeight + 1),
-		Size             = UDim2.new(1, -sw, 1, -(T_.TopbarHeight + 1)),
-		BackgroundColor3 = T_.BgBase,
-		BorderSizePixel  = 0,
-		ClipsDescendants = true,
+	-- ── CONTEÚDO (mesma cor que a janela, ZIndex=5) ─────────────
+	local ContentArea=New("Frame",{Parent=Win,
+		Position=UDim2.new(0,sw,0,T.TopbarH+1),
+		Size=UDim2.new(1,-sw,1,-(T.TopbarH+1)),
+		BackgroundColor3=T.BgContent,BorderSizePixel=0,ClipsDescendants=true,ZIndex=5,
 	})
-	ThemeBind(ContentArea, "BackgroundColor3", "BgBase")
+	Bind(ContentArea,"BackgroundColor3","BgContent")
 
-	-- Alça de resize (canto inferior direito)
-	local RszBtn = New("TextButton", {
-		Parent             = Win,
-		Position           = UDim2.new(1, -18, 1, -18),
-		Size               = UDim2.new(0, 18, 0, 18),
-		BackgroundTransparency = 1,
-		Text               = "",
-		ZIndex             = 10,
-	})
-	for row = 0, 1 do
-		for col = 0, 1 do
-			New("Frame", {
-				Parent           = RszBtn,
-				Position         = UDim2.new(0, 4 + col*7, 0, 4 + row*7),
-				Size             = UDim2.new(0, 4, 0, 4),
-				BackgroundColor3 = T_.TextMuted,
-				BorderSizePixel  = 0,
-			}, { New("UICorner", {CornerRadius = UDim.new(1,0)}) })
-		end
-	end
-
+	-- ── RESIZE HANDLE ──────────────────────────────────────────
+	local RszBtn=New("TextButton",{Parent=Win,Position=UDim2.new(1,-20,1,-20),
+		Size=UDim2.new(0,20,0,20),BackgroundTransparency=1,Text="",ZIndex=15})
+	for r=0,2 do New("Frame",{Parent=RszBtn,Position=UDim2.new(0,2+r*6,0,2+r*6),
+		Size=UDim2.new(0,4,0,4),BackgroundColor3=T.TxtMut,BorderSizePixel=0},{
+		New("UICorner",{CornerRadius=UDim.new(1,0)})}) end
 	do
-		local resizing, rStart, rSize = false
-		Connect(RszBtn.InputBegan, function(inp)
-			if inp.UserInputType == Enum.UserInputType.MouseButton1 then
-				resizing = true
-				rStart   = Vector2.new(inp.Position.X, inp.Position.Y)
-				rSize    = Vector2.new(Win.AbsoluteSize.X, Win.AbsoluteSize.Y)
+		local rz,rs,rsz=false
+		Conn(RszBtn.InputBegan,function(i)
+			if i.UserInputType==Enum.UserInputType.MouseButton1 then
+				rz=true; rs=Vector2.new(i.Position.X,i.Position.Y)
+				rsz=Vector2.new(Win.AbsoluteSize.X,Win.AbsoluteSize.Y)
 			end
 		end)
-		Connect(UserInputService.InputChanged, function(inp)
-			if resizing and inp.UserInputType == Enum.UserInputType.MouseMovement then
-				local d = Vector2.new(inp.Position.X, inp.Position.Y) - rStart
-				local nw = math.clamp(rSize.X + d.X, 480, 1400)
-				local nh = math.clamp(rSize.Y + d.Y, 300, 900)
-				Win.Size = UDim2.new(0, nw, 0, nh)
+		Conn(UIS.InputChanged,function(i)
+			if rz and i.UserInputType==Enum.UserInputType.MouseMovement then
+				local d=Vector2.new(i.Position.X,i.Position.Y)-rs
+				Win.Size=UDim2.new(0,math.clamp(rsz.X+d.X,480,1500),0,math.clamp(rsz.Y+d.Y,300,900))
 			end
 		end)
-		Connect(UserInputService.InputEnded, function(inp)
-			if inp.UserInputType == Enum.UserInputType.MouseButton1 then resizing = false end
+		Conn(UIS.InputEnded,function(i)
+			if i.UserInputType==Enum.UserInputType.MouseButton1 then rz=false end
 		end)
 	end
 
-	-- ── LÓGICA DOS BOTÕES DA JANELA ─────────────────────────────
-	local origSize = Win.Size
-
-	-- FIX: Fechar — desbloqueia cursor corretamente
-	Connect(CloseBtn.MouseButton1Up, function()
-		PlaySound("rbxassetid://6698737249", 0.5)
-		Win.Visible  = false
-		Hidden       = true
-		ModalBtn.Visible = false
-		ModalBtn.Modal   = false
-		UserInputService.MouseBehavior    = Enum.MouseBehavior.LockCenter
-		UserInputService.MouseIconEnabled = false
-		NexusLib:Notify({ Title = "Interface Oculto", Message = "Pressione "..cfg.ToggleKey.." para reabrir", Duration = 4 })
-		cfg.CloseCallback()
+	-- ── BOTÃO FECHAR ───────────────────────────────────────────
+	local origSz=Win.Size
+	Conn(ClsBtn.MouseButton1Up,function()
+		Sound("rbxassetid://6698737249",0.5)
+		Win.Visible=false; Hidden=true
+		Modal.Visible=false; Modal.Modal=false
+		UIS.MouseBehavior=Enum.MouseBehavior.LockCenter
+		UIS.MouseIconEnabled=false
+		NL:Notify({Title="Interface Oculto",Message="Pressione "..wCfg.ToggleKey.." para reabrir",Duration=4})
+		wCfg.CloseCallback()
 	end)
 
-	Connect(MinimizeBtn.MouseButton1Up, function()
-		PlaySound("rbxassetid://6698737249", 0.4)
+	-- ── BOTÃO MINIMIZAR ────────────────────────────────────────
+	Conn(MinBtn.MouseButton1Up,function()
+		Sound("rbxassetid://6698737249",0.4)
 		if Minimized then
-			Minimized = false
-			MinimizeBtn:FindFirstChild("Ico").Image = "rbxassetid://7072719338"
-			TPlay(Win, TW.Back, { Size = origSize })
-			task.wait(0.05)
-			Sidebar.Visible     = true
-			ContentArea.Visible = true
+			Minimized=false
+			MinBtn:FindFirstChild("Ico").Image="rbxassetid://7072719338"
+			Tween(Win,TW.Back,{Size=origSz})
+			task.wait(0.06)
+			Sidebar.Visible=true; ContentArea.Visible=true
 		else
-			origSize = Win.Size
-			Minimized = true
-			MinimizeBtn:FindFirstChild("Ico").Image = "rbxassetid://7072720870"
-			Sidebar.Visible     = false
-			ContentArea.Visible = false
-			TPlay(Win, TW.Back, { Size = UDim2.new(0, math.max(360, #cfg.Title*14 + 200), 0, T_.TopbarHeight) })
+			origSz=Win.Size; Minimized=true
+			MinBtn:FindFirstChild("Ico").Image="rbxassetid://7072720870"
+			Sidebar.Visible=false; ContentArea.Visible=false
+			Tween(Win,TW.Back,{Size=UDim2.new(0,math.max(380,#wCfg.Title*15+220),0,T.TopbarH)})
 		end
 	end)
 
-	-- FIX: Toggle key — usando gameProcessed corretamente,
-	-- e alterando MouseBehavior APENAS quando necessário
-	Connect(UserInputService.InputBegan, function(inp, gp)
+	-- ── TOGGLE KEY ─────────────────────────────────────────────
+	Conn(UIS.InputBegan,function(inp,gp)
 		if gp then return end
-		local keyOk = pcall(function()
-			return inp.KeyCode == Enum.KeyCode[cfg.ToggleKey]
-		end)
-		if not keyOk then return end
-		if inp.KeyCode ~= Enum.KeyCode[cfg.ToggleKey] then return end
-
+		local ok=pcall(function() return inp.KeyCode==Enum.KeyCode[wCfg.ToggleKey] end)
+		if not ok then return end
+		if inp.KeyCode~=Enum.KeyCode[wCfg.ToggleKey] then return end
 		if Hidden then
-			-- Abrir
-			Hidden       = false
-			Win.Visible  = true
-			ModalBtn.Visible = true
-			ModalBtn.Modal   = true
-			UserInputService.MouseBehavior    = Enum.MouseBehavior.Default
-			UserInputService.MouseIconEnabled = true
+			Hidden=false; Win.Visible=true
+			Modal.Visible=true; Modal.Modal=true
+			UIS.MouseBehavior=Enum.MouseBehavior.Default
+			UIS.MouseIconEnabled=true
 		else
-			-- Fechar
-			Hidden       = true
-			Win.Visible  = false
-			ModalBtn.Visible = false
-			ModalBtn.Modal   = false
-			UserInputService.MouseBehavior    = Enum.MouseBehavior.LockCenter
-			UserInputService.MouseIconEnabled = false
-			cfg.CloseCallback()
+			Hidden=true; Win.Visible=false
+			Modal.Visible=false; Modal.Modal=false
+			UIS.MouseBehavior=Enum.MouseBehavior.LockCenter
+			UIS.MouseIconEnabled=false
+			wCfg.CloseCallback()
 		end
 	end)
 
 	-- ── INTRO ──────────────────────────────────────────────────
-	if cfg.IntroEnabled then
-		Win.Visible      = false
-		ModalBtn.Visible = false
-		ModalBtn.Modal   = false
+	if wCfg.IntroEnabled then
+		Win.Visible=false; Modal.Visible=false; Modal.Modal=false
 		task.spawn(function()
-			local Bg = New("Frame", {
-				Parent             = Root,
-				Size               = UDim2.new(1, 0, 1, 0),
-				BackgroundColor3   = Color3.fromRGB(5, 5, 8),
-				ZIndex             = 200,
+			local Bg=New("Frame",{Parent=Root,Size=UDim2.new(1,0,1,0),
+				BackgroundColor3=Color3.fromRGB(4,4,8),ZIndex=200})
+			New("UIGradient",{Parent=Bg,Color=ColorSequence.new{
+				ColorSequenceKeypoint.new(0,Color3.fromRGB(6,6,14)),
+				ColorSequenceKeypoint.new(1,Color3.fromRGB(10,6,18)),
+			},Rotation=135})
+			local Logo=New("TextLabel",{Parent=Bg,Position=UDim2.new(0.5,0,0.5,-24),
+				Size=UDim2.new(0,500,0,48),AnchorPoint=Vector2.new(0.5,0.5),
+				BackgroundTransparency=1,Text=wCfg.IntroText,Font=Enum.Font.GothamBlack,
+				TextSize=38,TextColor3=NL.Theme.TxtPri,TextXAlignment=Enum.TextXAlignment.Center,
+				TextTransparency=1,ZIndex=201})
+			-- Linha brilhante
+			local LnBg=New("Frame",{Parent=Bg,Position=UDim2.new(0.5,-130,0.5,34),
+				Size=UDim2.new(0,260,0,2),BackgroundColor3=Color3.fromRGB(20,20,40),ZIndex=201},{
+				New("UICorner",{CornerRadius=UDim.new(1,0)})})
+			local Ln=New("Frame",{Parent=LnBg,Size=UDim2.new(0,0,1,0),
+				BackgroundColor3=NL.Theme.Accent,ZIndex=202},{
+				New("UICorner",{CornerRadius=UDim.new(1,0)}),
+				New("UIGradient",{Color=ColorSequence.new{
+					ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),
+					ColorSequenceKeypoint.new(0.5,NL.Theme.Accent),
+					ColorSequenceKeypoint.new(1,NL.Theme.Accent),
+				}}),
 			})
-			local Logo = New("TextLabel", {
-				Parent             = Bg,
-				Position           = UDim2.new(0.5, 0, 0.5, -20),
-				Size               = UDim2.new(0, 500, 0, 50),
-				AnchorPoint        = Vector2.new(0.5, 0.5),
-				BackgroundTransparency = 1,
-				Text               = cfg.IntroText,
-				Font               = Enum.Font.GothamBlack,
-				TextSize           = 36,
-				TextColor3         = NexusLib.Theme.TextPrimary,
-				TextXAlignment     = Enum.TextXAlignment.Center,
-				TextTransparency   = 1,
-				ZIndex             = 201,
-			})
-			local BarBg = New("Frame", {
-				Parent           = Bg,
-				Position         = UDim2.new(0.5, -120, 0.5, 38),
-				Size             = UDim2.new(0, 240, 0, 2),
-				BackgroundColor3 = Color3.fromRGB(30, 30, 45),
-				ZIndex           = 201,
-			}, { New("UICorner", {CornerRadius = UDim.new(1,0)}) })
-			local Bar = New("Frame", {
-				Parent           = BarBg,
-				Size             = UDim2.new(0, 0, 1, 0),
-				BackgroundColor3 = NexusLib.Theme.Accent,
-				ZIndex           = 202,
-			}, { New("UICorner", {CornerRadius = UDim.new(1,0)}) })
-
-			TPlay(Logo, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {TextTransparency = 0})
-			task.wait(0.3)
-			TPlay(Bar,  TweenInfo.new(1.2, Enum.EasingStyle.Quad,  Enum.EasingDirection.InOut), {Size = UDim2.new(1,0,1,0)})
-			task.wait(1.3)
-			TPlay(Logo, TweenInfo.new(0.35, Enum.EasingStyle.Quad), {TextTransparency = 1})
-			TPlay(Bg,   TweenInfo.new(0.4,  Enum.EasingStyle.Quad), {BackgroundTransparency = 1})
-			task.wait(0.45)
-			Bg:Destroy()
-			Win.Visible      = true
-			ModalBtn.Visible = true
-			ModalBtn.Modal   = true
-			UserInputService.MouseIconEnabled = true
+			Tween(Logo,TweenInfo.new(0.55,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),{TextTransparency=0})
+			task.wait(0.25)
+			Tween(Ln,TweenInfo.new(1.3,Enum.EasingStyle.Quint,Enum.EasingDirection.InOut),{Size=UDim2.new(1,0,1,0)})
+			task.wait(1.4)
+			Tween(Logo,TweenInfo.new(0.3,Enum.EasingStyle.Quad),{TextTransparency=1})
+			Tween(Bg,TweenInfo.new(0.4,Enum.EasingStyle.Quad),{BackgroundTransparency=1})
+			task.wait(0.45); Bg:Destroy()
+			Win.Visible=true; Modal.Visible=true; Modal.Modal=true
+			UIS.MouseIconEnabled=true
 		end)
 	else
-		Win.Visible      = true
-		ModalBtn.Visible = true
-		ModalBtn.Modal   = true
-		UserInputService.MouseIconEnabled = true
+		Win.Visible=true; Modal.Visible=true; Modal.Modal=true
+		UIS.MouseIconEnabled=true
 	end
 
-	-- ── FUNÇÃO MakeTab ─────────────────────────────────────────
-	local TabFunction = {}
-	local firstTab = true
+	-- ══════════════════════════════════════════════════════════
+	-- MAKE TAB
+	-- ══════════════════════════════════════════════════════════
+	local TabFn={}
+	local firstTab=true
 
-	function TabFunction:MakeTab(tabCfg)
-		tabCfg        = tabCfg or {}
-		tabCfg.Name   = tabCfg.Name   or "Tab"
-		tabCfg.Icon   = tabCfg.Icon   or ""
-
-		local T_ = NexusLib.Theme
+	function TabFn:MakeTab(tCfg)
+		tCfg=tCfg or {}; tCfg.Name=tCfg.Name or "Tab"; tCfg.Icon=tCfg.Icon or ""
+		local T=NL.Theme
 
 		-- Botão da sidebar
-		local TabBtn = New("TextButton", {
-			Parent             = TabScroll,
-			Size               = UDim2.new(1, 0, 0, 34),
-			BackgroundColor3   = T_.BgPanel,
-			BorderSizePixel    = 0,
-			Text               = "",
-			AutoButtonColor    = false,
-		}, {
-			New("UICorner", { CornerRadius = UDim.new(0, 6) }),
+		local TBtn=New("TextButton",{Parent=TabScroll,Size=UDim2.new(1,0,0,36),
+			BackgroundColor3=T.BgCard,BorderSizePixel=0,Text="",AutoButtonColor=false,ZIndex=8},{
+			New("UICorner",{CornerRadius=UDim.new(0,8)}),
 		})
-		ThemeBind(TabBtn, "BackgroundColor3", "BgPanel")
+		Bind(TBtn,"BackgroundColor3","BgCard")
 
-		-- Barra indicadora de tab ativa
-		local IndBar = New("Frame", {
-			Parent           = TabBtn,
-			Position         = UDim2.new(0, 0, 0.15, 0),
-			Size             = UDim2.new(0, 3, 0.7, 0),
-			BackgroundColor3 = T_.Accent,
-			BorderSizePixel  = 0,
-			BackgroundTransparency = 1,
-		}, { New("UICorner", {CornerRadius = UDim.new(1,0)}) })
-		ThemeBind(IndBar, "BackgroundColor3", "Accent")
+		-- Barra indicadora esquerda
+		local IndBar=New("Frame",{Parent=TBtn,Position=UDim2.new(0,0,0.15,0),
+			Size=UDim2.new(0,3,0.7,0),BackgroundColor3=T.Accent,BorderSizePixel=0,
+			BackgroundTransparency=1},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+		Bind(IndBar,"BackgroundColor3","Accent")
 
-		-- Ícone
-		local TabIco = New("ImageLabel", {
-			Parent             = TabBtn,
-			Position           = UDim2.new(0, 10, 0.5, -9),
-			Size               = UDim2.new(0, 18, 0, 18),
-			BackgroundTransparency = 1,
-			Image              = tabCfg.Icon,
-			ImageColor3        = T_.TextMuted,
-		})
-		-- Label
-		local TabLbl = New("TextLabel", {
-			Parent             = TabBtn,
-			Position           = UDim2.new(0, 34, 0, 0),
-			Size               = UDim2.new(1, -40, 1, 0),
-			BackgroundTransparency = 1,
-			Text               = tabCfg.Name,
-			Font               = Enum.Font.GothamSemibold,
-			TextSize           = 13,
-			TextColor3         = T_.TextMuted,
-			TextXAlignment     = Enum.TextXAlignment.Left,
-			TextTruncate       = Enum.TextTruncate.AtEnd,
-		})
+		local TIco=New("ImageLabel",{Parent=TBtn,Position=UDim2.new(0,12,0.5,-9),
+			Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,Image=tCfg.Icon,ImageColor3=T.TxtMut,ZIndex=9})
+		local TLbl=New("TextLabel",{Parent=TBtn,Position=UDim2.new(0,38,0,0),
+			Size=UDim2.new(1,-44,1,0),BackgroundTransparency=1,Text=tCfg.Name,
+			Font=Enum.Font.GothamSemibold,TextSize=13,TextColor3=T.TxtMut,
+			TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=9})
 
 		-- Scroll de conteúdo
-		local ContentScroll = MakeScrollFrame(ContentArea)
-		ContentScroll.Size     = UDim2.new(1, 0, 1, 0)
-		ContentScroll.Position = UDim2.new(0, 0, 0, 0)
-		ContentScroll.Visible  = false
-		New("UIListLayout",{
-			Parent    = ContentScroll,
-			SortOrder = Enum.SortOrder.LayoutOrder,
-			Padding   = UDim.new(0, 6),
-		})
-		New("UIPadding",{
-			Parent        = ContentScroll,
-			PaddingLeft   = UDim.new(0, 14),
-			PaddingRight  = UDim.new(0, 14),
-			PaddingTop    = UDim.new(0, 14),
-			PaddingBottom = UDim.new(0, 14),
-		})
-		Connect(ContentScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"), function()
-			ContentScroll.CanvasSize = UDim2.new(0, 0, 0, ContentScroll.UIListLayout.AbsoluteContentSize.Y + 28)
+		local CS=MakeScroll(ContentArea)
+		CS.Size=UDim2.new(1,0,1,0); CS.Position=UDim2.new(0,0,0,0)
+		CS.Visible=false; CS.ZIndex=6
+		New("UIListLayout",{Parent=CS,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,6)})
+		New("UIPadding",{Parent=CS,PaddingLeft=UDim.new(0,16),PaddingRight=UDim.new(0,16),
+			PaddingTop=UDim.new(0,16),PaddingBottom=UDim.new(0,16)})
+		Conn(CS.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),function()
+			CS.CanvasSize=UDim2.new(0,0,0,CS.UIListLayout.AbsoluteContentSize.Y+32)
 		end)
 
-		AllTabs[tabCfg.Name] = { Btn = TabBtn, Content = ContentScroll }
+		AllTabs[tCfg.Name]={Btn=TBtn,Content=CS}
 
-		-- FIX: Ativar tab com highlight correto
-		local function ActivateTab()
-			for _, td in pairs(AllTabs) do
-				-- Desativar outros
-				TPlay(td.Btn, TW.Fast, {BackgroundColor3 = T_.BgPanel})
-				local bar = td.Btn:FindFirstChildOfClass("Frame")
-				if bar then TPlay(bar, TW.Fast, {BackgroundTransparency = 1}) end
-				local ico = td.Btn:FindFirstChildOfClass("ImageLabel")
-				local lbl = td.Btn:FindFirstChildOfClass("TextLabel")
-				if ico then TPlay(ico, TW.Fast, {ImageColor3 = T_.TextMuted}) end
-				if lbl then TPlay(lbl, TW.Fast, {TextColor3 = T_.TextMuted}) end
-				td.Content.Visible = false
+		local function Activate()
+			for _,td in pairs(AllTabs) do
+				Tween(td.Btn,TW.Fast,{BackgroundColor3=NL.Theme.BgCard})
+				local bar=td.Btn:FindFirstChildOfClass("Frame")
+				if bar then Tween(bar,TW.Fast,{BackgroundTransparency=1}) end
+				local ico=td.Btn:FindFirstChildOfClass("ImageLabel")
+				local lbl=td.Btn:FindFirstChildOfClass("TextLabel")
+				if ico then Tween(ico,TW.Fast,{ImageColor3=NL.Theme.TxtMut}) end
+				if lbl then Tween(lbl,TW.Fast,{TextColor3=NL.Theme.TxtMut}) end
+				td.Content.Visible=false
 			end
-			-- Ativar tab atual
-			TPlay(TabBtn,  TW.Fast, {BackgroundColor3 = T_.BgHover})
-			TPlay(IndBar,  TW.Fast, {BackgroundTransparency = 0})
-			TPlay(TabIco,  TW.Fast, {ImageColor3 = T_.Accent})
-			TPlay(TabLbl,  TW.Fast, {TextColor3  = T_.TextPrimary})
-			ContentScroll.Visible = true
-			ActiveTab = tabCfg.Name
+			Tween(TBtn,TW.Fast,{BackgroundColor3=NL.Theme.BgHover})
+			Tween(IndBar,TW.Fast,{BackgroundTransparency=0})
+			Tween(TIco,TW.Fast,{ImageColor3=NL.Theme.Accent})
+			Tween(TLbl,TW.Fast,{TextColor3=NL.Theme.TxtPri})
+			CS.Visible=true; ActiveTab=tCfg.Name
 		end
 
-		Connect(TabBtn.MouseButton1Up, ActivateTab)
-		Connect(TabBtn.MouseEnter, function()
-			if ActiveTab ~= tabCfg.Name then
-				TPlay(TabBtn, TW.Fast, {BackgroundColor3 = T_.BgCard})
-			end
+		Conn(TBtn.MouseButton1Up,Activate)
+		Conn(TBtn.MouseEnter,function()
+			if ActiveTab~=tCfg.Name then Tween(TBtn,TW.Fast,{BackgroundColor3=NL.Theme.BgCardAlt}) end
 		end)
-		Connect(TabBtn.MouseLeave, function()
-			if ActiveTab ~= tabCfg.Name then
-				TPlay(TabBtn, TW.Fast, {BackgroundColor3 = T_.BgPanel})
-			end
+		Conn(TBtn.MouseLeave,function()
+			if ActiveTab~=tCfg.Name then Tween(TBtn,TW.Fast,{BackgroundColor3=NL.Theme.BgCard}) end
 		end)
 
-		if firstTab then
-			firstTab = false
-			ActivateTab()
-		end
+		if firstTab then firstTab=false; Activate() end
 
-		-- ── HELPERS DE ELEMENTOS ───────────────────────────────
-		local function BuildElements(parent)
-			local E = {}
+		-- ══════════════════════════════════════════════════════
+		-- ELEMENT BUILDERS
+		-- ══════════════════════════════════════════════════════
+		local function BuildElements(par)
+			local E={}
 
-			-- LABEL
 			function E:AddLabel(text)
-				local lbl = New("TextLabel", {
-					Parent             = parent,
-					Size               = UDim2.new(1, 0, 0, 24),
-					BackgroundTransparency = 1,
-					Text               = text or "",
-					Font               = Enum.Font.GothamMedium,
-					TextSize           = 13,
-					TextColor3         = NexusLib.Theme.TextSecondary,
-					TextXAlignment     = Enum.TextXAlignment.Left,
-				})
-				ThemeBind(lbl, "TextColor3", "TextSecondary")
-				local L = {}
-				function L:Set(t) lbl.Text = t end
-				return L
+				local l=New("TextLabel",{Parent=par,Size=UDim2.new(1,0,0,24),
+					BackgroundTransparency=1,Text=text or "",Font=Enum.Font.GothamMedium,TextSize=13,
+					TextColor3=NL.Theme.TxtSec,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(l,"TextColor3","TxtSec")
+				return {Set=function(_,t) l.Text=t end}
 			end
 
-			-- PARAGRAPH
-			function E:AddParagraph(title, body)
-				local card = MakeCard(parent)
-				card.Size = UDim2.new(1, 0, 0, 0)
-				card.AutomaticSize = Enum.AutomaticSize.Y
-				New("UIPadding",{Parent=card,PaddingLeft=UDim.new(0,12),PaddingRight=UDim.new(0,12),PaddingTop=UDim.new(0,10),PaddingBottom=UDim.new(0,10)})
-				local h = New("TextLabel",{
-					Parent=card,Size=UDim2.new(1,0,0,18),
-					BackgroundTransparency=1,Text=title or "",
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=NexusLib.Theme.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(h,"TextColor3","TextPrimary")
-				local b = New("TextLabel",{
-					Parent=card,Position=UDim2.new(0,0,0,22),
-					Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
-					BackgroundTransparency=1,Text=body or "",
-					Font=Enum.Font.GothamMedium,TextSize=13,TextWrapped=true,
-					TextColor3=NexusLib.Theme.TextSecondary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(b,"TextColor3","TextSecondary")
-				local P={}
-				function P:Set(t) b.Text=t end
-				function P:SetTitle(t) h.Text=t end
-				return P
+			function E:AddParagraph(title,body)
+				local c=MakeCard(par); c.Size=UDim2.new(1,0,0,0); c.AutomaticSize=Enum.AutomaticSize.Y
+				New("UIPadding",{Parent=c,PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),
+					PaddingTop=UDim.new(0,12),PaddingBottom=UDim.new(0,12)})
+				local h=New("TextLabel",{Parent=c,Size=UDim2.new(1,0,0,18),BackgroundTransparency=1,
+					Text=title or "",Font=Enum.Font.GothamBold,TextSize=14,TextColor3=NL.Theme.TxtPri,
+					TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(h,"TextColor3","TxtPri")
+				local b=New("TextLabel",{Parent=c,Position=UDim2.new(0,0,0,22),Size=UDim2.new(1,0,0,0),
+					AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1,Text=body or "",
+					Font=Enum.Font.GothamMedium,TextSize=13,TextWrapped=true,TextColor3=NL.Theme.TxtSec,
+					TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(b,"TextColor3","TxtSec")
+				return {Set=function(_,t) b.Text=t end, SetTitle=function(_,t) h.Text=t end}
 			end
 
-			-- PLAYER PARAGRAPH
-			function E:AddPlayerParagraph(userId)
-				userId = userId or 0
-				local displayName, username = "Unknown", "Unknown"
-				local ok, res = pcall(function() return UserService:GetUserInfosByUserIdsAsync({userId}) end)
-				if ok and res and res[1] then
-					displayName = res[1].DisplayName or "Unknown"
-					username    = res[1].Username    or "Unknown"
-				end
-				local card = MakeCard(parent)
-				card.Size = UDim2.new(1, 0, 0, 70)
-				New("UIPadding",{Parent=card,PaddingLeft=UDim.new(0,5),PaddingRight=UDim.new(0,5),PaddingTop=UDim.new(0,5),PaddingBottom=UDim.new(0,5)})
-				local avatar = New("ImageLabel",{
-					Parent=card,Size=UDim2.new(0,60,0,60),Position=UDim2.new(0,0,0,0),
-					BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..userId.."&width=420&height=420&format=png",
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1})})
-				local dname = New("TextLabel",{
-					Parent=card,Size=UDim2.new(1,-70,0,20),Position=UDim2.new(0,70,0,10),
-					BackgroundTransparency=1,Text=displayName,Font=Enum.Font.GothamBold,TextSize=15,
-					TextColor3=NexusLib.Theme.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(dname,"TextColor3","TextPrimary")
-				local uname = New("TextLabel",{
-					Parent=card,Size=UDim2.new(1,-70,0,20),Position=UDim2.new(0,70,0,35),
-					BackgroundTransparency=1,Text=username,Font=Enum.Font.GothamSemibold,TextSize=13,
-					TextColor3=NexusLib.Theme.TextSecondary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(uname,"TextColor3","TextSecondary")
+			function E:AddPlayerParagraph(uid)
+				uid=uid or 0
+				local dn,un="Unknown","Unknown"
+				local ok,res=pcall(function() return USvc:GetUserInfosByUserIdsAsync({uid}) end)
+				if ok and res and res[1] then dn=res[1].DisplayName or "Unknown"; un=res[1].Username or "Unknown" end
+				local c=MakeCard(par); c.Size=UDim2.new(1,0,0,72)
+				New("UIPadding",{Parent=c,PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),
+					PaddingTop=UDim.new(0,6),PaddingBottom=UDim.new(0,6)})
+				local av=New("ImageLabel",{Parent=c,Size=UDim2.new(0,60,0,60),BackgroundTransparency=1,
+					Image="https://www.roblox.com/headshot-thumbnail/image?userId="..uid.."&width=420&height=420&format=png"},{
+					New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=NL.Theme.Border,Thickness=1.5})})
+				local dl=New("TextLabel",{Parent=c,Size=UDim2.new(1,-72,0,22),Position=UDim2.new(0,72,0,10),
+					BackgroundTransparency=1,Text=dn,Font=Enum.Font.GothamBold,TextSize=15,
+					TextColor3=NL.Theme.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(dl,"TextColor3","TxtPri")
+				local ul=New("TextLabel",{Parent=c,Size=UDim2.new(1,-72,0,18),Position=UDim2.new(0,72,0,36),
+					BackgroundTransparency=1,Text=un,Font=Enum.Font.GothamSemibold,TextSize=12,
+					TextColor3=NL.Theme.TxtSec,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(ul,"TextColor3","TxtSec")
 				local PP={}
-				function PP:Set(newUserId)
-					newUserId = newUserId or 0
-					local d2, u2 = "Unknown", "Unknown"
-					local ok2, data2 = pcall(function() return UserService:GetUserInfosByUserIdsAsync({newUserId}) end)
-					if ok2 and data2 and data2[1] then
-						d2 = data2[1].DisplayName or "Unknown"
-						u2 = data2[1].Username    or "Unknown"
-					end
-					dname.Text  = d2
-					uname.Text  = u2
-					avatar.Image = "https://www.roblox.com/headshot-thumbnail/image?userId="..newUserId.."&width=420&height=420&format=png"
+				function PP:Set(newId)
+					newId=newId or 0
+					local d2,u2="Unknown","Unknown"
+					local ok2,r2=pcall(function() return USvc:GetUserInfosByUserIdsAsync({newId}) end)
+					if ok2 and r2 and r2[1] then d2=r2[1].DisplayName or "Unknown"; u2=r2[1].Username or "Unknown" end
+					dl.Text=d2; ul.Text=u2
+					av.Image="https://www.roblox.com/headshot-thumbnail/image?userId="..newId.."&width=420&height=420&format=png"
 				end
 				return PP
 			end
 
-			-- BUTTON
 			function E:AddButton(bCfg)
-				bCfg          = bCfg or {}
-				bCfg.Name     = bCfg.Name     or "Button"
-				bCfg.Callback = bCfg.Callback or function() end
-				bCfg.Icon     = bCfg.Icon     or ""
-
-				local T_ = NexusLib.Theme
-				local card = MakeCard(parent)
-				card.Size = UDim2.new(1, 0, 0, 36)
-
-				New("TextLabel",{
-					Parent=card,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-40,1,0),
-					BackgroundTransparency=1,Text=bCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(card:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-
-				if bCfg.Icon ~= "" then
-					New("ImageLabel",{
-						Parent=card,Position=UDim2.new(1,-30,0.5,-9),Size=UDim2.new(0,18,0,18),
-						BackgroundTransparency=1,Image=bCfg.Icon,ImageColor3=T_.TextMuted,
-					})
+				bCfg=bCfg or {}; bCfg.Name=bCfg.Name or "Button"
+				bCfg.Callback=bCfg.Callback or function()end; bCfg.Icon=bCfg.Icon or ""
+				local T=NL.Theme
+				local c=MakeCard(par); c.Size=UDim2.new(1,0,0,38)
+				New("TextLabel",{Parent=c,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-44,1,0),
+					BackgroundTransparency=1,Text=bCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,
+					TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(c:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				if bCfg.Icon~="" then
+					New("ImageLabel",{Parent=c,Position=UDim2.new(1,-30,0.5,-9),Size=UDim2.new(0,18,0,18),
+						BackgroundTransparency=1,Image=bCfg.Icon,ImageColor3=T.TxtMut})
 				end
-
-				local AccLine = New("Frame",{
-					Parent=card,Position=UDim2.new(0,0,1,-2),
-					Size=UDim2.new(0,0,0,2),
-					BackgroundColor3=T_.Accent,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-				ThemeBind(AccLine,"BackgroundColor3","Accent")
-
-				local Btn = New("TextButton",{
-					Parent=card,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text="",AutoButtonColor=false,
-				})
-				Connect(Btn.MouseEnter, function()
-					TPlay(card,TW.Fast,{BackgroundColor3=T_.BgHover})
-					TPlay(AccLine,TW.Fast,{Size=UDim2.new(1,0,0,2)})
-				end)
-				Connect(Btn.MouseLeave, function()
-					TPlay(card,TW.Fast,{BackgroundColor3=T_.BgCard})
-					TPlay(AccLine,TW.Fast,{Size=UDim2.new(0,0,0,2)})
-				end)
-				Connect(Btn.MouseButton1Up, function()
-					TPlay(card,TW.Snap,{BackgroundColor3=T_.BgHover})
-					task.spawn(bCfg.Callback)
-				end)
-				local B={}
-				function B:Set(t) card:FindFirstChildOfClass("TextLabel").Text=t end
+				-- Linha accent animada
+				local AL=New("Frame",{Parent=c,Position=UDim2.new(0,0,1,-2),Size=UDim2.new(0,0,0,2),
+					BackgroundColor3=T.Accent,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+				Bind(AL,"BackgroundColor3","Accent")
+				local Btn=New("TextButton",{Parent=c,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
+				Conn(Btn.MouseEnter,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}); Tween(AL,TW.Fast,{Size=UDim2.new(1,0,0,2)}) end)
+				Conn(Btn.MouseLeave,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgCard}); Tween(AL,TW.Fast,{Size=UDim2.new(0,0,0,2)}) end)
+				Conn(Btn.MouseButton1Down,function() Tween(c,TW.Snap,{BackgroundColor3=NL.Theme.BgCardAlt}) end)
+				Conn(Btn.MouseButton1Up,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}); task.spawn(bCfg.Callback) end)
+				local B={}; function B:Set(t) c:FindFirstChildOfClass("TextLabel").Text=t end
 				return B
 			end
 
-			-- TOGGLE
 			function E:AddToggle(tCfg)
-				tCfg          = tCfg or {}
-				tCfg.Name     = tCfg.Name     or "Toggle"
-				tCfg.Default  = tCfg.Default  or false
-				tCfg.Callback = tCfg.Callback or function() end
-				tCfg.Flag     = tCfg.Flag     or nil
-				tCfg.Save     = tCfg.Save     or false
-
-				local T_ = NexusLib.Theme
-				local Toggle = {Value = tCfg.Default, Type = "Toggle", Save = tCfg.Save}
-
-				local card = MakeCard(parent)
-				card.Size = UDim2.new(1, 0, 0, 36)
-
-				New("TextLabel",{
-					Parent=card,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-60,1,0),
-					BackgroundTransparency=1,Text=tCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(card:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-
-				local TrackBg = New("Frame",{
-					Parent=card,Position=UDim2.new(1,-52,0.5,-10),
-					Size=UDim2.new(0,40,0,20),
-					BackgroundColor3=T_.Border,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-
-				local Thumb = New("Frame",{
-					Parent=TrackBg,Position=UDim2.new(0,2,0.5,-8),
-					Size=UDim2.new(0,16,0,16),
-					BackgroundColor3=T_.TextMuted,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-
-				local Btn = New("TextButton",{
-					Parent=card,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text="",AutoButtonColor=false,
-				})
-
-				function Toggle:Set(val)
-					Toggle.Value = val
-					local T__ = NexusLib.Theme
-					if val then
-						TPlay(TrackBg, TW.Mid, {BackgroundColor3 = T__.Accent})
-						TPlay(Thumb,   TW.Mid, {BackgroundColor3 = Color3.fromRGB(255,255,255), Position = UDim2.new(1,-18,0.5,-8)})
+				tCfg=tCfg or {}; tCfg.Name=tCfg.Name or "Toggle"
+				tCfg.Default=tCfg.Default or false; tCfg.Callback=tCfg.Callback or function()end
+				tCfg.Flag=tCfg.Flag or nil; tCfg.Save=tCfg.Save or false
+				local T=NL.Theme
+				local Tog={Value=tCfg.Default,Type="Toggle",Save=tCfg.Save}
+				local c=MakeCard(par); c.Size=UDim2.new(1,0,0,38)
+				New("TextLabel",{Parent=c,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-62,1,0),
+					BackgroundTransparency=1,Text=tCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,
+					TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(c:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local Trk=New("Frame",{Parent=c,Position=UDim2.new(1,-54,0.5,-11),
+					Size=UDim2.new(0,42,0,22),BackgroundColor3=T.Border,BorderSizePixel=0},{
+					New("UICorner",{CornerRadius=UDim.new(1,0)})})
+				local Thm=New("Frame",{Parent=Trk,Position=UDim2.new(0,2,0.5,-9),
+					Size=UDim2.new(0,18,0,18),BackgroundColor3=T.TxtMut,BorderSizePixel=0},{
+					New("UICorner",{CornerRadius=UDim.new(1,0)})})
+				local Btn=New("TextButton",{Parent=c,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
+				function Tog:Set(v)
+					Tog.Value=v
+					if v then
+						Tween(Trk,TW.Mid,{BackgroundColor3=NL.Theme.Accent})
+						Tween(Thm,TW.Mid,{BackgroundColor3=Color3.fromRGB(255,255,255),Position=UDim2.new(1,-20,0.5,-9)})
 					else
-						TPlay(TrackBg, TW.Mid, {BackgroundColor3 = T__.Border})
-						TPlay(Thumb,   TW.Mid, {BackgroundColor3 = T__.TextMuted, Position = UDim2.new(0,2,0.5,-8)})
+						Tween(Trk,TW.Mid,{BackgroundColor3=NL.Theme.Border})
+						Tween(Thm,TW.Mid,{BackgroundColor3=NL.Theme.TxtMut,Position=UDim2.new(0,2,0.5,-9)})
 					end
-					tCfg.Callback(Toggle.Value)
+					tCfg.Callback(Tog.Value)
 				end
-
-				Connect(Btn.MouseButton1Up, function()
-					Toggle:Set(not Toggle.Value)
-					SaveConfig(cfg.ConfigName)
-				end)
-				Connect(Btn.MouseEnter, function() TPlay(card,TW.Fast,{BackgroundColor3=T_.BgHover}) end)
-				Connect(Btn.MouseLeave, function() TPlay(card,TW.Fast,{BackgroundColor3=T_.BgCard}) end)
-
-				task.spawn(function() Toggle:Set(Toggle.Value) end)
-				if tCfg.Flag then NexusLib.Flags[tCfg.Flag] = Toggle end
-				return Toggle
+				Conn(Btn.MouseButton1Up,function() Tog:Set(not Tog.Value); SaveCfg(wCfg.ConfigName) end)
+				Conn(Btn.MouseEnter,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
+				Conn(Btn.MouseLeave,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgCard}) end)
+				task.spawn(function() Tog:Set(Tog.Value) end)
+				if tCfg.Flag then NL.Flags[tCfg.Flag]=Tog end
+				return Tog
 			end
 
-			-- ════════════════════════════════════════════════════
-			-- SLIDER — FIX COMPLETO
-			-- O drag não funcionava porque o InputBegan estava no
-			-- TrackBg mas o InputChanged global não estava conectado
-			-- corretamente. Agora usa uma flag de arraste global.
-			-- ════════════════════════════════════════════════════
+			-- ══════════════════════════════════════════════════
+			-- SLIDER — CORRIGIDO DEFINITIVAMENTE
+			-- ══════════════════════════════════════════════════
 			function E:AddSlider(sCfg)
-				sCfg           = sCfg or {}
-				sCfg.Name      = sCfg.Name      or "Slider"
-				sCfg.Min       = sCfg.Min       or 0
-				sCfg.Max       = sCfg.Max       or 100
-				sCfg.Increment = sCfg.Increment or 1
-				sCfg.Default   = sCfg.Default   or sCfg.Min
-				sCfg.Suffix    = sCfg.Suffix    or ""
-				sCfg.Callback  = sCfg.Callback  or function() end
-				sCfg.Flag      = sCfg.Flag      or nil
-				sCfg.Save      = sCfg.Save      or false
+				sCfg=sCfg or {}; sCfg.Name=sCfg.Name or "Slider"
+				sCfg.Min=sCfg.Min or 0; sCfg.Max=sCfg.Max or 100
+				sCfg.Increment=sCfg.Increment or 1
+				sCfg.Default=math.clamp(sCfg.Default or sCfg.Min, sCfg.Min, sCfg.Max)
+				sCfg.Suffix=sCfg.Suffix or ""; sCfg.Callback=sCfg.Callback or function()end
+				sCfg.Flag=sCfg.Flag or nil; sCfg.Save=sCfg.Save or false
 
-				local T_   = NexusLib.Theme
-				local Sl   = {Value = sCfg.Default, Type = "Slider", Save = sCfg.Save}
-				local isDragging = false
+				local T=NL.Theme
+				local Sl={Value=sCfg.Default,Type="Slider",Save=sCfg.Save}
+				local dragging=false
 
-				local card = MakeCard(parent)
-				card.Size  = UDim2.new(1, 0, 0, 56)
+				local c=MakeCard(par); c.Size=UDim2.new(1,0,0,58)
+				New("UIPadding",{Parent=c,PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),
+					PaddingTop=UDim.new(0,8),PaddingBottom=UDim.new(0,8)})
 
-				local NameRow = New("Frame",{
-					Parent=card,Position=UDim2.new(0,12,0,8),
-					Size=UDim2.new(1,-24,0,18),
-					BackgroundTransparency=1,
+				local nameRow=New("Frame",{Parent=c,Size=UDim2.new(1,0,0,20),BackgroundTransparency=1})
+				New("TextLabel",{Parent=nameRow,Size=UDim2.new(0.65,0,1,0),BackgroundTransparency=1,
+					Text=sCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,TextColor3=T.TxtPri,
+					TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(nameRow:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local valL=New("TextLabel",{Parent=nameRow,Position=UDim2.new(0.65,0,0,0),
+					Size=UDim2.new(0.35,0,1,0),BackgroundTransparency=1,
+					Text=tostring(sCfg.Default).." "..sCfg.Suffix,Font=Enum.Font.GothamBold,TextSize=13,
+					TextColor3=T.Accent,TextXAlignment=Enum.TextXAlignment.Right})
+				Bind(valL,"TextColor3","Accent")
+
+				-- Track
+				local trkBg=New("Frame",{Parent=c,Position=UDim2.new(0,0,0,28),
+					Size=UDim2.new(1,0,0,10),BackgroundColor3=T.BgDeep,BorderSizePixel=0},{
+					New("UICorner",{CornerRadius=UDim.new(1,0)}),
+					New("UIStroke",{Color=T.Border,Thickness=1}),
 				})
-				New("TextLabel",{
-					Parent=NameRow,Size=UDim2.new(0.7,0,1,0),
-					BackgroundTransparency=1,Text=sCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
+				local trkFill=New("Frame",{Parent=trkBg,Size=UDim2.new(0,0,1,0),
+					BackgroundColor3=T.Accent,BorderSizePixel=0},{
+					New("UICorner",{CornerRadius=UDim.new(1,0)}),
+					-- Brilho no fill
+					New("UIGradient",{Color=ColorSequence.new{
+						ColorSequenceKeypoint.new(0,Color3.fromRGB(200,255,255)),
+						ColorSequenceKeypoint.new(0.4,T.Accent),
+						ColorSequenceKeypoint.new(1,T.AccentDim),
+					}}),
 				})
-				ThemeBind(NameRow:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-				local ValLbl = New("TextLabel",{
-					Parent=NameRow,Position=UDim2.new(0.7,0,0,0),Size=UDim2.new(0.3,0,1,0),
-					BackgroundTransparency=1,
-					Text=tostring(sCfg.Default).." "..sCfg.Suffix,
-					Font=Enum.Font.GothamBold,TextSize=13,
-					TextColor3=T_.Accent,TextXAlignment=Enum.TextXAlignment.Right,
+				Bind(trkFill,"BackgroundColor3","Accent")
+
+				-- Thumb dot
+				local thumb=New("Frame",{Parent=trkBg,Position=UDim2.new(0,-8,0.5,-8),
+					Size=UDim2.new(0,16,0,16),BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0},{
+					New("UICorner",{CornerRadius=UDim.new(1,0)}),
+					New("UIStroke",{Color=T.Accent,Thickness=2}),
 				})
-				ThemeBind(ValLbl,"TextColor3","Accent")
 
-				local TrackBg = New("Frame",{
-					Parent=card,Position=UDim2.new(0,12,0,34),
-					Size=UDim2.new(1,-24,0,8),
-					BackgroundColor3=T_.Border,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-				ThemeBind(TrackBg,"BackgroundColor3","Border")
-
-				local TrackFill = New("Frame",{
-					Parent=TrackBg,Size=UDim2.new(0,0,1,0),
-					BackgroundColor3=T_.Accent,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-				ThemeBind(TrackFill,"BackgroundColor3","Accent")
-
-				local ThumbDot = New("Frame",{
-					Parent=TrackBg,Position=UDim2.new(0,-6,0.5,-6),
-					Size=UDim2.new(0,12,0,12),
-					BackgroundColor3=T_.AccentGlow,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-				ThemeBind(ThumbDot,"BackgroundColor3","AccentGlow")
-
-				-- Botão transparente sobre o card inteiro para detectar hover
-				local HoverBtn = New("TextButton",{
-					Parent=card,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text="",AutoButtonColor=false,
-				})
+				-- Botão hover sobre card
+				local hBtn=New("TextButton",{Parent=c,Size=UDim2.new(1,0,1,0),
+					BackgroundTransparency=1,Text="",AutoButtonColor=false})
 
 				function Sl:Set(v)
-					Sl.Value = math.clamp(Round(v, sCfg.Increment), sCfg.Min, sCfg.Max)
-					local pct = (Sl.Value - sCfg.Min) / math.max(sCfg.Max - sCfg.Min, 0.001)
-					TPlay(TrackFill, TW.Fast, {Size = UDim2.new(pct, 0, 1, 0)})
-					ThumbDot.Position = UDim2.new(pct, -6, 0.5, -6)
-					ValLbl.Text = tostring(Sl.Value).." "..sCfg.Suffix
+					Sl.Value=math.clamp(Round(v,sCfg.Increment),sCfg.Min,sCfg.Max)
+					local pct=(Sl.Value-sCfg.Min)/math.max(sCfg.Max-sCfg.Min,0.001)
+					-- Sem tween durante drag para resposta imediata; tween só no Set externo
+					trkFill.Size=UDim2.new(pct,0,1,0)
+					thumb.Position=UDim2.new(pct,-8,0.5,-8)
+					valL.Text=tostring(Sl.Value).." "..sCfg.Suffix
 					sCfg.Callback(Sl.Value)
 				end
 
-				-- FIX: Drag no TrackBg (a barra em si)
-				Connect(TrackBg.InputBegan, function(inp)
-					if inp.UserInputType == Enum.UserInputType.MouseButton1
-					or inp.UserInputType == Enum.UserInputType.Touch then
-						isDragging = true
-						-- Calcular posição imediata ao clicar
-						local pct = math.clamp((inp.Position.X - TrackBg.AbsolutePosition.X) / TrackBg.AbsoluteSize.X, 0, 1)
-						Sl:Set(sCfg.Min + (sCfg.Max - sCfg.Min) * pct)
+				-- ── FIX do slider: InputBegan na BARRA inicia drag
+				--    e InputChanged GLOBAL move enquanto pressionado
+				Conn(trkBg.InputBegan,function(inp)
+					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
+						dragging=true
+						-- Posição imediata ao clicar
+						local px=math.clamp((inp.Position.X-trkBg.AbsolutePosition.X)/math.max(trkBg.AbsoluteSize.X,1),0,1)
+						Sl:Set(sCfg.Min+(sCfg.Max-sCfg.Min)*px)
 					end
 				end)
 
-				-- FIX: InputEnded global para parar o drag
-				Connect(UserInputService.InputEnded, function(inp)
-					if inp.UserInputType == Enum.UserInputType.MouseButton1
-					or inp.UserInputType == Enum.UserInputType.Touch then
-						if isDragging then
-							isDragging = false
-							SaveConfig(cfg.ConfigName)
-						end
+				Conn(UIS.InputChanged,function(inp)
+					if dragging and (inp.UserInputType==Enum.UserInputType.MouseMovement or inp.UserInputType==Enum.UserInputType.Touch) then
+						local px=math.clamp((inp.Position.X-trkBg.AbsolutePosition.X)/math.max(trkBg.AbsoluteSize.X,1),0,1)
+						Sl:Set(sCfg.Min+(sCfg.Max-sCfg.Min)*px)
 					end
 				end)
 
-				-- FIX: InputChanged global para arrastar
-				Connect(UserInputService.InputChanged, function(inp)
-					if isDragging and (inp.UserInputType == Enum.UserInputType.MouseMovement
-					or inp.UserInputType == Enum.UserInputType.Touch) then
-						local pct = math.clamp(
-							(inp.Position.X - TrackBg.AbsolutePosition.X) / math.max(TrackBg.AbsoluteSize.X, 1),
-							0, 1
-						)
-						Sl:Set(sCfg.Min + (sCfg.Max - sCfg.Min) * pct)
+				Conn(UIS.InputEnded,function(inp)
+					if dragging and (inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch) then
+						dragging=false; SaveCfg(wCfg.ConfigName)
 					end
 				end)
 
-				Connect(HoverBtn.MouseEnter, function() TPlay(card,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgHover}) end)
-				Connect(HoverBtn.MouseLeave, function() TPlay(card,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgCard}) end)
+				Conn(hBtn.MouseEnter,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
+				Conn(hBtn.MouseLeave,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgCard}) end)
 
 				Sl:Set(Sl.Value)
-				if sCfg.Flag then NexusLib.Flags[sCfg.Flag] = Sl end
+				if sCfg.Flag then NL.Flags[sCfg.Flag]=Sl end
 				return Sl
 			end
 
-			-- DROPDOWN
 			function E:AddDropdown(dCfg)
-				dCfg          = dCfg or {}
-				dCfg.Name     = dCfg.Name     or "Dropdown"
-				dCfg.Options  = dCfg.Options  or {}
-				dCfg.Default  = dCfg.Default  or ""
-				dCfg.Callback = dCfg.Callback or function() end
-				dCfg.Flag     = dCfg.Flag     or nil
-				dCfg.Save     = dCfg.Save     or false
+				dCfg=dCfg or {}; dCfg.Name=dCfg.Name or "Dropdown"
+				dCfg.Options=dCfg.Options or {}; dCfg.Default=dCfg.Default or ""
+				dCfg.Callback=dCfg.Callback or function()end
+				dCfg.Flag=dCfg.Flag or nil; dCfg.Save=dCfg.Save or false
+				local T=NL.Theme
+				local DD={Value=dCfg.Default,Options=dCfg.Options,Buttons={},Toggled=false,Type="Dropdown",Save=dCfg.Save}
+				local MaxH=5
+				if not table.find(DD.Options,DD.Value) then DD.Value=DD.Options[1] or "..." end
 
-				local T_   = NexusLib.Theme
-				local DD   = {Value = dCfg.Default, Options = dCfg.Options, Buttons = {}, Toggled = false, Type = "Dropdown", Save = dCfg.Save}
-				local MaxH = 5
-
-				if not table.find(DD.Options, DD.Value) then DD.Value = DD.Options[1] or "..." end
-
-				local outer = New("Frame",{
-					Parent=parent,Size=UDim2.new(1,0,0,36),
-					BackgroundColor3=T_.BgCard,BorderSizePixel=0,
-					ClipsDescendants=true,
-				},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
-				ThemeBind(outer,"BackgroundColor3","BgCard")
-				ThemeBind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-				local header = New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,36),BackgroundTransparency=1})
-				New("TextLabel",{
-					Parent=header,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-80,1,0),
-					BackgroundTransparency=1,Text=dCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(header:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-				local selLbl = New("TextLabel",{
-					Parent=header,Position=UDim2.new(1,-100,0,0),Size=UDim2.new(0,70,1,0),
-					BackgroundTransparency=1,Text=tostring(DD.Value),
-					Font=Enum.Font.GothamMedium,TextSize=13,
-					TextColor3=T_.Accent,TextXAlignment=Enum.TextXAlignment.Right,
-					TextTruncate=Enum.TextTruncate.AtEnd,
-				})
-				ThemeBind(selLbl,"TextColor3","Accent")
-				local arrow = New("ImageLabel",{
-					Parent=header,Position=UDim2.new(1,-22,0.5,-8),Size=UDim2.new(0,16,0,16),
-					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T_.TextMuted,
-				})
-
-				local sep = New("Frame",{
-					Parent=outer,Position=UDim2.new(0,0,0,36),
-					Size=UDim2.new(1,0,0,1),
-					BackgroundColor3=T_.Border,BorderSizePixel=0,
-					Visible=false,Name="Sep",
-				})
-				ThemeBind(sep,"BackgroundColor3","Border")
-
-				local optScroll = MakeScrollFrame(outer)
-				optScroll.Position = UDim2.new(0,0,0,37)
-				optScroll.Size     = UDim2.new(1,0,1,-37)
-				New("UIListLayout",{Parent=optScroll,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
-				New("UIPadding",{Parent=optScroll,PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
-				Connect(optScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),function()
-					optScroll.CanvasSize=UDim2.new(0,0,0,optScroll.UIListLayout.AbsoluteContentSize.Y+8)
-				end)
-
-				local function RefreshOpts()
-					for _,b in pairs(DD.Buttons) do b:Destroy() end
-					DD.Buttons = {}
-					for _, opt in ipairs(DD.Options) do
-						local isSelected = opt == DD.Value
-						local ob = New("TextButton",{
-							Parent=optScroll,Size=UDim2.new(1,0,0,28),
-							BackgroundColor3=isSelected and T_.BgHover or T_.BgPanel,
-							BorderSizePixel=0,
-							Text="",AutoButtonColor=false,
-						},{New("UICorner",{CornerRadius=UDim.new(0,5)})})
-						New("TextLabel",{
-							Parent=ob,Position=UDim2.new(0,10,0,0),Size=UDim2.new(1,-14,1,0),
-							BackgroundTransparency=1,Text=tostring(opt),
-							Font=Enum.Font.GothamMedium,TextSize=13,
-							TextColor3=isSelected and T_.Accent or T_.TextSecondary,
-							TextXAlignment=Enum.TextXAlignment.Left,
-						})
-						Connect(ob.MouseButton1Up,function()
-							DD:Set(opt)
-							SaveConfig(cfg.ConfigName)
-						end)
-						Connect(ob.MouseEnter,function() TPlay(ob,TW.Fast,{BackgroundColor3=T_.BgHover}) end)
-						Connect(ob.MouseLeave,function()
-							TPlay(ob,TW.Fast,{BackgroundColor3=opt==DD.Value and T_.BgHover or T_.BgPanel})
-						end)
-						DD.Buttons[opt] = ob
+				local outer=New("Frame",{Parent=par,Size=UDim2.new(1,0,0,38),BackgroundColor3=T.BgCard,
+					BorderSizePixel=0,ClipsDescendants=true},{
+					New("UICorner",{CornerRadius=UDim.new(0,7)}),New("UIStroke",{Color=T.Border,Thickness=1})})
+				Bind(outer,"BackgroundColor3","BgCard"); Bind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
+				local hdr=New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
+				New("TextLabel",{Parent=hdr,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-90,1,0),
+					BackgroundTransparency=1,Text=dCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,
+					TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(hdr:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local selL=New("TextLabel",{Parent=hdr,Position=UDim2.new(1,-106,0,0),Size=UDim2.new(0,76,1,0),
+					BackgroundTransparency=1,Text=tostring(DD.Value),Font=Enum.Font.GothamMedium,TextSize=13,
+					TextColor3=T.Accent,TextXAlignment=Enum.TextXAlignment.Right,TextTruncate=Enum.TextTruncate.AtEnd})
+				Bind(selL,"TextColor3","Accent")
+				local arr=New("ImageLabel",{Parent=hdr,Position=UDim2.new(1,-24,0.5,-8),Size=UDim2.new(0,16,0,16),
+					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T.TxtMut})
+				local sep=New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),
+					BackgroundColor3=T.Border,BorderSizePixel=0,Visible=false})
+				Bind(sep,"BackgroundColor3","Border")
+				local os2=MakeScroll(outer); os2.Position=UDim2.new(0,0,0,39); os2.Size=UDim2.new(1,0,1,-39)
+				New("UIListLayout",{Parent=os2,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
+				New("UIPadding",{Parent=os2,PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
+				Conn(os2.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),function()
+					os2.CanvasSize=UDim2.new(0,0,0,os2.UIListLayout.AbsoluteContentSize.Y+8) end)
+				local function Refresh()
+					for _,b in pairs(DD.Buttons) do b:Destroy() end; DD.Buttons={}
+					for _,opt in ipairs(DD.Options) do
+						local isSel=opt==DD.Value
+						local ob=New("TextButton",{Parent=os2,Size=UDim2.new(1,0,0,30),
+							BackgroundColor3=isSel and NL.Theme.BgHover or NL.Theme.BgCard,
+							BorderSizePixel=0,Text="",AutoButtonColor=false},{New("UICorner",{CornerRadius=UDim.new(0,6)})})
+						local obl=New("TextLabel",{Parent=ob,Position=UDim2.new(0,10,0,0),Size=UDim2.new(1,-14,1,0),
+							BackgroundTransparency=1,Text=tostring(opt),Font=Enum.Font.GothamMedium,TextSize=13,
+							TextColor3=isSel and NL.Theme.Accent or NL.Theme.TxtSec,TextXAlignment=Enum.TextXAlignment.Left})
+						Conn(ob.MouseButton1Up,function() DD:Set(opt); SaveCfg(wCfg.ConfigName) end)
+						Conn(ob.MouseEnter,function() Tween(ob,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
+						Conn(ob.MouseLeave,function() Tween(ob,TW.Fast,{BackgroundColor3=opt==DD.Value and NL.Theme.BgHover or NL.Theme.BgCard}) end)
+						DD.Buttons[opt]=ob
 					end
 				end
-
-				function DD:Set(val)
-					if table.find(DD.Options, val) then
-						DD.Value = val
-					else
-						DD.Value = DD.Options[1] or "..."
-					end
-					selLbl.Text = tostring(DD.Value)
-					for opt, ob in pairs(DD.Buttons) do
-						local lbl = ob:FindFirstChildOfClass("TextLabel")
-						local isSelected = opt == DD.Value
-						if lbl then
-							TPlay(lbl, TW.Fast, {TextColor3 = isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextSecondary})
-						end
-						TPlay(ob, TW.Fast, {BackgroundColor3 = isSelected and NexusLib.Theme.BgHover or NexusLib.Theme.BgPanel})
+				function DD:Set(v)
+					DD.Value=table.find(DD.Options,v) and v or (DD.Options[1] or "...")
+					selL.Text=tostring(DD.Value)
+					for opt,ob in pairs(DD.Buttons) do
+						local l=ob:FindFirstChildOfClass("TextLabel")
+						local s=opt==DD.Value
+						if l then Tween(l,TW.Fast,{TextColor3=s and NL.Theme.Accent or NL.Theme.TxtSec}) end
+						Tween(ob,TW.Fast,{BackgroundColor3=s and NL.Theme.BgHover or NL.Theme.BgCard})
 					end
 					dCfg.Callback(DD.Value)
 				end
-
-				function DD:Refresh(opts, clear)
-					if clear then DD.Options = {} end
-					for _,o in ipairs(opts) do table.insert(DD.Options,o) end
-					RefreshOpts()
+				function DD:Refresh(opts,clear)
+					if clear then DD.Options={} end
+					for _,o in ipairs(opts) do table.insert(DD.Options,o) end; Refresh()
 				end
-
-				local Hbtn = New("TextButton",{
-					Parent=header,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text="",AutoButtonColor=false,
-				})
-				Connect(Hbtn.MouseButton1Up,function()
-					DD.Toggled = not DD.Toggled
-					sep.Visible = DD.Toggled
-					TPlay(arrow,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
-					local oh = math.min(#DD.Options*30+8, MaxH*30+8)
-					TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,36+oh) or UDim2.new(1,0,0,36)})
+				local hb=New("TextButton",{Parent=hdr,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
+				Conn(hb.MouseButton1Up,function()
+					DD.Toggled=not DD.Toggled; sep.Visible=DD.Toggled
+					Tween(arr,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
+					local oh=math.min(#DD.Options*32+8,MaxH*32+8)
+					Tween(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38+oh) or UDim2.new(1,0,0,38)})
 				end)
-
-				RefreshOpts()
-				DD:Set(DD.Value)
-				if dCfg.Flag then NexusLib.Flags[dCfg.Flag] = DD end
+				Refresh(); DD:Set(DD.Value)
+				if dCfg.Flag then NL.Flags[dCfg.Flag]=DD end
 				return DD
 			end
 
-			-- MULTIPLE DROPDOWN
 			function E:AddMultipleDropdown(dCfg)
-				dCfg = dCfg or {}
-				dCfg.Name = dCfg.Name or "Dropdown"
-				dCfg.Options = dCfg.Options or {}
-				dCfg.Default = dCfg.Default or ""
-				dCfg.Callback = dCfg.Callback or function() end
-				dCfg.Flag = dCfg.Flag or nil
-				dCfg.Save = dCfg.Save or false
-
-				local T_ = NexusLib.Theme
-				local DD = {Value = dCfg.Default, Options = dCfg.Options, Buttons = {}, Toggled = false, Type = "Dropdown", Save = dCfg.Save}
-				local MaxElements = 5
-				local SelectedValues = {}
-
-				if not table.find(DD.Options, DD.Value) then DD.Value = "..." end
-
-				local outer = New("Frame",{
-					Parent=parent,Size=UDim2.new(1,0,0,38),
-					BackgroundColor3=T_.BgCard,BorderSizePixel=0,ClipsDescendants=true,
-				},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
-				ThemeBind(outer,"BackgroundColor3","BgCard")
-				ThemeBind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-				local header = New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
-				New("TextLabel",{
-					Parent=header,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-80,1,0),
-					BackgroundTransparency=1,Text=dCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(header:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-				local selLbl = New("TextLabel",{
-					Parent=header,Position=UDim2.new(1,-100,0,0),Size=UDim2.new(0,70,1,0),
-					BackgroundTransparency=1,Text="Selected",
-					Font=Enum.Font.Gotham,TextSize=13,
-					TextColor3=T_.TextSecondary,TextXAlignment=Enum.TextXAlignment.Right,
-				})
-				ThemeBind(selLbl,"TextColor3","TextSecondary")
-				local arrow = New("ImageLabel",{
-					Parent=header,Position=UDim2.new(1,-22,0.5,-8),Size=UDim2.new(0,16,0,16),
-					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T_.TextMuted,
-				})
-
-				local sep = New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),BackgroundColor3=T_.Border,BorderSizePixel=0,Visible=false})
-				ThemeBind(sep,"BackgroundColor3","Border")
-
-				local optScroll = MakeScrollFrame(outer)
-				optScroll.Position = UDim2.new(0,0,0,39)
-				optScroll.Size = UDim2.new(1,0,1,-39)
-				local optList = New("UIListLayout",{Parent=optScroll,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
-				New("UIPadding",{Parent=optScroll,PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
-				Connect(optList:GetPropertyChangedSignal("AbsoluteContentSize"),function()
-					optScroll.CanvasSize = UDim2.new(0,0,0,optList.AbsoluteContentSize.Y + 8)
-				end)
-
-				local function AddOptions(opts)
-					for _, opt in pairs(opts) do
-						local isSelected = table.find(SelectedValues, opt) ~= nil
-						local ob = New("TextButton",{
-							Parent=optScroll,Size=UDim2.new(1,0,0,28),
-							BackgroundColor3=isSelected and T_.BgHover or T_.BgPanel,
-							BorderSizePixel=0,
-							Text="",AutoButtonColor=false,
-						},{New("UICorner",{CornerRadius=UDim.new(0,5)})})
-
-						New("TextLabel",{
-							Parent=ob,Position=UDim2.new(0,8,0,0),Size=UDim2.new(1,-8,1,0),
-							BackgroundTransparency=1,Text=tostring(opt),
-							Font=Enum.Font.GothamMedium,TextSize=13,
-							TextColor3=isSelected and T_.Accent or T_.TextSecondary,
-							TextXAlignment=Enum.TextXAlignment.Left,
-						})
-
-						Connect(ob.MouseButton1Up,function()
-							DD:Set(opt)
-							SaveConfig(cfg.ConfigName)
-						end)
-						Connect(ob.MouseEnter,function() TPlay(ob,TW.Fast,{BackgroundColor3=T_.BgHover}) end)
-						Connect(ob.MouseLeave,function()
-							local sel = table.find(SelectedValues, opt) ~= nil
-							TPlay(ob,TW.Fast,{BackgroundColor3=sel and T_.BgHover or T_.BgPanel})
-						end)
-
-						DD.Buttons[opt] = ob
+				dCfg=dCfg or {}; dCfg.Name=dCfg.Name or "Dropdown"
+				dCfg.Options=dCfg.Options or {}; dCfg.Default=dCfg.Default or ""
+				dCfg.Callback=dCfg.Callback or function()end
+				dCfg.Flag=dCfg.Flag or nil; dCfg.Save=dCfg.Save or false
+				local T=NL.Theme
+				local DD={Value=dCfg.Default,Options=dCfg.Options,Buttons={},Toggled=false,Type="Dropdown",Save=dCfg.Save}
+				local MaxEl=5; local sel={}
+				local outer=New("Frame",{Parent=par,Size=UDim2.new(1,0,0,38),BackgroundColor3=T.BgCard,
+					BorderSizePixel=0,ClipsDescendants=true},{
+					New("UICorner",{CornerRadius=UDim.new(0,7)}),New("UIStroke",{Color=T.Border,Thickness=1})})
+				Bind(outer,"BackgroundColor3","BgCard"); Bind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
+				local hdr=New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
+				New("TextLabel",{Parent=hdr,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-90,1,0),
+					BackgroundTransparency=1,Text=dCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,
+					TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(hdr:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local selL=New("TextLabel",{Parent=hdr,Position=UDim2.new(1,-106,0,0),Size=UDim2.new(0,76,1,0),
+					BackgroundTransparency=1,Text="Selected",Font=Enum.Font.Gotham,TextSize=12,
+					TextColor3=T.TxtSec,TextXAlignment=Enum.TextXAlignment.Right})
+				Bind(selL,"TextColor3","TxtSec")
+				local arr=New("ImageLabel",{Parent=hdr,Position=UDim2.new(1,-24,0.5,-8),Size=UDim2.new(0,16,0,16),
+					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T.TxtMut})
+				local sep=New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),
+					BackgroundColor3=T.Border,BorderSizePixel=0,Visible=false})
+				Bind(sep,"BackgroundColor3","Border")
+				local os2=MakeScroll(outer); os2.Position=UDim2.new(0,0,0,39); os2.Size=UDim2.new(1,0,1,-39)
+				local ol=New("UIListLayout",{Parent=os2,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
+				New("UIPadding",{Parent=os2,PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
+				Conn(ol:GetPropertyChangedSignal("AbsoluteContentSize"),function()
+					os2.CanvasSize=UDim2.new(0,0,0,ol.AbsoluteContentSize.Y+8) end)
+				local function AddOpts(opts)
+					for _,opt in pairs(opts) do
+						local isSel=table.find(sel,opt)~=nil
+						local ob=New("TextButton",{Parent=os2,Size=UDim2.new(1,0,0,30),
+							BackgroundColor3=isSel and NL.Theme.BgHover or NL.Theme.BgCard,
+							BorderSizePixel=0,Text="",AutoButtonColor=false},{New("UICorner",{CornerRadius=UDim.new(0,6)})})
+						New("TextLabel",{Parent=ob,Position=UDim2.new(0,10,0,0),Size=UDim2.new(1,-14,1,0),
+							BackgroundTransparency=1,Text=tostring(opt),Font=Enum.Font.GothamMedium,TextSize=13,
+							TextColor3=isSel and NL.Theme.Accent or NL.Theme.TxtSec,TextXAlignment=Enum.TextXAlignment.Left})
+						Conn(ob.MouseButton1Up,function() DD:Set(opt); SaveCfg(wCfg.ConfigName) end)
+						Conn(ob.MouseEnter,function() Tween(ob,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
+						Conn(ob.MouseLeave,function()
+							Tween(ob,TW.Fast,{BackgroundColor3=table.find(sel,opt) and NL.Theme.BgHover or NL.Theme.BgCard}) end)
+						DD.Buttons[opt]=ob
 					end
 				end
-
-				function DD:Refresh(opts, del)
-					if del then
-						for _,b in pairs(DD.Buttons) do b:Destroy() end
-						table.clear(DD.Options)
-						table.clear(DD.Buttons)
-					end
-					DD.Options = opts
-					AddOptions(DD.Options)
+				function DD:Refresh(opts,del)
+					if del then for _,b in pairs(DD.Buttons) do b:Destroy() end; table.clear(DD.Options); table.clear(DD.Buttons) end
+					DD.Options=opts; AddOpts(DD.Options)
 				end
-
 				function DD:Set(val)
-					local n = table.find(SelectedValues, val)
-					local text = ""
-					local btn = DD.Buttons[val]
-					local lbl = btn and btn:FindFirstChildOfClass("TextLabel")
-
-					if not n then
-						table.insert(SelectedValues, val)
-						if btn then TPlay(btn, TW.Fast, {BackgroundColor3 = NexusLib.Theme.BgHover}) end
-						if lbl then TPlay(lbl, TW.Fast, {TextColor3 = NexusLib.Theme.Accent}) end
-					else
-						table.remove(SelectedValues, n)
-						if btn then TPlay(btn, TW.Fast, {BackgroundColor3 = NexusLib.Theme.BgPanel}) end
-						if lbl then TPlay(lbl, TW.Fast, {TextColor3 = NexusLib.Theme.TextSecondary}) end
+					local n=table.find(sel,val); local txt=""
+					local btn=DD.Buttons[val]; local lbl=btn and btn:FindFirstChildOfClass("TextLabel")
+					if not n then table.insert(sel,val)
+						if btn then Tween(btn,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end
+						if lbl then Tween(lbl,TW.Fast,{TextColor3=NL.Theme.Accent}) end
+					else table.remove(sel,n)
+						if btn then Tween(btn,TW.Fast,{BackgroundColor3=NL.Theme.BgCard}) end
+						if lbl then Tween(lbl,TW.Fast,{TextColor3=NL.Theme.TxtSec}) end
 					end
-
-					for i, v in pairs(SelectedValues) do
-						if #SelectedValues == i then
-							text = text .. v
-						else
-							text = text .. v .. ", "
-						end
-					end
-
-					DD.Value = val
-					selLbl.Text = #SelectedValues > 0 and text or "Selected"
-
-					return dCfg.Callback(SelectedValues)
+					for i,v in pairs(sel) do txt=txt..(i==#sel and v or v..", ") end
+					DD.Value=val; selL.Text=#sel>0 and txt or "Selected"
+					return dCfg.Callback(sel)
 				end
-
-				local Hbtn = New("TextButton",{
-					Parent=header,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text="",AutoButtonColor=false,
-				})
-				Connect(Hbtn.MouseButton1Up,function()
-					DD.Toggled = not DD.Toggled
-					sep.Visible = DD.Toggled
-					TPlay(arrow,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
-					if #DD.Options > MaxElements then
-						TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38 + (MaxElements * 28)) or UDim2.new(1,0,0,38)})
-					else
-						TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,optList.AbsoluteContentSize.Y + 38) or UDim2.new(1,0,0,38)})
-					end
+				local hb=New("TextButton",{Parent=hdr,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
+				Conn(hb.MouseButton1Up,function()
+					DD.Toggled=not DD.Toggled; sep.Visible=DD.Toggled
+					Tween(arr,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
+					if #DD.Options>MaxEl then Tween(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38+MaxEl*30) or UDim2.new(1,0,0,38)})
+					else Tween(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,ol.AbsoluteContentSize.Y+38) or UDim2.new(1,0,0,38)}) end
 				end)
-
-				DD:Refresh(DD.Options, false)
-				if dCfg.Flag then NexusLib.Flags[dCfg.Flag] = DD end
+				DD:Refresh(DD.Options,false)
+				if dCfg.Flag then NL.Flags[dCfg.Flag]=DD end
 				return DD
 			end
 
-			-- PLAYERS DROPDOWN (multi-select)
 			function E:AddPlayersDropdown(dCfg)
-				dCfg = dCfg or {}
-				dCfg.Name = dCfg.Name or "Players"
-				dCfg.Default = dCfg.Default or ""
-				dCfg.Callback = dCfg.Callback or function() end
-				dCfg.Flag = dCfg.Flag or nil
-				dCfg.MultipleSelection = dCfg.MultipleSelection or false
-				dCfg.Save = dCfg.Save or false
-
-				local T_ = NexusLib.Theme
-				local DD = {
-					Value = dCfg.Default, Options = {}, Buttons = {},
-					Toggled = false, Type = "Dropdown", Save = dCfg.Save,
-					MultipleSelection = dCfg.MultipleSelection
-				}
-				local MaxElements = 3
-				local SelectedValues = {}
-				local Options = 0
-
-				local function GetSelectedBg()
-					local a = NexusLib.Theme.Accent
-					return Color3.fromRGB(
-						math.clamp(math.floor(a.R * 255 * 0.18), 0, 255),
-						math.clamp(math.floor(a.G * 255 * 0.18), 0, 255),
-						math.clamp(math.floor(a.B * 255 * 0.18), 0, 255)
-					)
-				end
-				local function GetDisconnectedBg()
-					return Color3.fromRGB(55, 10, 10)
-				end
-
-				local outer = New("Frame",{
-					Parent=parent,Size=UDim2.new(1,0,0,38),
-					BackgroundColor3=T_.BgCard,BorderSizePixel=0,ClipsDescendants=true,
-				},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
-				ThemeBind(outer,"BackgroundColor3","BgCard")
-				ThemeBind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-				local header = New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
-				New("TextLabel",{
-					Parent=header,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-80,1,0),
-					BackgroundTransparency=1,Text=dCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(header:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-				local selLbl = New("TextLabel",{
-					Parent=header,Position=UDim2.new(1,-100,0,0),Size=UDim2.new(0,70,1,0),
-					BackgroundTransparency=1,Text="Selected",
-					Font=Enum.Font.Gotham,TextSize=13,
-					TextColor3=T_.TextSecondary,TextXAlignment=Enum.TextXAlignment.Right,
-				})
-				ThemeBind(selLbl,"TextColor3","TextSecondary")
-				local arrow = New("ImageLabel",{
-					Parent=header,Position=UDim2.new(1,-22,0.5,-8),Size=UDim2.new(0,16,0,16),
-					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T_.TextMuted,
-				})
-
-				local sep = New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),BackgroundColor3=T_.Border,BorderSizePixel=0,Visible=false})
-				ThemeBind(sep,"BackgroundColor3","Border")
-
-				local optScroll = MakeScrollFrame(outer)
-				optScroll.Position = UDim2.new(0,0,0,39)
-				optScroll.Size = UDim2.new(1,0,1,-39)
-				New("UIListLayout",{Parent=optScroll,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
-				New("UIPadding",{Parent=optScroll,PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
-				Connect(optScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),function()
-					optScroll.CanvasSize=UDim2.new(0,0,0,optScroll.UIListLayout.AbsoluteContentSize.Y+8)
-				end)
-
-				local function RemoveOption(playerName)
-					local btn = DD.Buttons[playerName]
-					if not btn then return end
-					local isSelected = table.find(SelectedValues, playerName) ~= nil
-					if isSelected then
-						local stateIco = btn:FindFirstChild("DisconnectIcon")
-						TPlay(btn, TW.Mid, {BackgroundColor3 = GetDisconnectedBg()})
-						if stateIco then stateIco.Visible = true end
-						for _, lbl in ipairs(btn:GetChildren()) do
-							if lbl:IsA("TextLabel") then
-								TPlay(lbl, TW.Mid, {TextColor3 = Color3.fromRGB(180, 80, 80)})
-							end
-						end
-						btn:SetAttribute("Disconnected", true)
-					else
-						btn:Destroy()
-						DD.Buttons[playerName] = nil
-						Options = Options - 1
+				dCfg=dCfg or {}; dCfg.Name=dCfg.Name or "Players"
+				dCfg.Callback=dCfg.Callback or function()end
+				dCfg.Flag=dCfg.Flag or nil
+				dCfg.MultipleSelection=dCfg.MultipleSelection or false
+				dCfg.Save=dCfg.Save or false
+				local T=NL.Theme
+				local DD={Value=nil,Options={},Buttons={},Toggled=false,Type="Dropdown",Save=dCfg.Save,MultipleSelection=dCfg.MultipleSelection}
+				local MaxEl=3; local SelVals={}; local Opts=0
+				local function SelBg() local a=NL.Theme.Accent; return Color3.fromRGB(math.clamp(math.floor(a.R*255*0.16),0,255),math.clamp(math.floor(a.G*255*0.16),0,255),math.clamp(math.floor(a.B*255*0.16),0,255)) end
+				local outer=New("Frame",{Parent=par,Size=UDim2.new(1,0,0,38),BackgroundColor3=T.BgCard,BorderSizePixel=0,ClipsDescendants=true},{New("UICorner",{CornerRadius=UDim.new(0,7)}),New("UIStroke",{Color=T.Border,Thickness=1})})
+				Bind(outer,"BackgroundColor3","BgCard"); Bind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
+				local hdr=New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
+				New("TextLabel",{Parent=hdr,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-90,1,0),BackgroundTransparency=1,Text=dCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(hdr:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local selL=New("TextLabel",{Parent=hdr,Position=UDim2.new(1,-106,0,0),Size=UDim2.new(0,76,1,0),BackgroundTransparency=1,Text="Selecione",Font=Enum.Font.Gotham,TextSize=12,TextColor3=T.TxtSec,TextXAlignment=Enum.TextXAlignment.Right})
+				Bind(selL,"TextColor3","TxtSec")
+				local arr=New("ImageLabel",{Parent=hdr,Position=UDim2.new(1,-24,0.5,-8),Size=UDim2.new(0,16,0,16),BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T.TxtMut})
+				local sep=New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),BackgroundColor3=T.Border,BorderSizePixel=0,Visible=false})
+				Bind(sep,"BackgroundColor3","Border")
+				local os2=MakeScroll(outer); os2.Position=UDim2.new(0,0,0,39); os2.Size=UDim2.new(1,0,1,-39)
+				New("UIListLayout",{Parent=os2,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
+				New("UIPadding",{Parent=os2,PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
+				Conn(os2.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),function() os2.CanvasSize=UDim2.new(0,0,0,os2.UIListLayout.AbsoluteContentSize.Y+8) end)
+				local function ApplySel(b,s) local sb=b:FindFirstChild("SB"); local Tx=NL.Theme
+					if s then Tween(b,TW.Mid,{BackgroundColor3=SelBg()}); if sb then Tween(sb,TW.Fast,{BackgroundTransparency=0}) end
+						for _,l in ipairs(b:GetChildren()) do if l:IsA("TextLabel") and l.Font==Enum.Font.GothamBold then Tween(l,TW.Fast,{TextColor3=Tx.Accent}) end end
+					else Tween(b,TW.Mid,{BackgroundColor3=Tx.BgCard}); if sb then Tween(sb,TW.Fast,{BackgroundTransparency=1}) end
+						for _,l in ipairs(b:GetChildren()) do if l:IsA("TextLabel") and l.Font==Enum.Font.GothamBold then Tween(l,TW.Fast,{TextColor3=Tx.TxtPri}) end end
 					end
 				end
-
-				local function AddOption(p)
-					local playerName    = p.Name
-					local playerDisplay = p.DisplayName
-					local userId        = p.UserId
-
-					if DD.Buttons[playerName] then
-						local btn = DD.Buttons[playerName]
-						if btn:GetAttribute("Disconnected") then
-							btn:SetAttribute("Disconnected", false)
-							local isSelected = table.find(SelectedValues, playerName) ~= nil
-							local stateIco = btn:FindFirstChild("DisconnectIcon")
-							if stateIco then stateIco.Visible = false end
-							TPlay(btn, TW.Mid, {BackgroundColor3 = isSelected and GetSelectedBg() or NexusLib.Theme.BgPanel})
-						end
-						return
-					end
-
-					local isSelected = table.find(SelectedValues, playerName) ~= nil
-
-					local ob = New("TextButton",{
-						Parent=optScroll, Size=UDim2.new(1,0,0,45),
-						BackgroundColor3=isSelected and GetSelectedBg() or NexusLib.Theme.BgPanel,
-						BorderSizePixel=0, Text="", AutoButtonColor=false,
-					},{
-						New("UICorner",{CornerRadius=UDim.new(0,6)}),
-						New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1}),
-					})
-					ThemeBind(ob:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-					local selBar = New("Frame",{
-						Parent=ob, Position=UDim2.new(0,0,0.1,0), Size=UDim2.new(0,3,0.8,0),
-						BackgroundColor3=NexusLib.Theme.Accent,
-						BackgroundTransparency=isSelected and 0 or 1, BorderSizePixel=0,
-					},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-					selBar.Name = "SelBar"
-					ThemeBind(selBar,"BackgroundColor3","Accent")
-
-					New("ImageLabel",{
-						Parent=ob, Position=UDim2.new(0,5,0.5,-18), Size=UDim2.new(0,36,0,36),
-						BackgroundTransparency=1,
-						Image="https://www.roblox.com/headshot-thumbnail/image?userId="..userId.."&width=420&height=420&format=png",
-					},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1})})
-
-					local disconnectIcon = New("ImageLabel",{
-						Parent=ob, Position=UDim2.new(1,-22,0.5,-11), Size=UDim2.new(0,22,0,22),
-						BackgroundTransparency=1, Image="rbxassetid://7072725342",
-						ImageColor3=Color3.fromRGB(255,80,80), Visible=false, Name="DisconnectIcon",
-					})
-
-					local dname = New("TextLabel",{
-						Parent=ob, Position=UDim2.new(0,48,0,5), Size=UDim2.new(1,-72,0,18),
-						BackgroundTransparency=1, Text=playerDisplay,
-						Font=Enum.Font.GothamBold, TextSize=14,
-						TextColor3=isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextPrimary,
-						TextXAlignment=Enum.TextXAlignment.Left, TextTruncate=Enum.TextTruncate.AtEnd,
-					})
-					ThemeBind(dname,"TextColor3","TextPrimary")
-
-					local uname = New("TextLabel",{
-						Parent=ob, Position=UDim2.new(0,48,0,22), Size=UDim2.new(1,-72,0,18),
-						BackgroundTransparency=1, Text="@"..playerName,
-						Font=Enum.Font.GothamMedium, TextSize=12,
-						TextColor3=NexusLib.Theme.TextSecondary,
-						TextXAlignment=Enum.TextXAlignment.Left, TextTruncate=Enum.TextTruncate.AtEnd,
-					})
-					ThemeBind(uname,"TextColor3","TextSecondary")
-
-					Connect(ob.MouseButton1Up,function()
-						if ob:GetAttribute("Disconnected") then return end
-						DD:Set(playerName)
-						SaveConfig(cfg.ConfigName)
-					end)
-					Connect(ob.MouseEnter,function()
-						if ob:GetAttribute("Disconnected") then return end
-						if table.find(SelectedValues, playerName) then return end
-						TPlay(ob,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgHover})
-					end)
-					Connect(ob.MouseLeave,function()
-						if ob:GetAttribute("Disconnected") then return end
-						local sel = table.find(SelectedValues, playerName) ~= nil
-						TPlay(ob,TW.Fast,{BackgroundColor3=sel and GetSelectedBg() or NexusLib.Theme.BgPanel})
-					end)
-
-					DD.Buttons[playerName] = ob
-					Options = Options + 1
+				local function RemOpt(name) local b=DD.Buttons[name]; if not b then return end
+					if table.find(SelVals,name) then
+						local si=b:FindFirstChild("DisIco"); Tween(b,TW.Mid,{BackgroundColor3=Color3.fromRGB(55,10,10)})
+						if si then si.Visible=true end; b:SetAttribute("DC",true)
+					else b:Destroy(); DD.Buttons[name]=nil; Opts=Opts-1 end
 				end
-
-				for _, p in pairs(Players:GetPlayers()) do AddOption(p) end
-				Connect(Players.PlayerAdded,   function(p) AddOption(p) end)
-				Connect(Players.PlayerRemoving, function(p) task.delay(0.1, function() RemoveOption(p.Name) end) end)
-
-				local function CleanDisconnected()
-					for name, btn in pairs(DD.Buttons) do
-						if btn and btn:GetAttribute("Disconnected") then
-							local n = table.find(SelectedValues, name)
-							if n then table.remove(SelectedValues, n) end
-							btn:Destroy()
-							DD.Buttons[name] = nil
-							Options = Options - 1
-						end
+				local function AddOpt(p)
+					local pn=p.Name; local pd=p.DisplayName; local uid=p.UserId
+					if DD.Buttons[pn] then
+						local b=DD.Buttons[pn]; if b:GetAttribute("DC") then
+							b:SetAttribute("DC",false); local si=b:FindFirstChild("DisIco"); if si then si.Visible=false end
+							ApplySel(b,table.find(SelVals,pn)~=nil)
+						end; return
 					end
+					local isSel=table.find(SelVals,pn)~=nil
+					local ob=New("TextButton",{Parent=os2,Size=UDim2.new(1,0,0,48),BackgroundColor3=isSel and SelBg() or NL.Theme.BgCard,BorderSizePixel=0,Text="",AutoButtonColor=false},{New("UICorner",{CornerRadius=UDim.new(0,7)}),New("UIStroke",{Color=NL.Theme.Border,Thickness=1})})
+					Bind(ob:FindFirstChildOfClass("UIStroke"),"Color","Border")
+					local sb=New("Frame",{Parent=ob,Position=UDim2.new(0,0,0.1,0),Size=UDim2.new(0,3,0.8,0),BackgroundColor3=NL.Theme.Accent,BackgroundTransparency=isSel and 0 or 1,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+					sb.Name="SB"; Bind(sb,"BackgroundColor3","Accent")
+					New("ImageLabel",{Parent=ob,Position=UDim2.new(0,6,0.5,-19),Size=UDim2.new(0,38,0,38),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..uid.."&width=420&height=420&format=png"},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=NL.Theme.Border,Thickness=1.5})})
+					local di=New("ImageLabel",{Parent=ob,Position=UDim2.new(1,-22,0.5,-11),Size=UDim2.new(0,22,0,22),BackgroundTransparency=1,Image="rbxassetid://7072725342",ImageColor3=Color3.fromRGB(255,80,80),Visible=false,Name="DisIco"})
+					New("TextLabel",{Parent=ob,Position=UDim2.new(0,52,0,7),Size=UDim2.new(1,-76,0,18),BackgroundTransparency=1,Text=pd,Font=Enum.Font.GothamBold,TextSize=14,TextColor3=isSel and NL.Theme.Accent or NL.Theme.TxtPri,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+					New("TextLabel",{Parent=ob,Position=UDim2.new(0,52,0,24),Size=UDim2.new(1,-76,0,16),BackgroundTransparency=1,Text="@"..pn,Font=Enum.Font.GothamMedium,TextSize=11,TextColor3=NL.Theme.TxtSec,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+					Conn(ob.MouseButton1Up,function() if ob:GetAttribute("DC") then return end; DD:Set(pn); SaveCfg(wCfg.ConfigName) end)
+					Conn(ob.MouseEnter,function() if ob:GetAttribute("DC") then return end; if table.find(SelVals,pn) then return end; Tween(ob,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
+					Conn(ob.MouseLeave,function() if ob:GetAttribute("DC") then return end; Tween(ob,TW.Fast,{BackgroundColor3=table.find(SelVals,pn) and SelBg() or NL.Theme.BgCard}) end)
+					DD.Buttons[pn]=ob; Opts=Opts+1
 				end
-
+				for _,p in pairs(Players:GetPlayers()) do AddOpt(p) end
+				Conn(Players.PlayerAdded,function(p) AddOpt(p) end)
+				Conn(Players.PlayerRemoving,function(p) task.delay(0.1,function() RemOpt(p.Name) end) end)
+				local function CleanDC()
+					for n,b in pairs(DD.Buttons) do if b and b:GetAttribute("DC") then
+						local i=table.find(SelVals,n); if i then table.remove(SelVals,i) end
+						b:Destroy(); DD.Buttons[n]=nil; Opts=Opts-1
+					end end
+				end
 				function DD:Refresh() end
-
-				function DD:Set(val, once)
-					local btn = DD.Buttons[val]
-					if not btn then
-						for _ = 0, 10 do
-							task.wait(0.15)
-							if DD.Buttons[val] then btn = DD.Buttons[val] break end
-						end
-					end
-					if not btn then return end
-					if btn:GetAttribute("Disconnected") then return end
-
-					local n = table.find(SelectedValues, val)
-					local text = ""
-
-					local function ApplySelectedStyle(b, selected)
-						local sbar = b:FindFirstChild("SelBar")
-						local T__ = NexusLib.Theme
-						if selected then
-							TPlay(b, TW.Mid, {BackgroundColor3 = GetSelectedBg()})
-							if sbar then TPlay(sbar, TW.Fast, {BackgroundTransparency = 0}) end
-							for _, lbl in ipairs(b:GetChildren()) do
-								if lbl:IsA("TextLabel") and lbl.Font == Enum.Font.GothamBold then
-									TPlay(lbl, TW.Fast, {TextColor3 = T__.Accent})
-								end
-							end
-						else
-							TPlay(b, TW.Mid, {BackgroundColor3 = T__.BgPanel})
-							if sbar then TPlay(sbar, TW.Fast, {BackgroundTransparency = 1}) end
-							for _, lbl in ipairs(b:GetChildren()) do
-								if lbl:IsA("TextLabel") and lbl.Font == Enum.Font.GothamBold then
-									TPlay(lbl, TW.Fast, {TextColor3 = T__.TextPrimary})
-								end
-							end
-						end
-					end
-
+				function DD:Set(val,once)
+					local b=DD.Buttons[val]
+					if not b then for _=0,10 do task.wait(0.15); if DD.Buttons[val] then b=DD.Buttons[val] break end end end
+					if not b or b:GetAttribute("DC") then return end
+					local n=table.find(SelVals,val); local txt=""
 					if DD.MultipleSelection then
-						if not n then
-							table.insert(SelectedValues, val)
-							ApplySelectedStyle(btn, true)
-						elseif not once then
-							table.remove(SelectedValues, n)
-							ApplySelectedStyle(btn, false)
-						end
-						for i, v in pairs(SelectedValues) do
-							if i <= 3 then
-								text = text .. (#SelectedValues > 3 and i == 3 and v.."..." or v)
-								if i < math.min(#SelectedValues, 3) then text = text .. ", " end
-							end
-						end
-						DD.Value = val
-						selLbl.Text = #SelectedValues > 0 and text or "Selected"
-						return dCfg.Callback(SelectedValues)
+						if not n then table.insert(SelVals,val); ApplySel(b,true)
+						elseif not once then table.remove(SelVals,n); ApplySel(b,false) end
+						for i,v in pairs(SelVals) do if i<=3 then txt=txt..(#SelVals>3 and i==3 and v.."..." or v); if i<math.min(#SelVals,3) then txt=txt..", " end end end
+						DD.Value=val; selL.Text=#SelVals>0 and txt or "Selecione"
+						return dCfg.Callback(SelVals)
 					else
-						table.clear(SelectedValues)
-						CleanDisconnected()
-						for pName, b in pairs(DD.Buttons) do
-							if not b:GetAttribute("Disconnected") then
-								ApplySelectedStyle(b, false)
-							end
-						end
-						if DD.Buttons[val] and not DD.Buttons[val]:GetAttribute("Disconnected") then
-							table.insert(SelectedValues, val)
-							ApplySelectedStyle(DD.Buttons[val], true)
-							DD.Value = val
-							selLbl.Text = val
-						else
-							DD.Value = nil
-							selLbl.Text = "Selected"
-						end
+						table.clear(SelVals); CleanDC()
+						for _,b2 in pairs(DD.Buttons) do if not b2:GetAttribute("DC") then ApplySel(b2,false) end end
+						if DD.Buttons[val] and not DD.Buttons[val]:GetAttribute("DC") then
+							table.insert(SelVals,val); ApplySel(DD.Buttons[val],true); DD.Value=val; selL.Text=val
+						else DD.Value=nil; selL.Text="Selecione" end
 						return dCfg.Callback(DD.Value)
 					end
 				end
-
-				local Hbtn = New("TextButton",{
-					Parent=header,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text="",AutoButtonColor=false,
-				})
-				Connect(Hbtn.MouseButton1Up,function()
-					DD.Toggled = not DD.Toggled
-					sep.Visible = DD.Toggled
-					TPlay(arrow,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
-					if Options > MaxElements then
-						TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38+(MaxElements*47)) or UDim2.new(1,0,0,38)})
-					else
-						TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38+(Options*47)) or UDim2.new(1,0,0,38)})
-					end
+				local hb=New("TextButton",{Parent=hdr,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
+				Conn(hb.MouseButton1Up,function()
+					DD.Toggled=not DD.Toggled; sep.Visible=DD.Toggled
+					Tween(arr,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
+					local h=DD.Toggled and (Opts>MaxEl and 38+MaxEl*50 or 38+Opts*50) or 38
+					Tween(outer,TW.Mid,{Size=UDim2.new(1,0,0,h)})
 				end)
-
-				if dCfg.Flag then NexusLib.Flags[dCfg.Flag] = DD end
+				if dCfg.Flag then NL.Flags[dCfg.Flag]=DD end
 				return DD
 			end
 
-			-- PLAYER DROPDOWN (seleção única)
 			function E:AddPlayerDropdown(pdCfg)
-				pdCfg = pdCfg or {}
-				pdCfg.Name = pdCfg.Name or "PlayerDropdown"
-				pdCfg.Default = pdCfg.Default or nil
-				pdCfg.Callback = pdCfg.Callback or function() end
-				pdCfg.Flag = pdCfg.Flag or nil
-				pdCfg.Save = pdCfg.Save or false
-
-				local DD = {Value=pdCfg.Default, Buttons={}, SelectedPlayers={}, Toggled=false, Type="PlayerDropdown", Save=pdCfg.Save}
-				local MaxElements = 5
-
-				local function GetSelectedBg()
-					local a = NexusLib.Theme.Accent
-					return Color3.fromRGB(
-						math.clamp(math.floor(a.R*255*0.18),0,255),
-						math.clamp(math.floor(a.G*255*0.18),0,255),
-						math.clamp(math.floor(a.B*255*0.18),0,255)
-					)
-				end
-
-				local outer = New("Frame",{
-					Parent=parent,Size=UDim2.new(1,0,0,38),
-					BackgroundColor3=NexusLib.Theme.BgCard,BorderSizePixel=0,ClipsDescendants=true,
-				},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1})})
-				ThemeBind(outer,"BackgroundColor3","BgCard")
-				ThemeBind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-				local header = New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
-				New("TextLabel",{
-					Parent=header,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-80,1,0),
-					BackgroundTransparency=1,Text=pdCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=NexusLib.Theme.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(header:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-				local selLbl = New("TextLabel",{
-					Parent=header,Position=UDim2.new(1,-100,0,0),Size=UDim2.new(0,70,1,0),
-					BackgroundTransparency=1,Text="Selecione",
-					Font=Enum.Font.Gotham,TextSize=13,
-					TextColor3=NexusLib.Theme.TextSecondary,TextXAlignment=Enum.TextXAlignment.Right,
-				})
-				ThemeBind(selLbl,"TextColor3","TextSecondary")
-				local arrow = New("ImageLabel",{
-					Parent=header,Position=UDim2.new(1,-22,0.5,-8),Size=UDim2.new(0,16,0,16),
-					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=NexusLib.Theme.TextMuted,
-				})
-				local sep = New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),BackgroundColor3=NexusLib.Theme.Border,BorderSizePixel=0,Visible=false})
-				ThemeBind(sep,"BackgroundColor3","Border")
-
-				local optScroll = MakeScrollFrame(outer)
-				optScroll.Position = UDim2.new(0,0,0,39)
-				optScroll.Size = UDim2.new(1,0,1,-39)
-				New("UIListLayout",{Parent=optScroll,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
-				New("UIPadding",{Parent=optScroll,PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
-				Connect(optScroll.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),function()
-					optScroll.CanvasSize=UDim2.new(0,0,0,optScroll.UIListLayout.AbsoluteContentSize.Y+8)
-				end)
-
-				local function AddOptions(playerList)
-					for _, p in ipairs(playerList) do
-						local isSelected = DD.SelectedPlayers[p]
-						local ob = New("TextButton",{
-							Parent=optScroll,Size=UDim2.new(1,0,0,40),
-							BackgroundColor3=isSelected and GetSelectedBg() or NexusLib.Theme.BgPanel,
-							BorderSizePixel=0, Text="", AutoButtonColor=false,
-						},{
-							New("UICorner",{CornerRadius=UDim.new(0,5)}),
-							New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1}),
-						})
-						ThemeBind(ob:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-						local selBar = New("Frame",{
-							Parent=ob, Position=UDim2.new(0,0,0.1,0), Size=UDim2.new(0,3,0.8,0),
-							BackgroundColor3=NexusLib.Theme.Accent,
-							BackgroundTransparency=isSelected and 0 or 1, BorderSizePixel=0,
-						},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-						selBar.Name = "SelBar"
-						ThemeBind(selBar,"BackgroundColor3","Accent")
-
-						New("ImageLabel",{
-							Parent=ob,Position=UDim2.new(0,5,0.5,-15),Size=UDim2.new(0,30,0,30),
-							BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..p.UserId.."&width=420&height=420&format=png",
-						},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-
-						local dname = New("TextLabel",{
-							Parent=ob,Position=UDim2.new(0,42,0,5),Size=UDim2.new(0.65,-10,0,18),
-							BackgroundTransparency=1,Text=p.DisplayName,Font=Enum.Font.GothamBold,TextSize=14,
-							TextColor3=isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextPrimary,
-							TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,
-						})
-						ThemeBind(dname,"TextColor3","TextPrimary")
-
-						local uname = New("TextLabel",{
-							Parent=ob,Position=UDim2.new(0,42,0,22),Size=UDim2.new(0.65,-10,0,14),
-							BackgroundTransparency=1,Text="@"..p.Name,Font=Enum.Font.GothamMedium,TextSize=11,
-							TextColor3=NexusLib.Theme.TextSecondary,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,
-						})
-						ThemeBind(uname,"TextColor3","TextSecondary")
-
-						Connect(ob.MouseButton1Up,function()
-							if DD.SelectedPlayers[p] then
-								DD.SelectedPlayers[p] = nil
-							else
-								DD.SelectedPlayers[p] = true
-							end
-							DD:Set()
-							if pdCfg.Save then SaveConfig(cfg.ConfigName) end
+				pdCfg=pdCfg or {}; pdCfg.Name=pdCfg.Name or "Jogadores"
+				pdCfg.Callback=pdCfg.Callback or function()end
+				pdCfg.Flag=pdCfg.Flag or nil; pdCfg.Save=pdCfg.Save or false
+				local DD={Value=nil,Buttons={},SelP={},Toggled=false,Type="PlayerDropdown",Save=pdCfg.Save}
+				local MaxEl=5
+				local function SelBg() local a=NL.Theme.Accent; return Color3.fromRGB(math.clamp(math.floor(a.R*255*0.16),0,255),math.clamp(math.floor(a.G*255*0.16),0,255),math.clamp(math.floor(a.B*255*0.16),0,255)) end
+				local outer=New("Frame",{Parent=par,Size=UDim2.new(1,0,0,38),BackgroundColor3=NL.Theme.BgCard,BorderSizePixel=0,ClipsDescendants=true},{New("UICorner",{CornerRadius=UDim.new(0,7)}),New("UIStroke",{Color=NL.Theme.Border,Thickness=1})})
+				Bind(outer,"BackgroundColor3","BgCard"); Bind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
+				local hdr=New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
+				New("TextLabel",{Parent=hdr,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-90,1,0),BackgroundTransparency=1,Text=pdCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,TextColor3=NL.Theme.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(hdr:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local selL=New("TextLabel",{Parent=hdr,Position=UDim2.new(1,-106,0,0),Size=UDim2.new(0,76,1,0),BackgroundTransparency=1,Text="Selecione",Font=Enum.Font.Gotham,TextSize=12,TextColor3=NL.Theme.TxtSec,TextXAlignment=Enum.TextXAlignment.Right})
+				Bind(selL,"TextColor3","TxtSec")
+				local arr=New("ImageLabel",{Parent=hdr,Position=UDim2.new(1,-24,0.5,-8),Size=UDim2.new(0,16,0,16),BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=NL.Theme.TxtMut})
+				local sep=New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),BackgroundColor3=NL.Theme.Border,BorderSizePixel=0,Visible=false})
+				Bind(sep,"BackgroundColor3","Border")
+				local os2=MakeScroll(outer); os2.Position=UDim2.new(0,0,0,39); os2.Size=UDim2.new(1,0,1,-39)
+				New("UIListLayout",{Parent=os2,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
+				New("UIPadding",{Parent=os2,PaddingLeft=UDim.new(0,7),PaddingRight=UDim.new(0,7),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
+				Conn(os2.UIListLayout:GetPropertyChangedSignal("AbsoluteContentSize"),function() os2.CanvasSize=UDim2.new(0,0,0,os2.UIListLayout.AbsoluteContentSize.Y+8) end)
+				local function AddOpts(pl)
+					for _,p in ipairs(pl) do
+						local isSel=DD.SelP[p]
+						local ob=New("TextButton",{Parent=os2,Size=UDim2.new(1,0,0,42),BackgroundColor3=isSel and SelBg() or NL.Theme.BgCard,BorderSizePixel=0,Text="",AutoButtonColor=false},{New("UICorner",{CornerRadius=UDim.new(0,7)}),New("UIStroke",{Color=NL.Theme.Border,Thickness=1})})
+						Bind(ob:FindFirstChildOfClass("UIStroke"),"Color","Border")
+						local sb=New("Frame",{Parent=ob,Position=UDim2.new(0,0,0.1,0),Size=UDim2.new(0,3,0.8,0),BackgroundColor3=NL.Theme.Accent,BackgroundTransparency=isSel and 0 or 1,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+						sb.Name="SB"; Bind(sb,"BackgroundColor3","Accent")
+						New("ImageLabel",{Parent=ob,Position=UDim2.new(0,6,0.5,-16),Size=UDim2.new(0,32,0,32),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..p.UserId.."&width=420&height=420&format=png"},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+						New("TextLabel",{Parent=ob,Position=UDim2.new(0,44,0,6),Size=UDim2.new(0.65,-10,0,18),BackgroundTransparency=1,Text=p.DisplayName,Font=Enum.Font.GothamBold,TextSize=13,TextColor3=isSel and NL.Theme.Accent or NL.Theme.TxtPri,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+						New("TextLabel",{Parent=ob,Position=UDim2.new(0,44,0,22),Size=UDim2.new(0.65,-10,0,14),BackgroundTransparency=1,Text="@"..p.Name,Font=Enum.Font.GothamMedium,TextSize=10,TextColor3=NL.Theme.TxtSec,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+						Conn(ob.MouseButton1Up,function()
+							DD.SelP[p]=DD.SelP[p] and nil or true; DD:Set()
+							if pdCfg.Save then SaveCfg(wCfg.ConfigName) end
 						end)
-						Connect(ob.MouseEnter,function()
-							if not DD.SelectedPlayers[p] then
-								TPlay(ob,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgHover})
-							end
-						end)
-						Connect(ob.MouseLeave,function()
-							TPlay(ob,TW.Fast,{BackgroundColor3=DD.SelectedPlayers[p] and GetSelectedBg() or NexusLib.Theme.BgPanel})
-						end)
-
-						DD.Buttons[p] = ob
+						Conn(ob.MouseEnter,function() if not DD.SelP[p] then Tween(ob,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end end)
+						Conn(ob.MouseLeave,function() Tween(ob,TW.Fast,{BackgroundColor3=DD.SelP[p] and SelBg() or NL.Theme.BgCard}) end)
+						DD.Buttons[p]=ob
 					end
 				end
-
-				function DD:Refresh(list, clear)
-					if clear then
-						for _, btn in pairs(self.Buttons) do btn:Destroy() end
-						table.clear(self.Buttons)
-					end
-					AddOptions(list)
+				function DD:Refresh(list,clear)
+					if clear then for _,b in pairs(self.Buttons) do b:Destroy() end; table.clear(self.Buttons) end
+					AddOpts(list)
 				end
-
 				function DD:Set()
-					local selectedUsernames = {}
-					for p in pairs(self.SelectedPlayers) do
-						if Players:FindFirstChild(p.Name) then
-							table.insert(selectedUsernames, p.Name)
-						else
-							self.SelectedPlayers[p] = nil
-						end
+					local su={}
+					for p in pairs(self.SelP) do if Players:FindFirstChild(p.Name) then table.insert(su,p.Name) else self.SelP[p]=nil end end
+					selL.Text=#su>0 and table.concat(su,", ") or "Selecione"
+					for p,b in pairs(self.Buttons) do
+						local isSel=self.SelP[p]; local sb=b:FindFirstChild("SB")
+						Tween(b,TW.Fast,{BackgroundColor3=isSel and SelBg() or NL.Theme.BgCard})
+						if sb then Tween(sb,TW.Fast,{BackgroundTransparency=isSel and 0 or 1}) end
+						for _,l in ipairs(b:GetChildren()) do if l:IsA("TextLabel") and l.Font==Enum.Font.GothamBold then Tween(l,TW.Fast,{TextColor3=isSel and NL.Theme.Accent or NL.Theme.TxtPri}) end end
 					end
-					if #selectedUsernames > 0 then
-						selLbl.Text = table.concat(selectedUsernames, ", ")
-					else
-						selLbl.Text = "Selecione"
-					end
-					for p, btn in pairs(self.Buttons) do
-						local isSelected = self.SelectedPlayers[p]
-						local sbar = btn:FindFirstChild("SelBar")
-						TPlay(btn,TW.Fast,{BackgroundColor3=isSelected and GetSelectedBg() or NexusLib.Theme.BgPanel})
-						if sbar then TPlay(sbar,TW.Fast,{BackgroundTransparency=isSelected and 0 or 1}) end
-						for _, lbl in ipairs(btn:GetChildren()) do
-							if lbl:IsA("TextLabel") and lbl.Font == Enum.Font.GothamBold then
-								TPlay(lbl,TW.Fast,{TextColor3=isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextPrimary})
-							end
-						end
-					end
-					return pdCfg.Callback(selectedUsernames)
+					return pdCfg.Callback(su)
 				end
-
-				local Hbtn = New("TextButton",{
-					Parent=header,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text="",AutoButtonColor=false,
-				})
-				Connect(Hbtn.MouseButton1Up,function()
-					DD.Toggled = not DD.Toggled
-					sep.Visible = DD.Toggled
-					TPlay(arrow,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
-					local targetHeight = 38
-					if DD.Toggled then
-						local listHeight = math.min(optScroll.UIListLayout.AbsoluteContentSize.Y, MaxElements*40)
-						targetHeight = 38 + listHeight
-					end
-					TPlay(outer,TW.Mid,{Size=UDim2.new(1,0,0,targetHeight)})
+				local hb=New("TextButton",{Parent=hdr,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
+				Conn(hb.MouseButton1Up,function()
+					DD.Toggled=not DD.Toggled; sep.Visible=DD.Toggled
+					Tween(arr,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
+					local th=38+(DD.Toggled and math.min(os2.UIListLayout.AbsoluteContentSize.Y,MaxEl*42) or 0)
+					Tween(outer,TW.Mid,{Size=UDim2.new(1,0,0,th)})
 				end)
-
-				local function updateList()
-					local allPlayers = Players:GetPlayers()
-					local filtered = {}
-					for _, p in ipairs(allPlayers) do
-						if p ~= Players.LocalPlayer then
-							table.insert(filtered, p)
-						end
-					end
-					DD:Refresh(filtered, true)
-					DD:Set()
+				local function UpdList()
+					local pl={}; for _,p in ipairs(Players:GetPlayers()) do if p~=LP then table.insert(pl,p) end end
+					DD:Refresh(pl,true); DD:Set()
 				end
-
-				Connect(Players.PlayerAdded,    updateList)
-				Connect(Players.PlayerRemoving, updateList)
-				updateList()
-
-				if pdCfg.Flag then NexusLib.Flags[pdCfg.Flag] = DD end
+				Conn(Players.PlayerAdded,UpdList); Conn(Players.PlayerRemoving,UpdList); UpdList()
+				if pdCfg.Flag then NL.Flags[pdCfg.Flag]=DD end
 				return DD
 			end
 
-			-- TEXTBOX
 			function E:AddTextbox(xCfg)
-				xCfg          = xCfg or {}
-				xCfg.Name     = xCfg.Name     or "Textbox"
-				xCfg.Default  = xCfg.Default  or ""
-				xCfg.Placeholder = xCfg.Placeholder or "Digite aqui..."
-				xCfg.ClearOnSubmit = xCfg.ClearOnSubmit or false
-				xCfg.Callback = xCfg.Callback or function() end
-
-				local T_ = NexusLib.Theme
-				local card = MakeCard(parent)
-				card.Size  = UDim2.new(1, 0, 0, 36)
-
-				New("TextLabel",{
-					Parent=card,Position=UDim2.new(0,12,0,0),Size=UDim2.new(0,120,1,0),
-					BackgroundTransparency=1,Text=xCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(card:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-
-				local inputBg = New("Frame",{
-					Parent=card,Position=UDim2.new(0.5,0,0.5,-13),Size=UDim2.new(0.47,0,0,26),
-					BackgroundColor3=T_.BgDeep,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(0,5)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
-				ThemeBind(inputBg,"BackgroundColor3","BgDeep")
-				ThemeBind(inputBg:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-				local tb = New("TextBox",{
-					Parent=inputBg,Position=UDim2.new(0,6,0,0),Size=UDim2.new(1,-12,1,0),
-					BackgroundTransparency=1,Text=xCfg.Default,
-					PlaceholderText=xCfg.Placeholder,PlaceholderColor3=T_.TextMuted,
-					Font=Enum.Font.GothamMedium,TextSize=13,
-					TextColor3=T_.TextPrimary,ClearTextOnFocus=false,
-					TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(tb,"TextColor3","TextPrimary")
-
-				Connect(tb.Focused,   function() TPlay(inputBg:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NexusLib.Theme.Accent}) end)
-				Connect(tb.FocusLost, function(enter)
-					TPlay(inputBg:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NexusLib.Theme.Border})
-					xCfg.Callback(tb.Text)
-					if xCfg.ClearOnSubmit then tb.Text = "" end
-				end)
+				xCfg=xCfg or {}; xCfg.Name=xCfg.Name or "Textbox"; xCfg.Default=xCfg.Default or ""
+				xCfg.Placeholder=xCfg.Placeholder or "Digite..."; xCfg.ClearOnSubmit=xCfg.ClearOnSubmit or false
+				xCfg.Callback=xCfg.Callback or function()end
+				local T=NL.Theme; local c=MakeCard(par); c.Size=UDim2.new(1,0,0,38)
+				New("TextLabel",{Parent=c,Position=UDim2.new(0,14,0,0),Size=UDim2.new(0,130,1,0),
+					BackgroundTransparency=1,Text=xCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,
+					TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(c:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local ibg=New("Frame",{Parent=c,Position=UDim2.new(0.48,0,0.5,-14),Size=UDim2.new(0.5,0,0,28),
+					BackgroundColor3=T.BgDeep,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T.Border,Thickness=1})})
+				Bind(ibg,"BackgroundColor3","BgDeep"); Bind(ibg:FindFirstChildOfClass("UIStroke"),"Color","Border")
+				local tb=New("TextBox",{Parent=ibg,Position=UDim2.new(0,8,0,0),Size=UDim2.new(1,-16,1,0),
+					BackgroundTransparency=1,Text=xCfg.Default,PlaceholderText=xCfg.Placeholder,
+					PlaceholderColor3=T.TxtMut,Font=Enum.Font.GothamMedium,TextSize=13,
+					TextColor3=T.TxtPri,ClearTextOnFocus=false,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(tb,"TextColor3","TxtPri")
+				Conn(tb.Focused,function() Tween(ibg:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Accent}) end)
+				Conn(tb.FocusLost,function() Tween(ibg:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Border}); xCfg.Callback(tb.Text); if xCfg.ClearOnSubmit then tb.Text="" end end)
 			end
 
-			-- BIND
 			function E:AddBind(bCfg)
-				bCfg          = bCfg or {}
-				bCfg.Name     = bCfg.Name     or "Keybind"
-				bCfg.Default  = bCfg.Default  or Enum.KeyCode.Unknown
-				bCfg.Hold     = bCfg.Hold     or false
-				bCfg.Callback = bCfg.Callback or function() end
-				bCfg.Flag     = bCfg.Flag     or nil
-				bCfg.Save     = bCfg.Save     or false
-
-				local Blacklist = {
-					Enum.KeyCode.Unknown,Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,
+				bCfg=bCfg or {}; bCfg.Name=bCfg.Name or "Keybind"
+				bCfg.Default=bCfg.Default or Enum.KeyCode.Unknown
+				bCfg.Hold=bCfg.Hold or false; bCfg.Callback=bCfg.Callback or function()end
+				bCfg.Flag=bCfg.Flag or nil; bCfg.Save=bCfg.Save or false
+				local BL={Enum.KeyCode.Unknown,Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,
 					Enum.KeyCode.Slash,Enum.KeyCode.Tab,Enum.KeyCode.Backspace,Enum.KeyCode.Escape,
-					Enum.KeyCode.Up,Enum.KeyCode.Down,Enum.KeyCode.Left,Enum.KeyCode.Right
-				}
-				local function InBlacklist(k)
-					for _,v in pairs(Blacklist) do if v==k then return true end end
-				end
-
-				local T_    = NexusLib.Theme
-				local Bind  = {Value = bCfg.Default.Name or tostring(bCfg.Default), Binding = false, Holding = false, Type = "Bind", Save = bCfg.Save}
-
-				local card = MakeCard(parent)
-				card.Size  = UDim2.new(1, 0, 0, 36)
-
-				New("TextLabel",{
-					Parent=card,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-100,1,0),
-					BackgroundTransparency=1,Text=bCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(card:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-
-				local keyBox = New("Frame",{
-					Parent=card,Position=UDim2.new(1,-82,0.5,-13),Size=UDim2.new(0,70,0,26),
-					BackgroundColor3=T_.BgDeep,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(0,5)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
-				local keyLbl = New("TextLabel",{
-					Parent=keyBox,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text=Bind.Value,
-					Font=Enum.Font.GothamBold,TextSize=12,
-					TextColor3=T_.Accent,TextXAlignment=Enum.TextXAlignment.Center,
-				})
-				ThemeBind(keyLbl,"TextColor3","Accent")
-
-				local Btn = New("TextButton",{Parent=card,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
-				Connect(Btn.InputEnded, function(inp)
-					if inp.UserInputType == Enum.UserInputType.MouseButton1 and not Bind.Binding then
-						Bind.Binding = true
-						keyLbl.Text  = "..."
-						TPlay(keyBox:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NexusLib.Theme.Accent})
-					end
-				end)
-				Connect(UserInputService.InputBegan, function(inp, gp)
+					Enum.KeyCode.Up,Enum.KeyCode.Down,Enum.KeyCode.Left,Enum.KeyCode.Right}
+				local function InBL(k) for _,v in pairs(BL) do if v==k then return true end end end
+				local T=NL.Theme
+				local Bind={Value=bCfg.Default.Name or tostring(bCfg.Default),Binding=false,Holding=false,Type="Bind",Save=bCfg.Save}
+				local c=MakeCard(par); c.Size=UDim2.new(1,0,0,38)
+				New("TextLabel",{Parent=c,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-110,1,0),
+					BackgroundTransparency=1,Text=bCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,
+					TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(c:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local kb=New("Frame",{Parent=c,Position=UDim2.new(1,-90,0.5,-14),Size=UDim2.new(0,78,0,28),
+					BackgroundColor3=T.BgDeep,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T.Border,Thickness=1})})
+				local kl=New("TextLabel",{Parent=kb,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,
+					Text=Bind.Value,Font=Enum.Font.GothamBold,TextSize=11,TextColor3=T.Accent,
+					TextXAlignment=Enum.TextXAlignment.Center})
+				Bind(kl,"TextColor3","Accent")
+				local btn=New("TextButton",{Parent=c,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
+				Conn(btn.InputEnded,function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 and not Bind.Binding then
+					Bind.Binding=true; kl.Text="..."; Tween(kb:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Accent}) end end)
+				Conn(UIS.InputBegan,function(i,gp)
 					if gp then return end
 					if Bind.Binding then
-						local Key
-						pcall(function()
-							if not InBlacklist(inp.KeyCode) then Key = inp.KeyCode end
-						end)
-						Key = Key or Bind.Value
-						Bind:Set(Key)
-						TPlay(keyBox:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NexusLib.Theme.Border})
-						SaveConfig(cfg.ConfigName)
-					elseif inp.KeyCode.Name == Bind.Value or inp.UserInputType.Name == Bind.Value then
-						if bCfg.Hold then Bind.Holding = true; bCfg.Callback(true)
-						else bCfg.Callback() end
+						local K; pcall(function() if not InBL(i.KeyCode) then K=i.KeyCode end end)
+						K=K or Bind.Value; Bind:Set(K); Tween(kb:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Border}); SaveCfg(wCfg.ConfigName)
+					elseif i.KeyCode.Name==Bind.Value or i.UserInputType.Name==Bind.Value then
+						if bCfg.Hold then Bind.Holding=true; bCfg.Callback(true) else bCfg.Callback() end
 					end
 				end)
-				Connect(UserInputService.InputEnded, function(inp)
-					if (inp.KeyCode.Name == Bind.Value or inp.UserInputType.Name == Bind.Value) and bCfg.Hold and Bind.Holding then
-						Bind.Holding = false; bCfg.Callback(false)
-					end
-				end)
-				function Bind:Set(k)
-					Bind.Binding = false
-					Bind.Value   = (type(k)=="string") and k or (k.Name or tostring(k))
-					keyLbl.Text  = Bind.Value
-				end
+				Conn(UIS.InputEnded,function(i) if (i.KeyCode.Name==Bind.Value or i.UserInputType.Name==Bind.Value) and bCfg.Hold and Bind.Holding then Bind.Holding=false; bCfg.Callback(false) end end)
+				function Bind:Set(k) Bind.Binding=false; Bind.Value=(type(k)=="string") and k or (k.Name or tostring(k)); kl.Text=Bind.Value end
 				Bind:Set(bCfg.Default)
-				if bCfg.Flag then NexusLib.Flags[bCfg.Flag] = Bind end
+				if bCfg.Flag then NL.Flags[bCfg.Flag]=Bind end
 				return Bind
 			end
 
-			-- COLOR PICKER
 			function E:AddColorpicker(cpCfg)
-				cpCfg          = cpCfg or {}
-				cpCfg.Name     = cpCfg.Name     or "Color"
-				cpCfg.Default  = cpCfg.Default  or Color3.fromRGB(0, 220, 180)
-				cpCfg.Callback = cpCfg.Callback or function() end
-				cpCfg.Flag     = cpCfg.Flag     or nil
-				cpCfg.Save     = cpCfg.Save     or false
-
-				local T_  = NexusLib.Theme
-				local CP  = {Value = cpCfg.Default, Toggled = false, Type = "Colorpicker", Save = cpCfg.Save}
-				local H_, S_, V_ = Color3.toHSV(cpCfg.Default)
-
-				local outer = New("Frame",{
-					Parent=parent,Size=UDim2.new(1,0,0,36),
-					BackgroundColor3=T_.BgCard,BorderSizePixel=0,ClipsDescendants=true,
-				},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
-				ThemeBind(outer,"BackgroundColor3","BgCard")
-				ThemeBind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-				local header = New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,36),BackgroundTransparency=1})
-				New("TextLabel",{
-					Parent=header,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-60,1,0),
-					BackgroundTransparency=1,Text=cpCfg.Name,
-					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(header:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-				local Preview = New("Frame",{
-					Parent=header,Position=UDim2.new(1,-46,0.5,-12),Size=UDim2.new(0,24,0,24),
-					BackgroundColor3=cpCfg.Default,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(0,5)}),New("UIStroke",{Color=T_.Border,Thickness=1.5})})
-
-				local arrow = New("ImageLabel",{
-					Parent=header,Position=UDim2.new(1,-18,0.5,-8),Size=UDim2.new(0,16,0,16),
-					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T_.TextMuted,
-				})
-				local sep = New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,36),Size=UDim2.new(1,0,0,1),BackgroundColor3=T_.Border,BorderSizePixel=0,Visible=false})
-				ThemeBind(sep,"BackgroundColor3","Border")
-
-				local pickerArea = New("Frame",{
-					Parent=outer,Position=UDim2.new(0,10,0,44),
-					Size=UDim2.new(1,-20,0,110),
-					BackgroundTransparency=1,Visible=false,
-				})
-
-				local SVBox = New("ImageLabel",{
-					Parent=pickerArea,Position=UDim2.new(0,0,0,0),
-					Size=UDim2.new(1,-26,1,0),
-					Image="rbxassetid://4155801252",
-					BackgroundColor3=Color3.fromHSV(H_,1,1),
-					BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(0,5)})})
-
-				local SVPin = New("Frame",{
-					Parent=SVBox,Position=UDim2.new(S_,0,1-V_,0),
-					Size=UDim2.new(0,14,0,14),
-					BackgroundColor3=Color3.fromRGB(255,255,255),
-					BorderSizePixel=0,AnchorPoint=Vector2.new(0.5,0.5),
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=Color3.fromRGB(50,50,50),Thickness=2})})
-
-				local HueBar = New("Frame",{
-					Parent=pickerArea,Position=UDim2.new(1,-22,0,0),
-					Size=UDim2.new(0,14,1,0),
-					BorderSizePixel=0,
-				},{
-					New("UICorner",{CornerRadius=UDim.new(0,4)}),
-					New("UIGradient",{Rotation=270,Color=ColorSequence.new{
-						ColorSequenceKeypoint.new(0.00,Color3.fromRGB(255,0,4)),
-						ColorSequenceKeypoint.new(0.17,Color3.fromRGB(255,255,0)),
-						ColorSequenceKeypoint.new(0.33,Color3.fromRGB(0,255,0)),
-						ColorSequenceKeypoint.new(0.50,Color3.fromRGB(0,255,255)),
-						ColorSequenceKeypoint.new(0.67,Color3.fromRGB(0,0,255)),
-						ColorSequenceKeypoint.new(0.83,Color3.fromRGB(255,0,255)),
-						ColorSequenceKeypoint.new(1.00,Color3.fromRGB(255,0,4)),
-					}}),
-				})
-				local HPin = New("Frame",{
-					Parent=HueBar,Position=UDim2.new(0.5,0,1-H_,0),
-					Size=UDim2.new(1,4,0,4),AnchorPoint=Vector2.new(0.5,0.5),
-					BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(0,2)}),New("UIStroke",{Color=Color3.fromRGB(50,50,50),Thickness=1.5})})
-
-				local function UpdateCP()
-					local c = Color3.fromHSV(H_,S_,V_)
-					CP.Value            = c
-					Preview.BackgroundColor3 = c
-					SVBox.BackgroundColor3   = Color3.fromHSV(H_,1,1)
-					cpCfg.Callback(c)
-					SaveConfig(cfg.ConfigName)
-				end
-
-				local svDrag, svInp = false
-				Connect(SVBox.InputBegan, function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
-						svDrag = true
-						inp.Changed:Connect(function() if inp.UserInputState==Enum.UserInputState.End then svDrag=false end end)
-					end
-				end)
-				Connect(SVBox.InputChanged, function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseMovement or inp.UserInputType==Enum.UserInputType.Touch then svInp=inp end
-				end)
-				Connect(UserInputService.InputChanged, function(inp)
-					if svDrag and inp==svInp then
-						S_ = math.clamp((inp.Position.X-SVBox.AbsolutePosition.X)/math.max(SVBox.AbsoluteSize.X,1),0,1)
-						V_ = 1-math.clamp((inp.Position.Y-SVBox.AbsolutePosition.Y)/math.max(SVBox.AbsoluteSize.Y,1),0,1)
-						SVPin.Position = UDim2.new(S_,0,1-V_,0)
-						UpdateCP()
-					end
-				end)
-				local hDrag, hInp = false
-				Connect(HueBar.InputBegan, function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
-						hDrag = true
-						inp.Changed:Connect(function() if inp.UserInputState==Enum.UserInputState.End then hDrag=false end end)
-					end
-				end)
-				Connect(HueBar.InputChanged, function(inp)
-					if inp.UserInputType==Enum.UserInputType.MouseMovement or inp.UserInputType==Enum.UserInputType.Touch then hInp=inp end
-				end)
-				Connect(UserInputService.InputChanged, function(inp)
-					if hDrag and inp==hInp then
-						H_ = 1-math.clamp((inp.Position.Y-HueBar.AbsolutePosition.Y)/math.max(HueBar.AbsoluteSize.Y,1),0,1)
-						HPin.Position = UDim2.new(0.5,0,1-H_,0)
-						UpdateCP()
-					end
-				end)
-
-				local Hbtn = New("TextButton",{Parent=header,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
-				Connect(Hbtn.MouseButton1Up, function()
-					CP.Toggled = not CP.Toggled
-					sep.Visible = CP.Toggled
-					pickerArea.Visible = CP.Toggled
-					TPlay(arrow,TW.Fast,{Rotation=CP.Toggled and 180 or 0})
-					TPlay(outer,TW.Mid,{Size=CP.Toggled and UDim2.new(1,0,0,165) or UDim2.new(1,0,0,36)})
-				end)
-
-				function CP:Set(c)
-					CP.Value = c
-					H_, S_, V_ = Color3.toHSV(c)
-					Preview.BackgroundColor3 = c
-					SVBox.BackgroundColor3   = Color3.fromHSV(H_,1,1)
-					SVPin.Position = UDim2.new(S_,0,1-V_,0)
-					HPin.Position  = UDim2.new(0.5,0,1-H_,0)
-					cpCfg.Callback(c)
-				end
-
+				cpCfg=cpCfg or {}; cpCfg.Name=cpCfg.Name or "Cor"
+				cpCfg.Default=cpCfg.Default or Color3.fromRGB(0,210,255)
+				cpCfg.Callback=cpCfg.Callback or function()end
+				cpCfg.Flag=cpCfg.Flag or nil; cpCfg.Save=cpCfg.Save or false
+				local T=NL.Theme
+				local CP={Value=cpCfg.Default,Toggled=false,Type="Colorpicker",Save=cpCfg.Save}
+				local H,S,V=Color3.toHSV(cpCfg.Default)
+				local outer=New("Frame",{Parent=par,Size=UDim2.new(1,0,0,38),BackgroundColor3=T.BgCard,BorderSizePixel=0,ClipsDescendants=true},{New("UICorner",{CornerRadius=UDim.new(0,7)}),New("UIStroke",{Color=T.Border,Thickness=1})})
+				Bind(outer,"BackgroundColor3","BgCard"); Bind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
+				local hdr=New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
+				New("TextLabel",{Parent=hdr,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-64,1,0),BackgroundTransparency=1,Text=cpCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(hdr:FindFirstChildOfClass("TextLabel"),"TextColor3","TxtPri")
+				local prev=New("Frame",{Parent=hdr,Position=UDim2.new(1,-50,0.5,-13),Size=UDim2.new(0,26,0,26),BackgroundColor3=cpCfg.Default,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T.Border,Thickness=1.5})})
+				local arr=New("ImageLabel",{Parent=hdr,Position=UDim2.new(1,-20,0.5,-8),Size=UDim2.new(0,16,0,16),BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T.TxtMut})
+				local sep=New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),BackgroundColor3=T.Border,BorderSizePixel=0,Visible=false}); Bind(sep,"BackgroundColor3","Border")
+				local pa=New("Frame",{Parent=outer,Position=UDim2.new(0,12,0,46),Size=UDim2.new(1,-24,0,112),BackgroundTransparency=1,Visible=false})
+				local svb=New("ImageLabel",{Parent=pa,Size=UDim2.new(1,-28,1,0),Image="rbxassetid://4155801252",BackgroundColor3=Color3.fromHSV(H,1,1),BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(0,6)})})
+				local svp=New("Frame",{Parent=svb,Position=UDim2.new(S,0,1-V,0),Size=UDim2.new(0,14,0,14),BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0,AnchorPoint=Vector2.new(0.5,0.5)},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=Color3.fromRGB(40,40,40),Thickness=2})})
+				local hb=New("Frame",{Parent=pa,Position=UDim2.new(1,-24,0,0),Size=UDim2.new(0,16,1,0),BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(0,5)}),New("UIGradient",{Rotation=270,Color=ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.fromRGB(255,0,4)),ColorSequenceKeypoint.new(0.17,Color3.fromRGB(255,255,0)),ColorSequenceKeypoint.new(0.33,Color3.fromRGB(0,255,0)),ColorSequenceKeypoint.new(0.5,Color3.fromRGB(0,255,255)),ColorSequenceKeypoint.new(0.67,Color3.fromRGB(0,0,255)),ColorSequenceKeypoint.new(0.83,Color3.fromRGB(255,0,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,4))}})})
+				local hp=New("Frame",{Parent=hb,Position=UDim2.new(0.5,0,1-H,0),Size=UDim2.new(1,4,0,4),AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(0,2)}),New("UIStroke",{Color=Color3.fromRGB(40,40,40),Thickness=1.5})})
+				local function UpdCP() local c2=Color3.fromHSV(H,S,V); CP.Value=c2; prev.BackgroundColor3=c2; svb.BackgroundColor3=Color3.fromHSV(H,1,1); cpCfg.Callback(c2); SaveCfg(wCfg.ConfigName) end
+				local svDrag,svInp=false; Conn(svb.InputBegan,function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then svDrag=true; i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then svDrag=false end end) end end)
+				Conn(svb.InputChanged,function(i) if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then svInp=i end end)
+				Conn(UIS.InputChanged,function(i) if svDrag and i==svInp then S=math.clamp((i.Position.X-svb.AbsolutePosition.X)/math.max(svb.AbsoluteSize.X,1),0,1); V=1-math.clamp((i.Position.Y-svb.AbsolutePosition.Y)/math.max(svb.AbsoluteSize.Y,1),0,1); svp.Position=UDim2.new(S,0,1-V,0); UpdCP() end end)
+				local hDrag,hInp=false; Conn(hb.InputBegan,function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then hDrag=true; i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then hDrag=false end end) end end)
+				Conn(hb.InputChanged,function(i) if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then hInp=i end end)
+				Conn(UIS.InputChanged,function(i) if hDrag and i==hInp then H=1-math.clamp((i.Position.Y-hb.AbsolutePosition.Y)/math.max(hb.AbsoluteSize.Y,1),0,1); hp.Position=UDim2.new(0.5,0,1-H,0); UpdCP() end end)
+				local toggle=New("TextButton",{Parent=hdr,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
+				Conn(toggle.MouseButton1Up,function() CP.Toggled=not CP.Toggled; sep.Visible=CP.Toggled; pa.Visible=CP.Toggled; Tween(arr,TW.Fast,{Rotation=CP.Toggled and 180 or 0}); Tween(outer,TW.Mid,{Size=CP.Toggled and UDim2.new(1,0,0,170) or UDim2.new(1,0,0,38)}) end)
+				function CP:Set(c2) CP.Value=c2; H,S,V=Color3.toHSV(c2); prev.BackgroundColor3=c2; svb.BackgroundColor3=Color3.fromHSV(H,1,1); svp.Position=UDim2.new(S,0,1-V,0); hp.Position=UDim2.new(0.5,0,1-H,0); cpCfg.Callback(c2) end
 				CP:Set(cpCfg.Default)
-				if cpCfg.Flag then NexusLib.Flags[cpCfg.Flag] = CP end
+				if cpCfg.Flag then NL.Flags[cpCfg.Flag]=CP end
 				return CP
 			end
 
-			-- SECTION
 			function E:AddSection(sCfg)
-				sCfg = sCfg or {}
-				sCfg.Name = sCfg.Name or "Section"
-
-				local wrap = New("Frame",{
-					Parent=parent,Size=UDim2.new(1,0,0,0),
-					AutomaticSize=Enum.AutomaticSize.Y,
-					BackgroundTransparency=1,
-				})
-				local row = New("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,22),BackgroundTransparency=1})
-				New("Frame",{
-					Parent=row,Position=UDim2.new(0,0,0.5,-1),Size=UDim2.new(0,3,0,12),
-					BackgroundColor3=NexusLib.Theme.Accent,BorderSizePixel=0,
-				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-				local slbl = New("TextLabel",{
-					Parent=row,Position=UDim2.new(0,10,0,0),Size=UDim2.new(1,-10,1,0),
-					BackgroundTransparency=1,Text=sCfg.Name,
-					Font=Enum.Font.GothamBlack,TextSize=12,
-					TextColor3=NexusLib.Theme.TextMuted,TextXAlignment=Enum.TextXAlignment.Left,
-				})
-				ThemeBind(slbl,"TextColor3","TextMuted")
-
-				local holder = New("Frame",{
-					Parent=wrap,Position=UDim2.new(0,0,0,22),
-					Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
-					BackgroundTransparency=1,
-				},{New("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,5)})})
-
-				local SE = {}
-				for k,v in pairs(BuildElements(holder)) do SE[k]=v end
+				sCfg=sCfg or {}; sCfg.Name=sCfg.Name or "Section"
+				local wrap=New("Frame",{Parent=par,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1})
+				local row=New("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,24),BackgroundTransparency=1})
+				New("Frame",{Parent=row,Position=UDim2.new(0,0,0.5,-1),Size=UDim2.new(0,3,0,14),BackgroundColor3=NL.Theme.Accent,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+				New("Frame",{Parent=row,Position=UDim2.new(0,10,0.5,-0.5),Size=UDim2.new(0.7,0,0,1),BackgroundColor3=NL.Theme.Border,BorderSizePixel=0})
+				local sl=New("TextLabel",{Parent=row,Position=UDim2.new(0,11,0,0),Size=UDim2.new(1,-11,1,0),BackgroundTransparency=1,Text=sCfg.Name,Font=Enum.Font.GothamBlack,TextSize=11,TextColor3=NL.Theme.TxtMut,TextXAlignment=Enum.TextXAlignment.Left})
+				Bind(sl,"TextColor3","TxtMut")
+				local holder=New("Frame",{Parent=wrap,Position=UDim2.new(0,0,0,24),Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1},{New("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,5)})})
+				local SE={}; for k,v in pairs(BuildElements(holder)) do SE[k]=v end
 				return SE
 			end
 
 			return E
 		end -- BuildElements
 
-		local EF = {}
-		for k, v in pairs(BuildElements(ContentScroll)) do
-			EF[k] = v
-		end
+		local EF={}
+		for k,v in pairs(BuildElements(CS)) do EF[k]=v end
 		return EF
 	end -- MakeTab
 
-	-- ════════════════════════════════════════════════════════════
-	-- ABA DE CONFIGURAÇÕES INTERNA
-	-- ════════════════════════════════════════════════════════════
-	local function CreateSettingsTab()
-		local ST = TabFunction:MakeTab({ Name = "⚙ Settings", Icon = "" })
+	-- ══════════════════════════════════════════════════════════
+	-- ABA DE CONFIGURAÇÕES EMBUTIDA
+	-- ══════════════════════════════════════════════════════════
+	local function BuildSettingsTab()
+		local ST=TabFn:MakeTab({Name="⚙ Settings",Icon=""})
 
-		local Appearance = ST:AddSection({ Name = "APARÊNCIA" })
+		-- APARÊNCIA
+		local App=ST:AddSection({Name="APARÊNCIA"})
+		App:AddColorpicker({Name="Fundo da Janela",Default=NL.Theme.BgWindow,Callback=function(c)
+			NL:SetColor("BgWindow",c); NL:SetColor("BgContent",c); NL:SetColor("GradA",c)
+			NL:SetColor("BgTopbar",c)
+		end})
+		App:AddColorpicker({Name="Fundo da Sidebar",Default=NL.Theme.BgSidebar,Callback=function(c)
+			NL:SetColor("BgSidebar",c)
+		end})
+		App:AddColorpicker({Name="Cards / Elementos",Default=NL.Theme.BgCard,Callback=function(c)
+			NL:SetColor("BgCard",c)
+			NL:SetColor("BgCardAlt",Color3.fromRGB(math.min(255,c.R*255+5),math.min(255,c.G*255+5),math.min(255,c.B*255+5)))
+			NL:SetColor("BgHover",Color3.fromRGB(math.min(255,c.R*255+10),math.min(255,c.G*255+10),math.min(255,c.B*255+10)))
+			NL:SetColor("BgDeep",Color3.fromRGB(math.max(0,c.R*255-12),math.max(0,c.G*255-12),math.max(0,c.B*255-12)))
+		end})
+		App:AddColorpicker({Name="Gradiente B",Default=NL.Theme.GradB,Callback=function(c)
+			NL:SetColor("GradB",c)
+		end})
+		App:AddSlider({Name="Opacidade da Imagem de Fundo",Min=0,Max=100,
+			Default=math.floor((1-wCfg.BgImageAlpha)*100),Increment=5,Suffix="%",
+			Callback=function(v) local t=1-(v/100); BgImg.ImageTransparency=t; BgDim.BackgroundTransparency=0.25+t*0.5 end})
 
-		Appearance:AddColorpicker({
-			Name="Cor de Fundo", Default=NexusLib.Theme.BgBase,
-			Callback=function(c)
-				NexusLib:SetThemeColor("BgBase",c)
-				NexusLib:SetThemeColor("BgDeep",Color3.fromRGB(math.max(0,c.R*255-6),math.max(0,c.G*255-6),math.max(0,c.B*255-6)))
-			end,
-		})
-		Appearance:AddColorpicker({
-			Name="Cor dos Cards", Default=NexusLib.Theme.BgCard,
-			Callback=function(c)
-				NexusLib:SetThemeColor("BgCard",c)
-				NexusLib:SetThemeColor("BgPanel",Color3.fromRGB(math.max(0,c.R*255-4),math.max(0,c.G*255-4),math.max(0,c.B*255-4)))
-				NexusLib:SetThemeColor("BgHover",Color3.fromRGB(math.min(255,c.R*255+8),math.min(255,c.G*255+8),math.min(255,c.B*255+8)))
-			end,
-		})
-		Appearance:AddColorpicker({
-			Name="Cor da Sidebar", Default=NexusLib.Theme.SidebarBg,
-			Callback=function(c) NexusLib:SetThemeColor("SidebarBg",c) end,
-		})
-		Appearance:AddColorpicker({
-			Name="Cor da Topbar", Default=NexusLib.Theme.TopbarBg,
-			Callback=function(c) NexusLib:SetThemeColor("TopbarBg",c) end,
-		})
+		-- ACCENT
+		local Acc=ST:AddSection({Name="DESTAQUE"})
+		Acc:AddColorpicker({Name="Cor de Destaque",Default=NL.Theme.Accent,Callback=function(c)
+			NL:SetColor("Accent",c)
+			NL:SetColor("AccentGlow",Color3.fromRGB(math.min(255,c.R*255+40),math.min(255,c.G*255+40),math.min(255,c.B*255+40)))
+			NL:SetColor("AccentDim",Color3.fromRGB(math.floor(c.R*255*0.6),math.floor(c.G*255*0.6),math.floor(c.B*255*0.6)))
+			NL:SetColor("AccentDark",Color3.fromRGB(math.floor(c.R*255*0.15),math.floor(c.G*255*0.15),math.floor(c.B*255*0.15)))
+			NL:SetColor("ScrollBar",c); NL:SetColor("BorderLit",c)
+		end})
 
-		Appearance:AddSlider({
-			Name="Opacidade da Imagem de Fundo", Min=0, Max=100,
-			Default=math.floor((1-cfg.BackgroundImageTransparency)*100),
-			Increment=5, Suffix="%",
-			Callback=function(v)
-				local t = 1-(v/100)
-				BgImage.ImageTransparency = t
-				BgDim.BackgroundTransparency = 0.3+(t*0.4)
-			end,
-		})
+		-- BORDAS E TEXTO
+		local BT=ST:AddSection({Name="BORDAS & TEXTO"})
+		BT:AddColorpicker({Name="Bordas",Default=NL.Theme.Border,Callback=function(c) NL:SetColor("Border",c) end})
+		BT:AddColorpicker({Name="Texto Principal",Default=NL.Theme.TxtPri,Callback=function(c) NL:SetColor("TxtPri",c) end})
+		BT:AddColorpicker({Name="Texto Secundário",Default=NL.Theme.TxtSec,Callback=function(c) NL:SetColor("TxtSec",c) end})
 
-		local AccentSec = ST:AddSection({ Name = "DESTAQUE" })
-
-		AccentSec:AddColorpicker({
-			Name="Cor de Destaque", Default=NexusLib.Theme.Accent,
-			Callback=function(c)
-				NexusLib:SetThemeColor("Accent",c)
-				NexusLib:SetThemeColor("AccentGlow",Color3.fromRGB(math.min(255,c.R*255+35),math.min(255,c.G*255+35),math.min(255,c.B*255+35)))
-				NexusLib:SetThemeColor("AccentDim",Color3.fromRGB(math.floor(c.R*255*0.65),math.floor(c.G*255*0.65),math.floor(c.B*255*0.65)))
-				NexusLib:SetThemeColor("TabActive",c)
-				NexusLib:SetThemeColor("ScrollBar",c)
-				NexusLib:SetThemeColor("BorderLit",c)
-			end,
-		})
-
-		local BorderSec = ST:AddSection({ Name = "BORDAS" })
-		BorderSec:AddColorpicker({
-			Name="Cor das Bordas", Default=NexusLib.Theme.Border,
-			Callback=function(c) NexusLib:SetThemeColor("Border",c) end,
-		})
-
-		local TextSec = ST:AddSection({ Name = "TEXTO" })
-		TextSec:AddColorpicker({Name="Texto Primário",Default=NexusLib.Theme.TextPrimary,Callback=function(c) NexusLib:SetThemeColor("TextPrimary",c) end})
-		TextSec:AddColorpicker({Name="Texto Secundário",Default=NexusLib.Theme.TextSecondary,Callback=function(c) NexusLib:SetThemeColor("TextSecondary",c) end})
-		TextSec:AddColorpicker({Name="Texto Silenciado",Default=NexusLib.Theme.TextMuted,Callback=function(c) NexusLib:SetThemeColor("TextMuted",c) end})
-
-		local PresetSec = ST:AddSection({ Name = "PRESETS" })
-		local Presets = {
-			["Neon Cyan"]    = {BgBase=Color3.fromRGB(14,14,20),BgCard=Color3.fromRGB(22,22,32),Accent=Color3.fromRGB(0,220,180),Border=Color3.fromRGB(40,42,60),SidebarBg=Color3.fromRGB(14,14,20)},
-			["Blood Red"]    = {BgBase=Color3.fromRGB(14,8,8),BgCard=Color3.fromRGB(28,12,12),Accent=Color3.fromRGB(220,50,50),Border=Color3.fromRGB(60,20,20),SidebarBg=Color3.fromRGB(14,8,8)},
-			["Electric Blue"]= {BgBase=Color3.fromRGB(8,10,20),BgCard=Color3.fromRGB(14,18,36),Accent=Color3.fromRGB(80,140,255),Border=Color3.fromRGB(30,40,80),SidebarBg=Color3.fromRGB(8,10,20)},
-			["Golden Hour"]  = {BgBase=Color3.fromRGB(18,14,8),BgCard=Color3.fromRGB(30,22,10),Accent=Color3.fromRGB(255,195,50),Border=Color3.fromRGB(60,45,18),SidebarBg=Color3.fromRGB(18,14,8)},
-			["Void Purple"]  = {BgBase=Color3.fromRGB(10,8,18),BgCard=Color3.fromRGB(18,14,32),Accent=Color3.fromRGB(160,80,255),Border=Color3.fromRGB(40,30,70),SidebarBg=Color3.fromRGB(10,8,18)},
-			["Arctic White"] = {BgBase=Color3.fromRGB(235,237,245),BgCard=Color3.fromRGB(220,222,234),Accent=Color3.fromRGB(60,120,255),Border=Color3.fromRGB(190,195,215),SidebarBg=Color3.fromRGB(220,222,234),TextPrimary=Color3.fromRGB(30,32,50),TextSecondary=Color3.fromRGB(80,85,115),TextMuted=Color3.fromRGB(140,145,170)},
+		-- PRESETS
+		local PS=ST:AddSection({Name="PRESETS"})
+		local Presets={
+			["Neon Cyan"]     ={BgWindow=Color3.fromRGB(10,10,16),BgSidebar=Color3.fromRGB(12,12,18),BgCard=Color3.fromRGB(18,18,28),Accent=Color3.fromRGB(0,210,255),Border=Color3.fromRGB(35,38,58),GradA=Color3.fromRGB(10,10,16),GradB=Color3.fromRGB(14,10,22)},
+			["Crimson"]       ={BgWindow=Color3.fromRGB(12,8,8),BgSidebar=Color3.fromRGB(14,9,9),BgCard=Color3.fromRGB(22,14,14),Accent=Color3.fromRGB(255,60,60),Border=Color3.fromRGB(58,28,28),GradA=Color3.fromRGB(12,8,8),GradB=Color3.fromRGB(20,8,12)},
+			["Toxic Green"]   ={BgWindow=Color3.fromRGB(8,12,8),BgSidebar=Color3.fromRGB(9,14,9),BgCard=Color3.fromRGB(14,22,14),Accent=Color3.fromRGB(80,255,80),Border=Color3.fromRGB(28,58,28),GradA=Color3.fromRGB(8,12,8),GradB=Color3.fromRGB(8,18,10)},
+			["Void Purple"]   ={BgWindow=Color3.fromRGB(10,8,16),BgSidebar=Color3.fromRGB(12,9,18),BgCard=Color3.fromRGB(18,14,30),Accent=Color3.fromRGB(160,80,255),Border=Color3.fromRGB(42,30,70),GradA=Color3.fromRGB(10,8,16),GradB=Color3.fromRGB(16,8,24)},
+			["Solar Gold"]    ={BgWindow=Color3.fromRGB(14,12,6),BgSidebar=Color3.fromRGB(16,14,7),BgCard=Color3.fromRGB(26,22,10),Accent=Color3.fromRGB(255,200,40),Border=Color3.fromRGB(60,50,18),GradA=Color3.fromRGB(14,12,6),GradB=Color3.fromRGB(20,14,6)},
+			["Arctic White"]  ={BgWindow=Color3.fromRGB(240,242,250),BgSidebar=Color3.fromRGB(230,233,244),BgCard=Color3.fromRGB(218,221,238),Accent=Color3.fromRGB(60,120,255),Border=Color3.fromRGB(190,195,218),GradA=Color3.fromRGB(240,242,250),GradB=Color3.fromRGB(232,235,250),TxtPri=Color3.fromRGB(28,30,50),TxtSec=Color3.fromRGB(80,86,118),TxtMut=Color3.fromRGB(145,150,178)},
 		}
-		for pName, pData in pairs(Presets) do
-			PresetSec:AddButton({Name=pName,Callback=function()
-				for k, v in pairs(pData) do NexusLib:SetThemeColor(k,v) end
-				local a = pData.Accent or NexusLib.Theme.Accent
-				NexusLib:SetThemeColor("AccentGlow",Color3.fromRGB(math.min(255,a.R*255+35),math.min(255,a.G*255+35),math.min(255,a.B*255+35)))
-				NexusLib:SetThemeColor("AccentDim",Color3.fromRGB(math.floor(a.R*255*.65),math.floor(a.G*255*.65),math.floor(a.B*255*.65)))
-				NexusLib:SetThemeColor("TabActive",a); NexusLib:SetThemeColor("ScrollBar",a)
-				local bg = pData.BgCard or NexusLib.Theme.BgCard
-				NexusLib:SetThemeColor("BgHover",Color3.fromRGB(math.min(255,bg.R*255+8),math.min(255,bg.G*255+8),math.min(255,bg.B*255+8)))
-				NexusLib:SetThemeColor("BgPanel",Color3.fromRGB(math.max(0,bg.R*255-4),math.max(0,bg.G*255-4),math.max(0,bg.B*255-4)))
-				NexusLib:SetThemeColor("BgDeep",Color3.fromRGB(math.max(0,bg.R*255-12),math.max(0,bg.G*255-12),math.max(0,bg.B*255-12)))
-				NexusLib:SetThemeColor("TopbarBg",pData.SidebarBg or NexusLib.Theme.SidebarBg)
-				NexusLib:Notify({Title="Preset Carregado",Message=pName,Duration=3})
+		for pName,pData in pairs(Presets) do
+			PS:AddButton({Name=pName,Callback=function()
+				for k,v in pairs(pData) do NL:SetColor(k,v) end
+				local a=pData.Accent or NL.Theme.Accent
+				NL:SetColor("AccentGlow",Color3.fromRGB(math.min(255,a.R*255+40),math.min(255,a.G*255+40),math.min(255,a.B*255+40)))
+				NL:SetColor("AccentDim",Color3.fromRGB(math.floor(a.R*255*0.6),math.floor(a.G*255*0.6),math.floor(a.B*255*0.6)))
+				NL:SetColor("ScrollBar",a); NL:SetColor("BorderLit",a)
+				local bg=pData.BgCard or NL.Theme.BgCard
+				NL:SetColor("BgCardAlt",Color3.fromRGB(math.min(255,bg.R*255+5),math.min(255,bg.G*255+5),math.min(255,bg.B*255+5)))
+				NL:SetColor("BgHover",Color3.fromRGB(math.min(255,bg.R*255+10),math.min(255,bg.G*255+10),math.min(255,bg.B*255+10)))
+				NL:SetColor("BgDeep",Color3.fromRGB(math.max(0,bg.R*255-12),math.max(0,bg.G*255-12),math.max(0,bg.B*255-12)))
+				NL:SetColor("BgTopbar",pData.BgWindow or NL.Theme.BgWindow)
+				NL:SetColor("BgContent",pData.BgWindow or NL.Theme.BgWindow)
+				NL:Notify({Title="Preset Aplicado",Message=pName,Duration=3})
 			end})
 		end
 
-		local CfgSec = ST:AddSection({ Name = "CONFIG" })
-		CfgSec:AddButton({Name="Salvar Config",Callback=function()
-			saveDebounce=0; SaveConfig(cfg.ConfigName)
-			NexusLib:Notify({Title="Config Salva",Message=NexusLib.SaveFolder.."/"..cfg.ConfigName..".json",Duration=4})
+		-- CONFIG
+		local Cfg=ST:AddSection({Name="CONFIGURAÇÃO"})
+		Cfg:AddButton({Name="💾 Salvar Config",Callback=function()
+			sDb=0; SaveCfg(wCfg.ConfigName)
+			NL:Notify({Title="Config Salva",Message=NL.SaveFolder.."/"..wCfg.ConfigName..".json",Duration=4})
 		end})
-		CfgSec:AddButton({Name="Resetar Tema",Callback=function()
-			for k,v in pairs(DefaultTheme) do NexusLib.Theme[k]=v end
+		Cfg:AddButton({Name="↺ Resetar Tema",Callback=function()
+			for k,v in pairs(DefaultTheme) do NL.Theme[k]=v end
 			ApplyTheme()
-			NexusLib:Notify({Title="Tema Resetado",Message="Tema padrão restaurado.",Duration=3})
+			NL:Notify({Title="Tema Resetado",Message="Tema padrão restaurado.",Duration=3})
 		end})
-		CfgSec:AddBind({
-			Name="Tecla Toggle", Default=Enum.KeyCode[cfg.ToggleKey] or Enum.KeyCode.RightShift,
-			Callback=function(key)
-				cfg.ToggleKey = key
-				NexusLib:Notify({Title="Tecla Alterada",Message="Nova tecla: "..key,Duration=3})
-			end,
-			Flag="ToggleKey", Save=true,
-		})
-		CfgSec:AddTextbox({
-			Name="ID da Imagem de Fundo", Default=cfg.BackgroundImage,
-			Placeholder="ex: 123456789",
+		Cfg:AddBind({Name="Tecla Toggle",Default=Enum.KeyCode[wCfg.ToggleKey] or Enum.KeyCode.RightShift,
+			Callback=function(key) wCfg.ToggleKey=key; NL:Notify({Title="Tecla Alterada",Message="Nova tecla: "..key,Duration=3}) end,
+			Flag="ToggleKey",Save=true})
+		Cfg:AddTextbox({Name="ID Imagem de Fundo",Default=wCfg.BgImage,Placeholder="123456789",
 			Callback=function(id)
-				cfg.BackgroundImage = id
-				BgImage.Image = id ~= "" and "rbxassetid://"..id or ""
-				BgDim.BackgroundTransparency = id ~= "" and 0.55 or 1
-				NexusLib:Notify({Title="Fundo Atualizado",Message=id ~= "" and "Imagem definida" or "Imagem removida",Duration=3})
-			end,
-		})
+				wCfg.BgImage=id; BgImg.Image=id~="" and "rbxassetid://"..id or ""
+				BgDim.BackgroundTransparency=id~="" and 0.5 or 1
+				NL:Notify({Title="Fundo Atualizado",Message=id~="" and "Imagem aplicada" or "Imagem removida",Duration=3})
+			end})
 	end
 
-	CreateSettingsTab()
+	BuildSettingsTab()
+	if wCfg.SaveConfig then task.defer(function() LoadCfg(wCfg.ConfigName) end) end
 
-	if cfg.SaveConfig then
-		task.defer(function() LoadConfig(cfg.ConfigName) end)
-	end
-
-	return TabFunction
+	return TabFn
 end
 
--- ═══════════════════════════════════════════════════════════════
--- INIT
--- ═══════════════════════════════════════════════════════════════
-function NexusLib:Init()
-end
+-- ══════════════════════════════════════════════════════════════
+-- PUBLIC NOTIFY ALIAS & INIT
+-- ══════════════════════════════════════════════════════════════
+function NL:Init() end
 
-return NexusLib
+return NL
