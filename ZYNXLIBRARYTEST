@@ -104,8 +104,9 @@ local Modal = New("TextButton",{
 -- ══════════════════════════════════════════════════════════════
 local DefaultTheme = {
 	-- Fundos unificados — MESMA família de cor
+	-- BgSidebar = BgWindow para que fundo de imagem seja uniforme
 	BgWindow  = Color3.fromRGB(10,  10, 16),   -- janela inteira
-	BgSidebar = Color3.fromRGB(12,  12, 18),   -- sidebar (levemente distinto)
+	BgSidebar = Color3.fromRGB(10,  10, 16),   -- sidebar (= janela para imagem de fundo coerente)
 	BgContent = Color3.fromRGB(10,  10, 16),   -- área de conteúdo (= janela)
 	BgCard    = Color3.fromRGB(18,  18, 28),
 	BgCardAlt = Color3.fromRGB(22,  22, 34),
@@ -424,7 +425,7 @@ function NL:MakeWindow(wCfg)
 	wCfg.SaveConfig    = wCfg.SaveConfig    ~= false
 	wCfg.IntroEnabled  = wCfg.IntroEnabled  ~= false
 	wCfg.IntroText     = wCfg.IntroText     or wCfg.Title
-	wCfg.ToggleKey     = wCfg.ToggleKey     or "RightShift"
+	wCfg.ToggleKey     = wCfg.ToggleKey     or "M"
 	wCfg.BgImage       = wCfg.BgImage       or ""
 	wCfg.BgImageAlpha  = wCfg.BgImageAlpha  or 0.82
 	wCfg.Icon          = wCfg.Icon          or ""
@@ -747,11 +748,14 @@ function NL:MakeWindow(wCfg)
 	end)
 
 	-- ── TOGGLE KEY ─────────────────────────────────────────────
+	-- Usa apenas KeyCode.Name para comparação — evita erros com pcall
 	Conn(UIS.InputBegan,function(inp,gp)
 		if gp then return end
-		local ok=pcall(function() return inp.KeyCode==Enum.KeyCode[wCfg.ToggleKey] end)
-		if not ok then return end
-		if inp.KeyCode~=Enum.KeyCode[wCfg.ToggleKey] then return end
+		-- Ignorar se um TextBox está com foco (evita ativar ao digitar)
+		if UIS:GetFocusedTextBox() then return end
+		local keyName=""
+		pcall(function() keyName=inp.KeyCode.Name end)
+		if keyName ~= wCfg.ToggleKey then return end
 		if Hidden then
 			Hidden=false; Win.Visible=true
 			Modal.Visible=true; Modal.Modal=true
@@ -1299,23 +1303,56 @@ function NL:MakeWindow(wCfg)
 						if si then si.Visible=true end; b:SetAttribute("DC",true)
 					else b:Destroy(); DD.Buttons[name]=nil; Opts=Opts-1 end
 				end
+				-- Detectar se o personagem do jogador está dentro de uma Folder no workspace
+				local function IsInFolder(player)
+					local char = player.Character
+					if not char then return false end
+					local parent = char.Parent
+					return parent and parent:IsA("Folder")
+				end
+
 				local function AddOpt(p)
 					local pn=p.Name; local pd=p.DisplayName; local uid=p.UserId
 					if DD.Buttons[pn] then
 						local b=DD.Buttons[pn]; if b:GetAttribute("DC") then
 							b:SetAttribute("DC",false); local si=b:FindFirstChild("DisIco"); if si then si.Visible=false end
 							ApplySel(b,table.find(SelVals,pn)~=nil)
-						end; return
+						end
+						-- Atualizar ícone de pasta se necessário
+						local folderIco=b:FindFirstChild("FolderIco")
+						if folderIco then
+							folderIco.Visible=IsInFolder(p)
+						end
+						return
 					end
 					local isSel=table.find(SelVals,pn)~=nil
+					local inFolder=IsInFolder(p)
 					local ob=New("TextButton",{Parent=os2,Size=UDim2.new(1,0,0,48),BackgroundColor3=isSel and SelBg() or NL.Theme.BgCard,BorderSizePixel=0,Text="",AutoButtonColor=false},{New("UICorner",{CornerRadius=UDim.new(0,7)}),New("UIStroke",{Color=NL.Theme.Border,Thickness=1})})
 					Bind(ob:FindFirstChildOfClass("UIStroke"),"Color","Border")
 					local sb=New("Frame",{Parent=ob,Position=UDim2.new(0,0,0.1,0),Size=UDim2.new(0,3,0.8,0),BackgroundColor3=NL.Theme.Accent,BackgroundTransparency=isSel and 0 or 1,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
 					sb.Name="SB"; Bind(sb,"BackgroundColor3","Accent")
 					New("ImageLabel",{Parent=ob,Position=UDim2.new(0,6,0.5,-19),Size=UDim2.new(0,38,0,38),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..uid.."&width=420&height=420&format=png"},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=NL.Theme.Border,Thickness=1.5})})
+					-- Ícone de desconectado (X vermelho)
 					local di=New("ImageLabel",{Parent=ob,Position=UDim2.new(1,-22,0.5,-11),Size=UDim2.new(0,22,0,22),BackgroundTransparency=1,Image="rbxassetid://7072725342",ImageColor3=Color3.fromRGB(255,80,80),Visible=false,Name="DisIco"})
-					New("TextLabel",{Parent=ob,Position=UDim2.new(0,52,0,7),Size=UDim2.new(1,-76,0,18),BackgroundTransparency=1,Text=pd,Font=Enum.Font.GothamBold,TextSize=14,TextColor3=isSel and NL.Theme.Accent or NL.Theme.TxtPri,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+					-- Ícone de casinha AZUL — jogador está dentro de uma Folder no workspace
+					local folderIco=New("ImageLabel",{Parent=ob,Position=UDim2.new(1,-46,0.5,-9),Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,Image="rbxassetid://6693712941",ImageColor3=Color3.fromRGB(80,160,255),Visible=inFolder,Name="FolderIco"})
+					-- Nome em azul se estiver em pasta, cor normal caso contrário
+					local nameColor = inFolder and Color3.fromRGB(80,160,255) or (isSel and NL.Theme.Accent or NL.Theme.TxtPri)
+					local nameL=New("TextLabel",{Parent=ob,Position=UDim2.new(0,52,0,7),Size=UDim2.new(1,-76,0,18),BackgroundTransparency=1,Text=pd,Font=Enum.Font.GothamBold,TextSize=14,TextColor3=nameColor,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,Name="NameL"})
 					New("TextLabel",{Parent=ob,Position=UDim2.new(0,52,0,24),Size=UDim2.new(1,-76,0,16),BackgroundTransparency=1,Text="@"..pn,Font=Enum.Font.GothamMedium,TextSize=11,TextColor3=NL.Theme.TxtSec,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+					-- Atualizar ícone de pasta em tempo real (personagem pode mudar de lugar)
+					task.spawn(function()
+						while ob and ob.Parent do
+							task.wait(2)
+							if not ob or not ob.Parent then break end
+							local nowInFolder=IsInFolder(p)
+							folderIco.Visible=nowInFolder
+							-- Só mudar cor do nome se não estiver selecionado
+							if not table.find(SelVals,pn) and not ob:GetAttribute("DC") then
+								nameL.TextColor3=nowInFolder and Color3.fromRGB(80,160,255) or NL.Theme.TxtPri
+							end
+						end
+					end)
 					Conn(ob.MouseButton1Up,function() if ob:GetAttribute("DC") then return end; DD:Set(pn); SaveCfg(wCfg.ConfigName) end)
 					Conn(ob.MouseEnter,function() if ob:GetAttribute("DC") then return end; if table.find(SelVals,pn) then return end; Tween(ob,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
 					Conn(ob.MouseLeave,function() if ob:GetAttribute("DC") then return end; Tween(ob,TW.Fast,{BackgroundColor3=table.find(SelVals,pn) and SelBg() or NL.Theme.BgCard}) end)
@@ -1559,8 +1596,197 @@ function NL:MakeWindow(wCfg)
 				return SE
 			end
 
-			return E
-		end -- BuildElements
+
+				-- ══════════════════════════════════════════════════
+				-- IMAGE DROPDOWN — dropdown personalizado de imagens
+				-- Salva imagens com nome + ID, mostra preview,
+				-- permite aplicar e remover. Exclusivo para config.
+				-- ══════════════════════════════════════════════════
+				function E:AddImageDropdown(imgCfg)
+					imgCfg=imgCfg or {}
+					imgCfg.Name=imgCfg.Name or "Imagens de Fundo"
+					imgCfg.OnApply=imgCfg.OnApply or function(_) end
+					imgCfg.SaveKey=imgCfg.SaveKey or "__NexusBgImages"
+					local T=NL.Theme
+					local savedImages={}
+
+					local function LoadImages()
+						if not readfile or not isfile then return end
+						if not isfolder then return end
+						local p=NL.SaveFolder.."/"..imgCfg.SaveKey..".json"
+						if not isfile(p) then return end
+						local ok,d=pcall(function() return HTTP:JSONDecode(readfile(p)) end)
+						if ok and type(d)=="table" then savedImages=d end
+					end
+					local function SaveImages()
+						if not writefile then return end
+						if not isfolder then return end
+						if not isfolder(NL.SaveFolder) then makefolder(NL.SaveFolder) end
+						pcall(writefile,NL.SaveFolder.."/"..imgCfg.SaveKey..".json",HTTP:JSONEncode(savedImages))
+					end
+					LoadImages()
+
+					-- Wrapper com AutomaticSize
+					local outer=New("Frame",{Parent=par,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
+						BackgroundColor3=T.BgCard,BorderSizePixel=0},{
+						New("UICorner",{CornerRadius=UDim.new(0,8)}),
+						New("UIStroke",{Color=T.Border,Thickness=1}),
+						New("UIPadding",{PaddingLeft=UDim.new(0,12),PaddingRight=UDim.new(0,12),PaddingTop=UDim.new(0,12),PaddingBottom=UDim.new(0,12)}),
+					})
+					Bind(outer,"BackgroundColor3","BgCard")
+					Bind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
+
+					-- Título
+					local titleL=New("TextLabel",{Parent=outer,Size=UDim2.new(1,0,0,20),
+						BackgroundTransparency=1,Text=imgCfg.Name,Font=Enum.Font.GothamBlack,TextSize=13,
+						TextColor3=T.TxtMut,TextXAlignment=Enum.TextXAlignment.Left})
+					Bind(titleL,"TextColor3","TxtMut")
+
+					-- Row de inputs
+					local inputRow=New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,26),Size=UDim2.new(1,0,0,32),BackgroundTransparency=1})
+					-- Input nome
+					local nameIn=New("TextBox",{Parent=inputRow,Position=UDim2.new(0,0,0,0),Size=UDim2.new(0.40,0,1,0),
+						BackgroundColor3=T.BgDeep,BorderSizePixel=0,PlaceholderText="Nome",
+						PlaceholderColor3=T.TxtMut,Text="",Font=Enum.Font.GothamMedium,TextSize=12,
+						TextColor3=T.TxtPri,ClearTextOnFocus=false,TextXAlignment=Enum.TextXAlignment.Left},{
+						New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T.Border,Thickness=1}),
+						New("UIPadding",{PaddingLeft=UDim.new(0,8)}),
+					})
+					Bind(nameIn,"TextColor3","TxtPri")
+					Conn(nameIn.Focused,function() Tween(nameIn:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Accent}) end)
+					Conn(nameIn.FocusLost,function() Tween(nameIn:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Border}) end)
+					-- Input ID
+					local idIn=New("TextBox",{Parent=inputRow,Position=UDim2.new(0.42,0,0,0),Size=UDim2.new(0.36,0,1,0),
+						BackgroundColor3=T.BgDeep,BorderSizePixel=0,PlaceholderText="ID da imagem",
+						PlaceholderColor3=T.TxtMut,Text="",Font=Enum.Font.GothamMedium,TextSize=12,
+						TextColor3=T.TxtPri,ClearTextOnFocus=false,TextXAlignment=Enum.TextXAlignment.Left},{
+						New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T.Border,Thickness=1}),
+						New("UIPadding",{PaddingLeft=UDim.new(0,8)}),
+					})
+					Bind(idIn,"TextColor3","TxtPri")
+					Conn(idIn.Focused,function() Tween(idIn:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Accent}) end)
+					Conn(idIn.FocusLost,function() Tween(idIn:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Border}) end)
+					-- Botão +
+					local addBtn=New("TextButton",{Parent=inputRow,Position=UDim2.new(0.80,0,0,0),Size=UDim2.new(0.20,0,1,0),
+						BackgroundColor3=T.Accent,BorderSizePixel=0,Text="+ ADD",Font=Enum.Font.GothamBold,TextSize=12,
+						TextColor3=Color3.fromRGB(8,8,14),AutoButtonColor=false},{
+						New("UICorner",{CornerRadius=UDim.new(0,6)}),
+					})
+					Bind(addBtn,"BackgroundColor3","Accent")
+					Conn(addBtn.MouseEnter,function() Tween(addBtn,TW.Fast,{BackgroundColor3=NL.Theme.AccentGlow}) end)
+					Conn(addBtn.MouseLeave,function() Tween(addBtn,TW.Fast,{BackgroundColor3=NL.Theme.Accent}) end)
+
+					-- Separador
+					local sep=New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,66),Size=UDim2.new(1,0,0,1),
+						BackgroundColor3=T.Border,BorderSizePixel=0})
+					Bind(sep,"BackgroundColor3","Border")
+
+					-- Lista de imagens
+					local listFrame=New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,75),
+						Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1})
+					New("UIListLayout",{Parent=listFrame,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,4)})
+
+					local function RebuildList()
+						for _,ch in ipairs(listFrame:GetChildren()) do
+							if not ch:IsA("UIListLayout") then ch:Destroy() end
+						end
+						if #savedImages==0 then
+							local em=New("TextLabel",{Parent=listFrame,Size=UDim2.new(1,0,0,26),
+								BackgroundTransparency=1,Text="Nenhuma imagem salva ainda.",
+								Font=Enum.Font.GothamMedium,TextSize=12,
+								TextColor3=NL.Theme.TxtMut,TextXAlignment=Enum.TextXAlignment.Center})
+							Bind(em,"TextColor3","TxtMut")
+							return
+						end
+						for idx,img in ipairs(savedImages) do
+							local rowH=62
+							local row=New("Frame",{Parent=listFrame,Size=UDim2.new(1,0,0,rowH),
+								BackgroundColor3=NL.Theme.BgCardAlt,BorderSizePixel=0},{
+								New("UICorner",{CornerRadius=UDim.new(0,7)}),
+								New("UIStroke",{Color=NL.Theme.Border,Thickness=1}),
+								New("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8),PaddingTop=UDim.new(0,7),PaddingBottom=UDim.new(0,7)}),
+							})
+							Bind(row,"BackgroundColor3","BgCardAlt")
+							Bind(row:FindFirstChildOfClass("UIStroke"),"Color","Border")
+							-- Thumbnail da imagem
+							New("ImageLabel",{Parent=row,Position=UDim2.new(0,0,0.5,-24),Size=UDim2.new(0,48,0,48),
+								BackgroundColor3=NL.Theme.BgDeep,BorderSizePixel=0,
+								Image="rbxassetid://"..tostring(img.id),ScaleType=Enum.ScaleType.Crop},{
+								New("UICorner",{CornerRadius=UDim.new(0,6)}),
+								New("UIStroke",{Color=NL.Theme.Border,Thickness=1}),
+							})
+							-- Nome
+							local nl2=New("TextLabel",{Parent=row,Position=UDim2.new(0,56,0,5),Size=UDim2.new(1,-170,0,18),
+								BackgroundTransparency=1,Text=img.name,Font=Enum.Font.GothamBold,TextSize=13,
+								TextColor3=NL.Theme.TxtPri,TextXAlignment=Enum.TextXAlignment.Left,
+								TextTruncate=Enum.TextTruncate.AtEnd})
+							Bind(nl2,"TextColor3","TxtPri")
+							-- ID
+							local il2=New("TextLabel",{Parent=row,Position=UDim2.new(0,56,0,24),Size=UDim2.new(1,-170,0,16),
+								BackgroundTransparency=1,Text="rbxassetid://"..tostring(img.id),Font=Enum.Font.GothamMedium,TextSize=10,
+								TextColor3=NL.Theme.TxtMut,TextXAlignment=Enum.TextXAlignment.Left,
+								TextTruncate=Enum.TextTruncate.AtEnd})
+							Bind(il2,"TextColor3","TxtMut")
+							-- Botão APLICAR
+							local apB=New("TextButton",{Parent=row,Position=UDim2.new(1,-112,0.5,-13),
+								Size=UDim2.new(0,56,0,26),BackgroundColor3=NL.Theme.Accent,BorderSizePixel=0,
+								Text="Aplicar",Font=Enum.Font.GothamBold,TextSize=11,
+								TextColor3=Color3.fromRGB(8,8,14),AutoButtonColor=false},{
+								New("UICorner",{CornerRadius=UDim.new(0,6)}),
+							})
+							Bind(apB,"BackgroundColor3","Accent")
+							Conn(apB.MouseEnter,function() Tween(apB,TW.Fast,{BackgroundColor3=NL.Theme.AccentGlow}) end)
+							Conn(apB.MouseLeave,function() Tween(apB,TW.Fast,{BackgroundColor3=NL.Theme.Accent}) end)
+							Conn(apB.MouseButton1Up,function()
+								imgCfg.OnApply(tostring(img.id))
+								NL:Notify({Title="✓ Imagem Aplicada",Message=img.name,Duration=3})
+							end)
+							-- Botão REMOVER
+							local capIdx=idx
+							local delB=New("TextButton",{Parent=row,Position=UDim2.new(1,-52,0.5,-13),
+								Size=UDim2.new(0,48,0,26),BackgroundColor3=Color3.fromRGB(70,16,16),BorderSizePixel=0,
+								Text="Apagar",Font=Enum.Font.GothamBold,TextSize=11,
+								TextColor3=Color3.fromRGB(255,80,80),AutoButtonColor=false},{
+								New("UICorner",{CornerRadius=UDim.new(0,6)}),
+							})
+							Conn(delB.MouseEnter,function() Tween(delB,TW.Fast,{BackgroundColor3=Color3.fromRGB(100,22,22)}) end)
+							Conn(delB.MouseLeave,function() Tween(delB,TW.Fast,{BackgroundColor3=Color3.fromRGB(70,16,16)}) end)
+							Conn(delB.MouseButton1Up,function()
+								local name2=savedImages[capIdx] and savedImages[capIdx].name or "?"
+								table.remove(savedImages,capIdx)
+								SaveImages(); RebuildList()
+								NL:Notify({Title="Imagem Removida",Message=name2,Duration=2})
+							end)
+						end
+					end
+
+					RebuildList()
+
+					-- Lógica do ADD
+					Conn(addBtn.MouseButton1Up,function()
+						local nome=nameIn.Text:match("^%s*(.-)%s*$")
+						local id=idIn.Text:match("^%s*(.-)%s*$")
+						if nome=="" or id=="" then
+							NL:Notify({Title="Campos Vazios",Message="Preencha o nome e o ID.",Duration=3})
+							return
+						end
+						for _,img in ipairs(savedImages) do
+							if tostring(img.id)==id then
+								NL:Notify({Title="Duplicado",Message="ID já salvo como: "..img.name,Duration=3})
+								return
+							end
+						end
+						table.insert(savedImages,{name=nome,id=id})
+						SaveImages(); nameIn.Text=""; idIn.Text=""
+						RebuildList()
+						NL:Notify({Title="✓ Imagem Salva",Message=nome.." — ID: "..id,Duration=3})
+					end)
+
+					return {Rebuild=RebuildList}
+				end
+
+				return E
+			end -- BuildElements
 
 		local EF={}
 		for k,v in pairs(BuildElements(CS)) do EF[k]=v end
@@ -1575,11 +1801,10 @@ function NL:MakeWindow(wCfg)
 
 		-- APARÊNCIA
 		local App=ST:AddSection({Name="APARÊNCIA"})
-		App:AddColorpicker({Name="Fundo da Janela",Default=NL.Theme.BgWindow,Callback=function(c)
-			NL:SetColor("BgWindow",c); NL:SetColor("BgContent",c); NL:SetColor("GradA",c)
-			NL:SetColor("BgTopbar",c)
-		end})
-		App:AddColorpicker({Name="Fundo da Sidebar",Default=NL.Theme.BgSidebar,Callback=function(c)
+		App:AddColorpicker({Name="Fundo (Janela + Sidebar)",Default=NL.Theme.BgWindow,Callback=function(c)
+			-- Ambas usam a mesma cor para que a imagem de fundo fique uniforme
+			NL:SetColor("BgWindow",c); NL:SetColor("BgContent",c)
+			NL:SetColor("GradA",c); NL:SetColor("BgTopbar",c)
 			NL:SetColor("BgSidebar",c)
 		end})
 		App:AddColorpicker({Name="Cards / Elementos",Default=NL.Theme.BgCard,Callback=function(c)
@@ -1650,9 +1875,22 @@ function NL:MakeWindow(wCfg)
 			NL:Notify({Title="Tema Resetado",Message="Tema padrão restaurado.",Duration=3})
 		end})
 		Cfg:AddDropdown({Name="Posição das Notificações",Options={"BottomRight","BottomLeft","TopRight","TopLeft"},Default="BottomRight",Callback=function(v) NL:SetNotifyPosition(v) end})
-		Cfg:AddBind({Name="Tecla Toggle",Default=Enum.KeyCode[wCfg.ToggleKey] or Enum.KeyCode.RightShift,
-			Callback=function(key) wCfg.ToggleKey=key; NL:Notify({Title="Tecla Alterada",Message="Nova tecla: "..key,Duration=3}) end,
-			Flag="ToggleKey",Save=true})
+		-- Dropdown personalizado de imagens de fundo
+		local ImgSec=ST:AddSection({Name="IMAGENS DE FUNDO SALVAS"})
+		ImgSec:AddImageDropdown({
+			Name="Gerenciar Imagens",
+			SaveKey="__NexusBgImages",
+			OnApply=function(id)
+				wCfg.BgImage=id
+				BgImg.Image="rbxassetid://"..id
+				BgDim.BackgroundTransparency=0.5
+				-- Sincronizar sidebar ao aplicar imagem
+				Sidebar.BackgroundTransparency=0.18
+				if Sidebar:FindFirstChild("SFill") then
+					Sidebar.SFill.BackgroundTransparency=0.18
+				end
+			end,
+		})
 		Cfg:AddTextbox({Name="ID Imagem de Fundo",Default=wCfg.BgImage,Placeholder="123456789",
 			Callback=function(id)
 				wCfg.BgImage=id; BgImg.Image=id~="" and "rbxassetid://"..id or ""
