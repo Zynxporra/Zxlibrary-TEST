@@ -737,10 +737,10 @@ function NL:MakeWindow(wCfg)
 		})
 		Bind(TBtn,"BackgroundColor3","BgCard")
 
-		-- Barra indicadora esquerda
+		-- Barra indicadora esquerda — nomeada para achá-la na desativação
 		local IndBar=New("Frame",{Parent=TBtn,Position=UDim2.new(0,0,0.15,0),
 			Size=UDim2.new(0,3,0.7,0),BackgroundColor3=T.Accent,BorderSizePixel=0,
-			BackgroundTransparency=1},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+			BackgroundTransparency=1,Name="__IndBar"},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
 		Bind(IndBar,"BackgroundColor3","Accent")
 
 		local TIco=New("ImageLabel",{Parent=TBtn,Position=UDim2.new(0,12,0.5,-9),
@@ -766,7 +766,8 @@ function NL:MakeWindow(wCfg)
 		local function Activate()
 			for _,td in pairs(AllTabs) do
 				Tween(td.Btn,TW.Fast,{BackgroundColor3=NL.Theme.BgCard})
-				local bar=td.Btn:FindFirstChildOfClass("Frame")
+				-- FIX: buscar a barra indicadora pelo nome, não por FindFirstChildOfClass
+				local bar=td.Btn:FindFirstChild("__IndBar")
 				if bar then Tween(bar,TW.Fast,{BackgroundTransparency=1}) end
 				local ico=td.Btn:FindFirstChildOfClass("ImageLabel")
 				local lbl=td.Btn:FindFirstChildOfClass("TextLabel")
@@ -947,14 +948,13 @@ function NL:MakeWindow(wCfg)
 
 				-- Track
 				local trkBg=New("Frame",{Parent=c,Position=UDim2.new(0,0,0,28),
-					Size=UDim2.new(1,0,0,10),BackgroundColor3=T.BgDeep,BorderSizePixel=0},{
+					Size=UDim2.new(1,0,0,10),BackgroundColor3=T.BgDeep,BorderSizePixel=0,ZIndex=10},{
 					New("UICorner",{CornerRadius=UDim.new(1,0)}),
 					New("UIStroke",{Color=T.Border,Thickness=1}),
 				})
 				local trkFill=New("Frame",{Parent=trkBg,Size=UDim2.new(0,0,1,0),
-					BackgroundColor3=T.Accent,BorderSizePixel=0},{
+					BackgroundColor3=T.Accent,BorderSizePixel=0,ZIndex=11},{
 					New("UICorner",{CornerRadius=UDim.new(1,0)}),
-					-- Brilho no fill
 					New("UIGradient",{Color=ColorSequence.new{
 						ColorSequenceKeypoint.new(0,Color3.fromRGB(200,255,255)),
 						ColorSequenceKeypoint.new(0.4,T.Accent),
@@ -963,16 +963,21 @@ function NL:MakeWindow(wCfg)
 				})
 				Bind(trkFill,"BackgroundColor3","Accent")
 
-				-- Thumb dot
+				-- Thumb dot — acima do fill
 				local thumb=New("Frame",{Parent=trkBg,Position=UDim2.new(0,-8,0.5,-8),
-					Size=UDim2.new(0,16,0,16),BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0},{
+					Size=UDim2.new(0,16,0,16),BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0,ZIndex=12},{
 					New("UICorner",{CornerRadius=UDim.new(1,0)}),
 					New("UIStroke",{Color=T.Accent,Thickness=2}),
 				})
 
-				-- Botão hover sobre card
+				-- FIX: NÃO usar TextButton sobre o card inteiro — isso bloqueia o trkBg.
+				-- Botão de hover com ZIndex=1 (abaixo do trkBg que tem ZIndex=10)
 				local hBtn=New("TextButton",{Parent=c,Size=UDim2.new(1,0,1,0),
-					BackgroundTransparency=1,Text="",AutoButtonColor=false})
+					BackgroundTransparency=1,Text="",AutoButtonColor=false,ZIndex=1})
+				Conn(hBtn.MouseEnter,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
+				Conn(hBtn.MouseLeave,function()
+					if not dragging then Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgCard}) end
+				end)
 
 				function Sl:Set(v)
 					Sl.Value=math.clamp(Round(v,sCfg.Increment),sCfg.Min,sCfg.Max)
@@ -1004,12 +1009,11 @@ function NL:MakeWindow(wCfg)
 
 				Conn(UIS.InputEnded,function(inp)
 					if dragging and (inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch) then
-						dragging=false; SaveCfg(wCfg.ConfigName)
+						dragging=false
+						Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgCard})
+						SaveCfg(wCfg.ConfigName)
 					end
 				end)
-
-				Conn(hBtn.MouseEnter,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgHover}) end)
-				Conn(hBtn.MouseLeave,function() Tween(c,TW.Fast,{BackgroundColor3=NL.Theme.BgCard}) end)
 
 				Sl:Set(Sl.Value)
 				if sCfg.Flag then NL.Flags[sCfg.Flag]=Sl end
@@ -1372,7 +1376,8 @@ function NL:MakeWindow(wCfg)
 					Enum.KeyCode.Up,Enum.KeyCode.Down,Enum.KeyCode.Left,Enum.KeyCode.Right}
 				local function InBL(k) for _,v in pairs(BL) do if v==k then return true end end end
 				local T=NL.Theme
-				local Bind={Value=bCfg.Default.Name or tostring(bCfg.Default),Binding=false,Holding=false,Type="Bind",Save=bCfg.Save}
+				-- FIX: renomeado de "Bind" para "BindObj" para não sobrescrever a função global Bind()
+				local BindObj={Value=bCfg.Default.Name or tostring(bCfg.Default),Binding=false,Holding=false,Type="Bind",Save=bCfg.Save}
 				local c=MakeCard(par); c.Size=UDim2.new(1,0,0,38)
 				New("TextLabel",{Parent=c,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-110,1,0),
 					BackgroundTransparency=1,Text=bCfg.Name,Font=Enum.Font.GothamBold,TextSize=14,
@@ -1381,26 +1386,39 @@ function NL:MakeWindow(wCfg)
 				local kb=New("Frame",{Parent=c,Position=UDim2.new(1,-90,0.5,-14),Size=UDim2.new(0,78,0,28),
 					BackgroundColor3=T.BgDeep,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T.Border,Thickness=1})})
 				local kl=New("TextLabel",{Parent=kb,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,
-					Text=Bind.Value,Font=Enum.Font.GothamBold,TextSize=11,TextColor3=T.Accent,
+					Text=BindObj.Value,Font=Enum.Font.GothamBold,TextSize=11,TextColor3=T.Accent,
 					TextXAlignment=Enum.TextXAlignment.Center})
 				Bind(kl,"TextColor3","Accent")
 				local btn=New("TextButton",{Parent=c,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
-				Conn(btn.InputEnded,function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 and not Bind.Binding then
-					Bind.Binding=true; kl.Text="..."; Tween(kb:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Accent}) end end)
-				Conn(UIS.InputBegan,function(i,gp)
-					if gp then return end
-					if Bind.Binding then
-						local K; pcall(function() if not InBL(i.KeyCode) then K=i.KeyCode end end)
-						K=K or Bind.Value; Bind:Set(K); Tween(kb:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Border}); SaveCfg(wCfg.ConfigName)
-					elseif i.KeyCode.Name==Bind.Value or i.UserInputType.Name==Bind.Value then
-						if bCfg.Hold then Bind.Holding=true; bCfg.Callback(true) else bCfg.Callback() end
+				Conn(btn.InputEnded,function(i)
+					if i.UserInputType==Enum.UserInputType.MouseButton1 and not BindObj.Binding then
+						BindObj.Binding=true; kl.Text="..."; Tween(kb:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Accent})
 					end
 				end)
-				Conn(UIS.InputEnded,function(i) if (i.KeyCode.Name==Bind.Value or i.UserInputType.Name==Bind.Value) and bCfg.Hold and Bind.Holding then Bind.Holding=false; bCfg.Callback(false) end end)
-				function Bind:Set(k) Bind.Binding=false; Bind.Value=(type(k)=="string") and k or (k.Name or tostring(k)); kl.Text=Bind.Value end
-				Bind:Set(bCfg.Default)
-				if bCfg.Flag then NL.Flags[bCfg.Flag]=Bind end
-				return Bind
+				Conn(UIS.InputBegan,function(i,gp)
+					if gp then return end
+					if BindObj.Binding then
+						local K; pcall(function() if not InBL(i.KeyCode) then K=i.KeyCode end end)
+						K=K or BindObj.Value; BindObj:Set(K)
+						Tween(kb:FindFirstChildOfClass("UIStroke"),TW.Fast,{Color=NL.Theme.Border})
+						SaveCfg(wCfg.ConfigName)
+					elseif i.KeyCode.Name==BindObj.Value or i.UserInputType.Name==BindObj.Value then
+						if bCfg.Hold then BindObj.Holding=true; bCfg.Callback(true) else bCfg.Callback() end
+					end
+				end)
+				Conn(UIS.InputEnded,function(i)
+					if (i.KeyCode.Name==BindObj.Value or i.UserInputType.Name==BindObj.Value) and bCfg.Hold and BindObj.Holding then
+						BindObj.Holding=false; bCfg.Callback(false)
+					end
+				end)
+				function BindObj:Set(k)
+					BindObj.Binding=false
+					BindObj.Value=(type(k)=="string") and k or (k.Name or tostring(k))
+					kl.Text=BindObj.Value
+				end
+				BindObj:Set(bCfg.Default)
+				if bCfg.Flag then NL.Flags[bCfg.Flag]=BindObj end
+				return BindObj
 			end
 
 			function E:AddColorpicker(cpCfg)
