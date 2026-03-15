@@ -1,6 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════
--- NEXUSLIB v2.0 — Hub UI Library
+-- NEXUSLIB v2.1 — Hub UI Library
 -- Design: Glassmorphism + Neon Accent — Dark Industrial
+-- Fixes: Background image covers full window, player dropdown
+--        selected state highlight, disconnected player indicator
 -- ═══════════════════════════════════════════════════════════════
 
 -- ═══════════════════════════════════════════════════════════════
@@ -66,7 +68,7 @@ local function ColorUnpack(t)
 	return Color3.fromRGB(200,200,200)
 end
 
-local function Round(n, f) 
+local function Round(n, f)
 	local r = math.floor(n/f + math.sign(n)*0.5)*f
 	if r < 0 then r = r + f end
 	return r
@@ -157,12 +159,11 @@ local NexusLib = {
 	Flags       = {},
 	Connections = {},
 	Theme       = {},
-	_ThemeWatchers = {},  -- callbacks that rebuild on theme change
+	_ThemeWatchers = {},
 	SaveEnabled = false,
 	SaveFolder  = "nexus_configs",
 }
 
--- Deep-copy default theme into live theme
 for k,v in pairs(DefaultTheme) do NexusLib.Theme[k] = v end
 
 -- ═══════════════════════════════════════════════════════════════
@@ -200,13 +201,11 @@ function NexusLib:SetThemeColor(key, color)
 	end
 end
 
--- Watch a GUI object's property to a theme key
 local function ThemeBind(obj, prop, key, transform)
 	table.insert(NexusLib._ThemeWatchers, function()
 		local val = NexusLib.Theme[key]
 		obj[prop] = transform and transform(val) or val
 	end)
-	-- Apply immediately
 	local val = NexusLib.Theme[key]
 	obj[prop] = transform and transform(val) or val
 	return obj
@@ -277,7 +276,6 @@ local function SaveConfig(name)
 				end
 			end
 		end
-		-- save theme colors
 		for k, v in pairs(NexusLib.Theme) do
 			if typeof(v) == "Color3" then
 				data.Theme[k] = ColorPack(v)
@@ -293,7 +291,6 @@ local function LoadConfig(name)
 	if not isfile(path) then return end
 	local ok, data = pcall(function() return HttpService:JSONDecode(readfile(path)) end)
 	if not ok then return end
-	-- Load theme
 	if data.Theme then
 		for k, v in pairs(data.Theme) do
 			if NexusLib.Theme[k] ~= nil then
@@ -302,7 +299,6 @@ local function LoadConfig(name)
 		end
 		ApplyTheme()
 	end
-	-- Load flags (deferred so all flags are registered)
 	task.defer(function()
 		for k, fd in pairs(data.Flags or {}) do
 			if NexusLib.Flags[k] then
@@ -369,7 +365,6 @@ function NexusLib:Notify(cfg)
 			New("UIStroke",  { Color = T_.Border, Thickness = 1 }),
 			New("UIPadding", { PaddingLeft = UDim.new(0,12), PaddingRight = UDim.new(0,12),
 			                   PaddingTop  = UDim.new(0,10), PaddingBottom = UDim.new(0,10) }),
-			-- Accent bar on left
 			New("Frame", {
 				Size             = UDim2.new(0, 3, 1, -16),
 				Position         = UDim2.new(0, -12, 0, 8),
@@ -410,7 +405,6 @@ function NexusLib:Notify(cfg)
 			TextWrapped        = true,
 			AutomaticSize      = Enum.AutomaticSize.Y,
 		})
-		-- Progress bar
 		local PBar = New("Frame", {
 			Parent           = Card,
 			Size             = UDim2.new(1, 0, 0, 2),
@@ -419,9 +413,7 @@ function NexusLib:Notify(cfg)
 			BorderSizePixel  = 0,
 		}, { New("UICorner", {CornerRadius = UDim.new(1,0)}) })
 
-		-- Slide in
 		TPlay(Card, TW.Back, { Position = UDim2.new(0, 0, 0, 0) })
-		-- Progress shrink
 		TPlay(PBar, TweenInfo.new(cfg.Duration, Enum.EasingStyle.Linear), { Size = UDim2.new(0,0,0,2) })
 
 		task.wait(cfg.Duration - 0.5)
@@ -453,7 +445,6 @@ local function MakeScrollFrame(parent)
 		BottomImage              = "rbxassetid://7445543667",
 		ElasticBehavior          = Enum.ElasticBehavior.Never,
 	})
-	-- bind scrollbar color to theme
 	ThemeBind(sf, "ScrollBarImageColor3", "ScrollBar")
 	return sf
 end
@@ -486,6 +477,9 @@ function NexusLib:MakeWindow(cfg)
 	cfg.IntroText      = cfg.IntroText      or cfg.Title
 	cfg.ToggleKey      = cfg.ToggleKey      or "RightShift"
 	cfg.BackgroundImage = cfg.BackgroundImage or ""
+	-- FIX: Background image transparency (0 = opaque, 1 = fully transparent)
+	-- A value around 0.85 lets the UI panels be seen clearly while image shows through
+	cfg.BackgroundImageTransparency = cfg.BackgroundImageTransparency or 0.85
 	cfg.Icon           = cfg.Icon           or ""
 	cfg.CloseCallback  = cfg.CloseCallback  or function() end
 	cfg.Size           = cfg.Size           or Vector2.new(720, 440)
@@ -506,6 +500,7 @@ function NexusLib:MakeWindow(cfg)
 		BackgroundColor3 = T_.BgBase,
 		BorderSizePixel  = 0,
 		Active           = true,
+		ClipsDescendants = true,
 	}, {
 		New("UICorner", { CornerRadius = UDim.new(0, 10) }),
 		New("UIStroke", { Color = T_.Border, Thickness = 1.5 }),
@@ -513,34 +508,56 @@ function NexusLib:MakeWindow(cfg)
 	ThemeBind(Win, "BackgroundColor3", "BgBase")
 	ThemeBind(Win:FindFirstChildOfClass("UIStroke"), "Color", "Border")
 
-	-- Background Image
+	-- ════════════════════════════════════════════════════════════
+	-- FIX #1: BACKGROUND IMAGE — covers entire window (topbar + sidebar + content)
+	-- ZIndex=1 so it's above the base frame color but below all UI elements
+	-- The panels/sidebar/topbar use semi-transparent backgrounds to let it show
+	-- ════════════════════════════════════════════════════════════
 	local BgImage = New("ImageLabel", {
-		Parent = Win,
-		Size = UDim2.new(1, 0, 1, 0),
+		Parent             = Win,
+		Size               = UDim2.new(1, 0, 1, 0),
+		Position           = UDim2.new(0, 0, 0, 0),
 		BackgroundTransparency = 1,
-		Image = cfg.BackgroundImage ~= "" and "rbxassetid://" .. cfg.BackgroundImage or "",
-		ZIndex = -1,
+		Image              = cfg.BackgroundImage ~= "" and "rbxassetid://" .. cfg.BackgroundImage or "",
+		ImageTransparency  = cfg.BackgroundImageTransparency,
+		ScaleType          = Enum.ScaleType.Crop,
+		ZIndex             = 1,
+	})
+	-- Dim overlay so text stays readable regardless of image content
+	local BgDim = New("Frame", {
+		Parent             = Win,
+		Size               = UDim2.new(1, 0, 1, 0),
+		BackgroundColor3   = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = cfg.BackgroundImage ~= "" and 0.55 or 1,
+		BorderSizePixel    = 0,
+		ZIndex             = 1,
 	})
 
 	-- ── TOPBAR ─────────────────────────────────────────────────
+	-- FIX: Topbar uses semi-transparent background so image shows through
 	local Topbar = New("Frame", {
 		Parent           = Win,
 		Size             = UDim2.new(1, 0, 0, T_.TopbarHeight),
 		BackgroundColor3 = T_.TopbarBg,
+		-- When background image is set, make topbar semi-transparent
+		BackgroundTransparency = cfg.BackgroundImage ~= "" and 0.35 or 0,
 		BorderSizePixel  = 0,
 		ZIndex           = 5,
 	}, {
 		New("UICorner", { CornerRadius = UDim.new(0, 10) }),
-		-- Bottom-square corners hack
 		New("Frame", {
 			Size             = UDim2.new(1, 0, 0.5, 0),
 			Position         = UDim2.new(0, 0, 0.5, 0),
 			BackgroundColor3 = T_.TopbarBg,
+			BackgroundTransparency = cfg.BackgroundImage ~= "" and 0.35 or 0,
 			BorderSizePixel  = 0,
 		}),
 	})
 	ThemeBind(Topbar, "BackgroundColor3", "TopbarBg")
 	ThemeBind(Topbar:FindFirstChild("Frame"), "BackgroundColor3", "TopbarBg")
+
+	-- Keep track of topbar bottom fill for theme updates
+	local TopbarFill = Topbar:FindFirstChild("Frame")
 
 	-- Separator line
 	New("Frame", {
@@ -666,18 +683,19 @@ function NexusLib:MakeWindow(cfg)
 		Position         = UDim2.new(0, 0, 0, T_.TopbarHeight + 1),
 		Size             = UDim2.new(0, sw, 1, -(T_.TopbarHeight + 1)),
 		BackgroundColor3 = T_.SidebarBg,
+		-- FIX: semi-transparent so background image shows through sidebar too
+		BackgroundTransparency = cfg.BackgroundImage ~= "" and 0.25 or 0,
 		BorderSizePixel  = 0,
 		ClipsDescendants = true,
 	}, {
 		New("UICorner", { CornerRadius = UDim.new(0, 10) }),
-		-- Top-right square hack
 		New("Frame", {
 			Size             = UDim2.new(0.5, 0, 1, 0),
 			Position         = UDim2.new(0.5, 0, 0, 0),
 			BackgroundColor3 = T_.SidebarBg,
+			BackgroundTransparency = cfg.BackgroundImage ~= "" and 0.25 or 0,
 			BorderSizePixel  = 0,
 		}),
-		-- Right divider
 		New("Frame", {
 			Position         = UDim2.new(1, -1, 0, 0),
 			Size             = UDim2.new(0, 1, 1, 0),
@@ -686,9 +704,8 @@ function NexusLib:MakeWindow(cfg)
 		}),
 	})
 	ThemeBind(Sidebar, "BackgroundColor3", "SidebarBg")
-	ThemeBind(Sidebar:FindFirstChild("Frame"), "BackgroundColor3", "SidebarBg")
-	local sideDiv = Sidebar:FindFirstChildOfClass("Frame",true)
-	-- (small hacky find — we'll use name-based below)
+	local SidebarFill = Sidebar:FindFirstChildOfClass("Frame")
+	ThemeBind(SidebarFill, "BackgroundColor3", "SidebarBg")
 
 	-- Avatar at bottom of sidebar
 	local AvatarFrame = New("Frame", {
@@ -805,7 +822,6 @@ function NexusLib:MakeWindow(cfg)
 		Text               = "",
 		ZIndex             = 10,
 	})
-	-- 3-dot grid icon
 	for row = 0, 1 do
 		for col = 0, 1 do
 			New("Frame", {
@@ -978,6 +994,7 @@ function NexusLib:MakeWindow(cfg)
 			Parent             = TabScroll,
 			Size               = UDim2.new(1, 0, 0, 34),
 			BackgroundColor3   = T_.BgPanel,
+			BackgroundTransparency = cfg.BackgroundImage ~= "" and 0.3 or 0,
 			BorderSizePixel    = 0,
 			Text               = "",
 			AutoButtonColor    = false,
@@ -1044,7 +1061,6 @@ function NexusLib:MakeWindow(cfg)
 		AllTabs[tabCfg.Name] = { Btn = TabBtn, Content = ContentScroll }
 
 		local function ActivateTab()
-			-- Deactivate all
 			for _, td in pairs(AllTabs) do
 				TPlay(td.Btn,     TW.Fast, {BackgroundColor3 = T_.BgPanel})
 				TPlay(td.Btn:FindFirstChild("Frame"),TW.Fast,{BackgroundTransparency=1})
@@ -1054,7 +1070,6 @@ function NexusLib:MakeWindow(cfg)
 				if lbl then TPlay(lbl, TW.Fast, {TextColor3 = T_.TextMuted}) end
 				td.Content.Visible = false
 			end
-			-- Activate this
 			TPlay(TabBtn,  TW.Fast, {BackgroundColor3 = T_.BgHover})
 			TPlay(IndBar,  TW.Fast, {BackgroundTransparency = 0})
 			TPlay(TabIco,  TW.Fast, {ImageColor3 = T_.Accent})
@@ -1205,7 +1220,6 @@ function NexusLib:MakeWindow(cfg)
 					})
 				end
 
-				-- Accent bottom line (appears on hover)
 				local AccLine = New("Frame",{
 					Parent=card,Position=UDim2.new(0,0,1,-2),
 					Size=UDim2.new(0,0,0,2),
@@ -1257,14 +1271,12 @@ function NexusLib:MakeWindow(cfg)
 				})
 				ThemeBind(card:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
 
-				-- Track background
 				local TrackBg = New("Frame",{
 					Parent=card,Position=UDim2.new(1,-52,0.5,-10),
 					Size=UDim2.new(0,40,0,20),
 					BackgroundColor3=T_.Border,BorderSizePixel=0,
 				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
 
-				-- Thumb
 				local Thumb = New("Frame",{
 					Parent=TrackBg,Position=UDim2.new(0,2,0.5,-8),
 					Size=UDim2.new(0,16,0,16),
@@ -1342,9 +1354,8 @@ function NexusLib:MakeWindow(cfg)
 				})
 				ThemeBind(ValLbl,"TextColor3","Accent")
 
-				-- Track
 				local TrackBg = New("Frame",{
-					Parent=card,Position=UDim2.new(0,12,0,32),
+					Parent=card,Position=UDim2.new(0,12,0,34),
 					Size=UDim2.new(1,-24,0,8),
 					BackgroundColor3=T_.Border,BorderSizePixel=0,
 				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
@@ -1356,7 +1367,6 @@ function NexusLib:MakeWindow(cfg)
 				},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
 				ThemeBind(TrackFill,"BackgroundColor3","Accent")
 
-				-- Thumb dot
 				local ThumbDot = New("Frame",{
 					Parent=TrackBg,Position=UDim2.new(0,-6,0.5,-6),
 					Size=UDim2.new(0,12,0,12),
@@ -1478,16 +1488,18 @@ function NexusLib:MakeWindow(cfg)
 					for _,b in pairs(DD.Buttons) do b:Destroy() end
 					DD.Buttons = {}
 					for _, opt in ipairs(DD.Options) do
+						local isSelected = opt == DD.Value
 						local ob = New("TextButton",{
 							Parent=optScroll,Size=UDim2.new(1,0,0,28),
-							BackgroundColor3=T_.BgPanel,BorderSizePixel=0,
+							BackgroundColor3=isSelected and T_.BgHover or T_.BgPanel,
+							BorderSizePixel=0,
 							Text="",AutoButtonColor=false,
 						},{New("UICorner",{CornerRadius=UDim.new(0,5)})})
 						New("TextLabel",{
 							Parent=ob,Position=UDim2.new(0,10,0,0),Size=UDim2.new(1,-14,1,0),
 							BackgroundTransparency=1,Text=tostring(opt),
 							Font=Enum.Font.GothamMedium,TextSize=13,
-							TextColor3=opt==DD.Value and T_.Accent or T_.TextSecondary,
+							TextColor3=isSelected and T_.Accent or T_.TextSecondary,
 							TextXAlignment=Enum.TextXAlignment.Left,
 						})
 						Connect(ob.MouseButton1Up,function()
@@ -1495,7 +1507,9 @@ function NexusLib:MakeWindow(cfg)
 							SaveConfig(cfg.ConfigName)
 						end)
 						Connect(ob.MouseEnter,function() TPlay(ob,TW.Fast,{BackgroundColor3=T_.BgHover}) end)
-						Connect(ob.MouseLeave,function() TPlay(ob,TW.Fast,{BackgroundColor3=T_.BgPanel}) end)
+						Connect(ob.MouseLeave,function()
+							TPlay(ob,TW.Fast,{BackgroundColor3=opt==DD.Value and T_.BgHover or T_.BgPanel})
+						end)
 						DD.Buttons[opt] = ob
 					end
 				end
@@ -1509,7 +1523,11 @@ function NexusLib:MakeWindow(cfg)
 					selLbl.Text = tostring(DD.Value)
 					for opt, ob in pairs(DD.Buttons) do
 						local lbl = ob:FindFirstChildOfClass("TextLabel")
-						if lbl then lbl.TextColor3 = opt==DD.Value and NexusLib.Theme.Accent or NexusLib.Theme.TextSecondary end
+						local isSelected = opt == DD.Value
+						if lbl then
+							TPlay(lbl, TW.Fast, {TextColor3 = isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextSecondary})
+						end
+						TPlay(ob, TW.Fast, {BackgroundColor3 = isSelected and NexusLib.Theme.BgHover or NexusLib.Theme.BgPanel})
 					end
 					dCfg.Callback(DD.Value)
 				end
@@ -1548,31 +1566,17 @@ function NexusLib:MakeWindow(cfg)
 				dCfg.Flag = dCfg.Flag or nil
 				dCfg.Save = dCfg.Save or false
 
+				local T_ = NexusLib.Theme
 				local DD = {Value = dCfg.Default, Options = dCfg.Options, Buttons = {}, Toggled = false, Type = "Dropdown", Save = dCfg.Save}
 				local MaxElements = 5
+				local SelectedValues = {}
 
 				if not table.find(DD.Options, DD.Value) then DD.Value = "..." end
 
-				local SelectedValues = {}
-
-				local optList = MakeElement("List")
-
-				local optScroll = MakeScrollFrame(parent)
-				optScroll.Position = UDim2.new(0,0,0,38)
-				optScroll.Size = UDim2.new(1,0,1,-38)
-				optScroll.ClipsDescendants = true
-				optList.Parent = optScroll
-				New("UIPadding",{Parent=optScroll,PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
-				Connect(optList:GetPropertyChangedSignal("AbsoluteContentSize"),function()
-					optScroll.CanvasSize = UDim2.new(0,0,0,optList.AbsoluteContentSize.Y + 16)
-				end)
-
-				local Click = SetProps(MakeElement("Button"), {Size = UDim2.new(1,0,1,0)})
-
 				local outer = New("Frame",{
 					Parent=parent,Size=UDim2.new(1,0,0,38),
-					BackgroundColor3=NexusLib.Theme.BgCard,BorderSizePixel=0,ClipsDescendants=true,
-				},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1})})
+					BackgroundColor3=T_.BgCard,BorderSizePixel=0,ClipsDescendants=true,
+				},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
 				ThemeBind(outer,"BackgroundColor3","BgCard")
 				ThemeBind(outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
 
@@ -1581,29 +1585,40 @@ function NexusLib:MakeWindow(cfg)
 					Parent=header,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-80,1,0),
 					BackgroundTransparency=1,Text=dCfg.Name,
 					Font=Enum.Font.GothamBold,TextSize=14,
-					TextColor3=NexusLib.Theme.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
+					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
 				})
 				ThemeBind(header:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
 				local selLbl = New("TextLabel",{
 					Parent=header,Position=UDim2.new(1,-100,0,0),Size=UDim2.new(0,70,1,0),
 					BackgroundTransparency=1,Text="Selected",
 					Font=Enum.Font.Gotham,TextSize=13,
-					TextColor3=NexusLib.Theme.TextSecondary,TextXAlignment=Enum.TextXAlignment.Right,
+					TextColor3=T_.TextSecondary,TextXAlignment=Enum.TextXAlignment.Right,
 				})
 				ThemeBind(selLbl,"TextColor3","TextSecondary")
 				local arrow = New("ImageLabel",{
 					Parent=header,Position=UDim2.new(1,-22,0.5,-8),Size=UDim2.new(0,16,0,16),
-					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=NexusLib.Theme.TextMuted,
+					BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=T_.TextMuted,
 				})
 
-				local sep = New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),BackgroundColor3=NexusLib.Theme.Border,BorderSizePixel=0,Visible=false})
+				local sep = New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,38),Size=UDim2.new(1,0,0,1),BackgroundColor3=T_.Border,BorderSizePixel=0,Visible=false})
 				ThemeBind(sep,"BackgroundColor3","Border")
+
+				local optScroll = MakeScrollFrame(outer)
+				optScroll.Position = UDim2.new(0,0,0,39)
+				optScroll.Size = UDim2.new(1,0,1,-39)
+				local optList = New("UIListLayout",{Parent=optScroll,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2)})
+				New("UIPadding",{Parent=optScroll,PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4)})
+				Connect(optList:GetPropertyChangedSignal("AbsoluteContentSize"),function()
+					optScroll.CanvasSize = UDim2.new(0,0,0,optList.AbsoluteContentSize.Y + 8)
+				end)
 
 				local function AddOptions(opts)
 					for _, opt in pairs(opts) do
+						local isSelected = table.find(SelectedValues, opt) ~= nil
 						local ob = New("TextButton",{
 							Parent=optScroll,Size=UDim2.new(1,0,0,28),
-							BackgroundColor3=NexusLib.Theme.BgPanel,BorderSizePixel=0,
+							BackgroundColor3=isSelected and T_.BgHover or T_.BgPanel,
+							BorderSizePixel=0,
 							Text="",AutoButtonColor=false,
 						},{New("UICorner",{CornerRadius=UDim.new(0,5)})})
 
@@ -1611,17 +1626,19 @@ function NexusLib:MakeWindow(cfg)
 							Parent=ob,Position=UDim2.new(0,8,0,0),Size=UDim2.new(1,-8,1,0),
 							BackgroundTransparency=1,Text=tostring(opt),
 							Font=Enum.Font.GothamMedium,TextSize=13,
-							TextColor3=NexusLib.Theme.TextSecondary,TextXAlignment=Enum.TextXAlignment.Left,
+							TextColor3=isSelected and T_.Accent or T_.TextSecondary,
+							TextXAlignment=Enum.TextXAlignment.Left,
 						})
-						ThemeBind(ob,"BackgroundColor3","BgPanel")
-						ThemeBind(ob:FindFirstChildOfClass("TextLabel"),"TextColor3","TextSecondary")
 
 						Connect(ob.MouseButton1Up,function()
 							DD:Set(opt)
 							SaveConfig(cfg.ConfigName)
 						end)
-						Connect(ob.MouseEnter,function() TPlay(ob,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgHover}) end)
-						Connect(ob.MouseLeave,function() TPlay(ob,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgPanel}) end)
+						Connect(ob.MouseEnter,function() TPlay(ob,TW.Fast,{BackgroundColor3=T_.BgHover}) end)
+						Connect(ob.MouseLeave,function()
+							local sel = table.find(SelectedValues, opt) ~= nil
+							TPlay(ob,TW.Fast,{BackgroundColor3=sel and T_.BgHover or T_.BgPanel})
+						end)
 
 						DD.Buttons[opt] = ob
 					end
@@ -1640,17 +1657,21 @@ function NexusLib:MakeWindow(cfg)
 				function DD:Set(val)
 					local n = table.find(SelectedValues, val)
 					local text = ""
+					local btn = DD.Buttons[val]
+					local lbl = btn and btn:FindFirstChildOfClass("TextLabel")
 
 					if not n then
 						table.insert(SelectedValues, val)
-						TPlay(DD.Buttons[val],TW.Fast,{BackgroundTransparency=0})
-						local lbl = DD.Buttons[val]:FindFirstChildOfClass("TextLabel")
-						if lbl then TPlay(lbl,TW.Fast,{TextTransparency=0}) end
+						if btn then
+							TPlay(btn, TW.Fast, {BackgroundColor3 = NexusLib.Theme.BgHover})
+						end
+						if lbl then TPlay(lbl, TW.Fast, {TextColor3 = NexusLib.Theme.Accent}) end
 					else
 						table.remove(SelectedValues, n)
-						TPlay(DD.Buttons[val],TW.Fast,{BackgroundTransparency=1})
-						local lbl = DD.Buttons[val]:FindFirstChildOfClass("TextLabel")
-						if lbl then TPlay(lbl,TW.Fast,{TextTransparency=0.4}) end
+						if btn then
+							TPlay(btn, TW.Fast, {BackgroundColor3 = NexusLib.Theme.BgPanel})
+						end
+						if lbl then TPlay(lbl, TW.Fast, {TextColor3 = NexusLib.Theme.TextSecondary}) end
 					end
 
 					for i, v in pairs(SelectedValues) do
@@ -1662,7 +1683,7 @@ function NexusLib:MakeWindow(cfg)
 					end
 
 					DD.Value = val
-					selLbl.Text = text
+					selLbl.Text = #SelectedValues > 0 and text or "Selected"
 
 					return dCfg.Callback(SelectedValues)
 				end
@@ -1683,12 +1704,11 @@ function NexusLib:MakeWindow(cfg)
 				end)
 
 				DD:Refresh(DD.Options, false)
-				DD:Set(DD.Value)
 				if dCfg.Flag then NexusLib.Flags[dCfg.Flag] = DD end
 				return DD
 			end
 
-			-- PLAYERS DROPDOWN
+			-- PLAYERS DROPDOWN (multi-select with connect/disconnect indicators)
 			function E:AddPlayersDropdown(dCfg)
 				dCfg = dCfg or {}
 				dCfg.Name = dCfg.Name or "Players"
@@ -1699,10 +1719,34 @@ function NexusLib:MakeWindow(cfg)
 				dCfg.Save = dCfg.Save or false
 
 				local T_ = NexusLib.Theme
-				local DD = {Value = dCfg.Default, Options = {}, Buttons = {}, Toggled = false, Type = "Dropdown", Save = dCfg.Save, MultipleSelection = dCfg.MultipleSelection}
+				local DD = {
+					Value = dCfg.Default,
+					Options = {},
+					Buttons = {},
+					Toggled = false,
+					Type = "Dropdown",
+					Save = dCfg.Save,
+					MultipleSelection = dCfg.MultipleSelection
+				}
 				local MaxElements = 3
 				local SelectedValues = {}
 				local Options = 0
+
+				-- ════════════════════════════════════════════════
+				-- Helper: compute accent-tinted selected color
+				-- Uses a mix of BgCard and Accent for the highlight
+				-- ════════════════════════════════════════════════
+				local function GetSelectedBg()
+					local a = NexusLib.Theme.Accent
+					return Color3.fromRGB(
+						math.clamp(math.floor(a.R * 255 * 0.18), 0, 255),
+						math.clamp(math.floor(a.G * 255 * 0.18), 0, 255),
+						math.clamp(math.floor(a.B * 255 * 0.18), 0, 255)
+					)
+				end
+				local function GetDisconnectedBg()
+					return Color3.fromRGB(55, 10, 10)
+				end
 
 				local outer = New("Frame",{
 					Parent=parent,Size=UDim2.new(1,0,0,38),
@@ -1743,92 +1787,184 @@ function NexusLib:MakeWindow(cfg)
 					optScroll.CanvasSize=UDim2.new(0,0,0,optScroll.UIListLayout.AbsoluteContentSize.Y+8)
 				end)
 
-				local function RemoveOption(opt)
-					if DD.Buttons[opt] then
-						local n = table.find(SelectedValues, opt)
-						if n then
-							DD.Buttons[opt].State.Visible = true
-							TPlay(DD.Buttons[opt],TW.Fast,{BackgroundColor3=Color3.fromRGB(200,80,80)})
-						else
-							DD.Buttons[opt]:Destroy()
-							DD.Buttons[opt] = nil
-							Options = Options - 1
+				-- ════════════════════════════════════════════════
+				-- FIX #2 & #3: RemoveOption — marks player as
+				-- disconnected with red background + X icon.
+				-- If NOT selected, destroys immediately.
+				-- ════════════════════════════════════════════════
+				local function RemoveOption(playerName)
+					local btn = DD.Buttons[playerName]
+					if not btn then return end
+
+					local isSelected = table.find(SelectedValues, playerName) ~= nil
+					if isSelected then
+						-- Player was selected — show disconnected state visually
+						-- Red tinted background + disconnected icon visible
+						local stateIco = btn:FindFirstChild("DisconnectIcon")
+						TPlay(btn, TW.Mid, {BackgroundColor3 = GetDisconnectedBg()})
+						if stateIco then
+							stateIco.Visible = true
+							TPlay(stateIco, TW.Fast, {ImageColor3 = Color3.fromRGB(255, 80, 80)})
 						end
+						-- Dim the name labels slightly
+						for _, lbl in ipairs(btn:GetChildren()) do
+							if lbl:IsA("TextLabel") then
+								TPlay(lbl, TW.Mid, {TextColor3 = Color3.fromRGB(180, 80, 80)})
+							end
+						end
+						btn:SetAttribute("Disconnected", true)
+					else
+						-- Not selected — just remove
+						btn:Destroy()
+						DD.Buttons[playerName] = nil
+						Options = Options - 1
 					end
 				end
 
 				local function AddOption(p)
-					local Player_Name = p.Name
-					local Player_Display = p.DisplayName
-					local UId = p.UserId
+					local playerName = p.Name
+					local playerDisplay = p.DisplayName
+					local userId = p.UserId
 
-					local opt = Player_Name
-
-					if not DD.Buttons[opt] then
-						local ob = New("TextButton",{
-							Parent=optScroll,Size=UDim2.new(1,0,0,45),
-							BackgroundColor3=T_.BgPanel,BorderSizePixel=0,
-							Text="",AutoButtonColor=false,
-						},{New("UICorner",{CornerRadius=UDim.new(0,6)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
-						ThemeBind(ob,"BackgroundColor3","BgPanel")
-						ThemeBind(ob:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
-						local thumb = New("ImageLabel",{
-							Parent=ob,Position=UDim2.new(0,5,0.5,-18),Size=UDim2.new(0,30,0,30),
-							BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..UId.."&width=420&height=420&format=png",
-						},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=T_.Border,Thickness=1})})
-
-						local state = New("ImageLabel",{
-							Parent=ob,Position=UDim2.new(1,-35,0.5,-18),Size=UDim2.new(0,30,0,30),
-							BackgroundTransparency=1,Image="rbxassetid://118759916599176",ImageColor3=Color3.fromRGB(41,0,5),
-							Visible=false,Name="State",
-						})
-
-						local dname = New("TextLabel",{
-							Parent=ob,Position=UDim2.new(0,42,0,5),Size=UDim2.new(0.6,-10,0,18),
-							BackgroundTransparency=1,Text=Player_Display,Font=Enum.Font.GothamBold,TextSize=14,
-							TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,
-						})
-						ThemeBind(dname,"TextColor3","TextPrimary")
-
-						local uname = New("TextLabel",{
-							Parent=ob,Position=UDim2.new(0,42,0,22),Size=UDim2.new(0.6,-10,0,18),
-							BackgroundTransparency=1,Text=Player_Name,Font=Enum.Font.GothamMedium,TextSize=12,
-							TextColor3=T_.TextSecondary,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,
-						})
-						ThemeBind(uname,"TextColor3","TextSecondary")
-
-						Connect(ob.MouseButton1Up,function()
-							DD:Set(opt)
-							SaveConfig(cfg.ConfigName)
-						end)
-						Connect(ob.MouseEnter,function() TPlay(ob,TW.Fast,{BackgroundColor3=T_.BgHover}) end)
-						Connect(ob.MouseLeave,function() TPlay(ob,TW.Fast,{BackgroundColor3=T_.BgPanel}) end)
-
-						DD.Buttons[opt] = ob
-						Options = Options + 1
-					else
-						local n = table.find(SelectedValues, opt)
-						if n then
-							DD.Buttons[opt].State.Visible = false
-							TPlay(DD.Buttons[opt],TW.Fast,{BackgroundColor3=NexusLib.Theme.BgPanel})
-						else
-							DD.Buttons[opt]:Destroy()
-							DD.Buttons[opt] = nil
-							Options = Options - 1
+					if DD.Buttons[playerName] then
+						-- Player rejoined — clear disconnected state
+						local btn = DD.Buttons[playerName]
+						local wasDisconnected = btn:GetAttribute("Disconnected")
+						if wasDisconnected then
+							btn:SetAttribute("Disconnected", false)
+							local isSelected = table.find(SelectedValues, playerName) ~= nil
+							local stateIco = btn:FindFirstChild("DisconnectIcon")
+							if stateIco then stateIco.Visible = false end
+							-- Restore color
+							TPlay(btn, TW.Mid, {
+								BackgroundColor3 = isSelected and GetSelectedBg() or NexusLib.Theme.BgPanel
+							})
+							for _, lbl in ipairs(btn:GetChildren()) do
+								if lbl:IsA("TextLabel") then
+									TPlay(lbl, TW.Fast, {
+										TextColor3 = isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextSecondary
+									})
+								end
+							end
 						end
+						return
 					end
+
+					local isSelected = table.find(SelectedValues, playerName) ~= nil
+
+					local ob = New("TextButton",{
+						Parent    = optScroll,
+						Size      = UDim2.new(1,0,0,45),
+						BackgroundColor3 = isSelected and GetSelectedBg() or NexusLib.Theme.BgPanel,
+						BorderSizePixel  = 0,
+						Text      = "",
+						AutoButtonColor  = false,
+					},{
+						New("UICorner",{CornerRadius=UDim.new(0,6)}),
+						New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1}),
+					})
+					ThemeBind(ob:FindFirstChildOfClass("UIStroke"),"Color","Border")
+
+					-- Left accent bar — visible when selected
+					local selBar = New("Frame",{
+						Parent = ob,
+						Position = UDim2.new(0,0,0.1,0),
+						Size     = UDim2.new(0,3,0.8,0),
+						BackgroundColor3 = NexusLib.Theme.Accent,
+						BackgroundTransparency = isSelected and 0 or 1,
+						BorderSizePixel = 0,
+					},{New("UICorner",{CornerRadius=UDim.new(1,0)}),})
+					ThemeBind(selBar,"BackgroundColor3","Accent")
+					selBar.Name = "SelBar"
+
+					New("ImageLabel",{
+						Parent   = ob,
+						Position = UDim2.new(0,5,0.5,-18),
+						Size     = UDim2.new(0,36,0,36),
+						BackgroundTransparency = 1,
+						Image    = "https://www.roblox.com/headshot-thumbnail/image?userId="..userId.."&width=420&height=420&format=png",
+					},{
+						New("UICorner",{CornerRadius=UDim.new(1,0)}),
+						New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1}),
+					})
+
+					-- ════════════════════════════════════════
+					-- FIX #3: Disconnect icon (X icon in red)
+					-- Positioned top-right, hidden by default
+					-- ════════════════════════════════════════
+					local disconnectIcon = New("ImageLabel",{
+						Parent   = ob,
+						Position = UDim2.new(1,-22,0.5,-11),
+						Size     = UDim2.new(0,22,0,22),
+						BackgroundTransparency = 1,
+						Image    = "rbxassetid://7072725342",  -- X / close icon
+						ImageColor3 = Color3.fromRGB(255, 80, 80),
+						Visible  = false,
+						Name     = "DisconnectIcon",
+					})
+
+					local dname = New("TextLabel",{
+						Parent   = ob,
+						Position = UDim2.new(0,48,0,5),
+						Size     = UDim2.new(1,-72,0,18),
+						BackgroundTransparency = 1,
+						Text     = playerDisplay,
+						Font     = Enum.Font.GothamBold,
+						TextSize = 14,
+						TextColor3 = isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextPrimary,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						TextTruncate   = Enum.TextTruncate.AtEnd,
+					})
+					ThemeBind(dname,"TextColor3","TextPrimary")
+
+					local uname = New("TextLabel",{
+						Parent   = ob,
+						Position = UDim2.new(0,48,0,22),
+						Size     = UDim2.new(1,-72,0,18),
+						BackgroundTransparency = 1,
+						Text     = "@"..playerName,
+						Font     = Enum.Font.GothamMedium,
+						TextSize = 12,
+						TextColor3 = NexusLib.Theme.TextSecondary,
+						TextXAlignment = Enum.TextXAlignment.Left,
+						TextTruncate   = Enum.TextTruncate.AtEnd,
+					})
+					ThemeBind(uname,"TextColor3","TextSecondary")
+
+					Connect(ob.MouseButton1Up,function()
+						if ob:GetAttribute("Disconnected") then return end
+						DD:Set(playerName)
+						SaveConfig(cfg.ConfigName)
+					end)
+					Connect(ob.MouseEnter,function()
+						if ob:GetAttribute("Disconnected") then return end
+						if table.find(SelectedValues, playerName) then return end
+						TPlay(ob,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgHover})
+					end)
+					Connect(ob.MouseLeave,function()
+						if ob:GetAttribute("Disconnected") then return end
+						local sel = table.find(SelectedValues, playerName) ~= nil
+						TPlay(ob,TW.Fast,{BackgroundColor3=sel and GetSelectedBg() or NexusLib.Theme.BgPanel})
+					end)
+
+					DD.Buttons[playerName] = ob
+					Options = Options + 1
 				end
 
 				for _, p in pairs(Players:GetPlayers()) do AddOption(p) end
 				Connect(Players.PlayerAdded, function(p) AddOption(p) end)
-				Connect(Players.PlayerRemoving, function(p) RemoveOption(p.Name) end)
+				Connect(Players.PlayerRemoving, function(p)
+					-- Small delay so the player object still exists briefly
+					task.delay(0.1, function() RemoveOption(p.Name) end)
+				end)
 
-				local function DeleteAllDisconnectedPlayers()
-					for i, v in pairs(DD.Buttons) do
-						if v and v:FindFirstChild("State") and v.State.Visible then
-							DD.Buttons[i]:Destroy()
-							DD.Buttons[i] = nil
+				local function CleanDisconnected()
+					for name, btn in pairs(DD.Buttons) do
+						if btn and btn:GetAttribute("Disconnected") then
+							local n = table.find(SelectedValues, name)
+							if n then table.remove(SelectedValues, n) end
+							btn:Destroy()
+							DD.Buttons[name] = nil
 							Options = Options - 1
 						end
 					end
@@ -1836,77 +1972,91 @@ function NexusLib:MakeWindow(cfg)
 
 				function DD:Refresh() end
 
+				-- ════════════════════════════════════════════
+				-- FIX #2: Set() — proper visual selection state
+				-- Selected = accent tinted bg + left bar + colored text
+				-- Deselected = normal bg + hidden bar + muted text
+				-- ════════════════════════════════════════════
 				function DD:Set(val, once)
+					local btn = DD.Buttons[val]
+					if not btn then
+						-- Wait briefly for button to be created
+						for _ = 0, 10 do
+							task.wait(0.15)
+							if DD.Buttons[val] then btn = DD.Buttons[val] break end
+						end
+					end
+					if not btn then return end
+					if btn:GetAttribute("Disconnected") then return end
+
 					local n = table.find(SelectedValues, val)
 					local text = ""
-					local btn = DD.Buttons[val]
 
-					if not btn then
-						for i = 0, 10 do
-							if DD.Buttons[val] then btn = DD.Buttons[val] break end
-							task.wait(0.15)
+					local function ApplySelectedStyle(b, selected)
+						local sbar = b:FindFirstChild("SelBar")
+						local dlbl = b:FindFirstChildOfClass("TextLabel")
+						local T__ = NexusLib.Theme
+						if selected then
+							TPlay(b, TW.Mid, {BackgroundColor3 = GetSelectedBg()})
+							if sbar then TPlay(sbar, TW.Fast, {BackgroundTransparency = 0}) end
+							-- Update display name color to accent
+							for _, lbl in ipairs(b:GetChildren()) do
+								if lbl:IsA("TextLabel") and lbl.Font == Enum.Font.GothamBold then
+									TPlay(lbl, TW.Fast, {TextColor3 = T__.Accent})
+								end
+							end
+						else
+							TPlay(b, TW.Mid, {BackgroundColor3 = T__.BgPanel})
+							if sbar then TPlay(sbar, TW.Fast, {BackgroundTransparency = 1}) end
+							for _, lbl in ipairs(b:GetChildren()) do
+								if lbl:IsA("TextLabel") and lbl.Font == Enum.Font.GothamBold then
+									TPlay(lbl, TW.Fast, {TextColor3 = T__.TextPrimary})
+								end
+							end
 						end
 					end
 
-					if btn then
-						if DD.MultipleSelection then
-							if not n then
-								table.insert(SelectedValues, val)
-								selLbl.Text = dCfg.Name
-								TPlay(DD.Buttons[val],TW.Fast,{BackgroundTransparency=0.5})
-								TPlay(DD.Buttons[val]:FindFirstChildOfClass("TextLabel"),TW.Fast,{TextTransparency=0})
-							elseif n and not once then
-								table.remove(SelectedValues, n)
-								if DD.Buttons[val].State.Visible then
-									DD.Buttons[val]:Destroy()
-									DD.Buttons[val] = nil
-									Options = Options - 1
-								else
-									TPlay(DD.Buttons[val],TW.Fast,{BackgroundTransparency=1})
-									TPlay(DD.Buttons[val]:FindFirstChildOfClass("TextLabel"),TW.Fast,{TextTransparency=0.4})
-								end
-							end
-
-							for i, v in pairs(SelectedValues) do
-								if #SelectedValues == 1 then
-									text = text .. v
-								elseif i > 3 then
-									text = text .. "..."
-									break
-								else
-									text = text .. v .. ", "
-								end
-							end
-
-							DD.Value = val
-							selLbl.Text = text
-							return dCfg.Callback(SelectedValues)
-						else
-							table.clear(SelectedValues)
+					if DD.MultipleSelection then
+						if not n then
 							table.insert(SelectedValues, val)
-
-							DeleteAllDisconnectedPlayers()
-
-							for _, v in pairs(DD.Buttons) do
-								TPlay(v,TW.Fast,{BackgroundTransparency=1})
-								local lbl = v:FindFirstChildOfClass("TextLabel")
-								if lbl then TPlay(lbl,TW.Fast,{TextTransparency=0.4}) end
-							end
-
-							if DD.Buttons[val] then
-								TPlay(DD.Buttons[val],TW.Fast,{BackgroundTransparency=0.5})
-								local lbl = DD.Buttons[val]:FindFirstChildOfClass("TextLabel")
-								if lbl then TPlay(lbl,TW.Fast,{TextTransparency=0}) end
-
-								DD.Value = val
-								selLbl.Text = DD.Value
-							else
-								DD.Value = nil
-								selLbl.Text = ""
-							end
-
-							return dCfg.Callback(DD.Value)
+							ApplySelectedStyle(btn, true)
+						elseif not once then
+							table.remove(SelectedValues, n)
+							ApplySelectedStyle(btn, false)
 						end
+
+						for i, v in pairs(SelectedValues) do
+							if i <= 3 then
+								text = text .. (#SelectedValues > 3 and i == 3 and v.."..." or v)
+								if i < math.min(#SelectedValues, 3) then text = text .. ", " end
+							end
+						end
+
+						DD.Value = val
+						selLbl.Text = #SelectedValues > 0 and text or "Selected"
+						return dCfg.Callback(SelectedValues)
+					else
+						-- Single selection — deselect all others
+						table.clear(SelectedValues)
+						CleanDisconnected()
+
+						for pName, b in pairs(DD.Buttons) do
+							if not b:GetAttribute("Disconnected") then
+								ApplySelectedStyle(b, false)
+							end
+						end
+
+						if DD.Buttons[val] and not DD.Buttons[val]:GetAttribute("Disconnected") then
+							table.insert(SelectedValues, val)
+							ApplySelectedStyle(DD.Buttons[val], true)
+							DD.Value = val
+							selLbl.Text = val
+						else
+							DD.Value = nil
+							selLbl.Text = "Selected"
+						end
+
+						return dCfg.Callback(DD.Value)
 					end
 				end
 
@@ -1919,9 +2069,9 @@ function NexusLib:MakeWindow(cfg)
 					sep.Visible = DD.Toggled
 					TPlay(arrow,TW.Fast,{Rotation=DD.Toggled and 180 or 0})
 					if Options > MaxElements then
-						TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38 + (MaxElements * 45)) or UDim2.new(1,0,0,38)})
+						TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38 + (MaxElements * 47)) or UDim2.new(1,0,0,38)})
 					else
-						TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38 + (Options * 45)) or UDim2.new(1,0,0,38)})
+						TPlay(outer,TW.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,38 + (Options * 47)) or UDim2.new(1,0,0,38)})
 					end
 				end)
 
@@ -1929,20 +2079,26 @@ function NexusLib:MakeWindow(cfg)
 				return DD
 			end
 
-			-- PLAYER DROPDOWN (single selection)
-			function E:AddPlayerDropdown(cfg)
-				cfg = cfg or {}
-				cfg.Name = cfg.Name or "PlayerDropdown"
-				cfg.Default = cfg.Default or nil
-				cfg.Callback = cfg.Callback or function() end
-				cfg.Flag = cfg.Flag or nil
-				cfg.Save = cfg.Save or false
+			-- PLAYER DROPDOWN (single selection, simpler)
+			function E:AddPlayerDropdown(pdCfg)
+				pdCfg = pdCfg or {}
+				pdCfg.Name = pdCfg.Name or "PlayerDropdown"
+				pdCfg.Default = pdCfg.Default or nil
+				pdCfg.Callback = pdCfg.Callback or function() end
+				pdCfg.Flag = pdCfg.Flag or nil
+				pdCfg.Save = pdCfg.Save or false
 
-				local DD = {Value = cfg.Default, Buttons = {}, SelectedPlayers = {}, Toggled = false, Type = "PlayerDropdown", Save = cfg.Save}
+				local DD = {Value = pdCfg.Default, Buttons = {}, SelectedPlayers = {}, Toggled = false, Type = "PlayerDropdown", Save = pdCfg.Save}
 				local MaxElements = 5
 
-				local ButtonColor = Color3.fromRGB(35, 0, 60)
-				local SelectedColor = Color3.fromRGB(55, 0, 95)
+				local function GetSelectedBg()
+					local a = NexusLib.Theme.Accent
+					return Color3.fromRGB(
+						math.clamp(math.floor(a.R * 255 * 0.18), 0, 255),
+						math.clamp(math.floor(a.G * 255 * 0.18), 0, 255),
+						math.clamp(math.floor(a.B * 255 * 0.18), 0, 255)
+					)
+				end
 
 				local outer = New("Frame",{
 					Parent=parent,Size=UDim2.new(1,0,0,38),
@@ -1954,7 +2110,7 @@ function NexusLib:MakeWindow(cfg)
 				local header = New("Frame",{Parent=outer,Size=UDim2.new(1,0,0,38),BackgroundTransparency=1})
 				New("TextLabel",{
 					Parent=header,Position=UDim2.new(0,12,0,0),Size=UDim2.new(1,-80,1,0),
-					BackgroundTransparency=1,Text=cfg.Name,
+					BackgroundTransparency=1,Text=pdCfg.Name,
 					Font=Enum.Font.GothamBold,TextSize=14,
 					TextColor3=NexusLib.Theme.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
 				})
@@ -1985,38 +2141,68 @@ function NexusLib:MakeWindow(cfg)
 
 				local function AddOptions(playerList)
 					for _, p in ipairs(playerList) do
+						local isSelected = DD.SelectedPlayers[p]
 						local ob = New("TextButton",{
 							Parent=optScroll,Size=UDim2.new(1,0,0,40),
-							BackgroundColor3=ButtonColor,BorderSizePixel=0,
+							BackgroundColor3=isSelected and GetSelectedBg() or NexusLib.Theme.BgPanel,
+							BorderSizePixel=0,
 							Text="",AutoButtonColor=false,
-						},{New("UICorner",{CornerRadius=UDim.new(0,5)}),New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1})})
+						},{
+							New("UICorner",{CornerRadius=UDim.new(0,5)}),
+							New("UIStroke",{Color=NexusLib.Theme.Border,Thickness=1}),
+						})
 						ThemeBind(ob:FindFirstChildOfClass("UIStroke"),"Color","Border")
 
-						local thumb = New("ImageLabel",{
+						-- Selection bar
+						local selBar = New("Frame",{
+							Parent=ob,
+							Position=UDim2.new(0,0,0.1,0),
+							Size=UDim2.new(0,3,0.8,0),
+							BackgroundColor3=NexusLib.Theme.Accent,
+							BackgroundTransparency=isSelected and 0 or 1,
+							BorderSizePixel=0,
+						},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+						selBar.Name = "SelBar"
+						ThemeBind(selBar,"BackgroundColor3","Accent")
+
+						New("ImageLabel",{
 							Parent=ob,Position=UDim2.new(0,5,0.5,-15),Size=UDim2.new(0,30,0,30),
 							BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..p.UserId.."&width=420&height=420&format=png",
 						},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
 
 						local dname = New("TextLabel",{
-							Parent=ob,Position=UDim2.new(0,42,0,5),Size=UDim2.new(0.6,-10,0,18),
+							Parent=ob,Position=UDim2.new(0,42,0,5),Size=UDim2.new(0.65,-10,0,18),
 							BackgroundTransparency=1,Text=p.DisplayName,Font=Enum.Font.GothamBold,TextSize=14,
-							TextColor3=NexusLib.Theme.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,
+							TextColor3=isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextPrimary,
+							TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,
 						})
 						ThemeBind(dname,"TextColor3","TextPrimary")
 
 						local uname = New("TextLabel",{
-							Parent=ob,Position=UDim2.new(0,42,0,22),Size=UDim2.new(0.6,-10,0,18),
-							BackgroundTransparency=1,Text=p.Name,Font=Enum.Font.GothamMedium,TextSize=12,
+							Parent=ob,Position=UDim2.new(0,42,0,22),Size=UDim2.new(0.65,-10,0,14),
+							BackgroundTransparency=1,Text="@"..p.Name,Font=Enum.Font.GothamMedium,TextSize=11,
 							TextColor3=NexusLib.Theme.TextSecondary,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,
 						})
 						ThemeBind(uname,"TextColor3","TextSecondary")
 
 						Connect(ob.MouseButton1Up,function()
-							DD:Set(p)
-							if cfg.Save then SaveConfig(cfg.ConfigName) end
+							-- Toggle selection
+							if DD.SelectedPlayers[p] then
+								DD.SelectedPlayers[p] = nil
+							else
+								DD.SelectedPlayers[p] = true
+							end
+							DD:Set()
+							if pdCfg.Save then SaveConfig(cfg.ConfigName) end
 						end)
-						Connect(ob.MouseEnter,function() TPlay(ob,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgHover}) end)
-						Connect(ob.MouseLeave,function() TPlay(ob,TW.Fast,{BackgroundColor3=DD.SelectedPlayers[p] and SelectedColor or ButtonColor}) end)
+						Connect(ob.MouseEnter,function()
+							if not DD.SelectedPlayers[p] then
+								TPlay(ob,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgHover})
+							end
+						end)
+						Connect(ob.MouseLeave,function()
+							TPlay(ob,TW.Fast,{BackgroundColor3=DD.SelectedPlayers[p] and GetSelectedBg() or NexusLib.Theme.BgPanel})
+						end)
 
 						DD.Buttons[p] = ob
 					end
@@ -2046,11 +2232,21 @@ function NexusLib:MakeWindow(cfg)
 						selLbl.Text = "Selecione"
 					end
 
+					-- Update button visuals
 					for p, btn in pairs(self.Buttons) do
-						btn.BackgroundColor3 = self.SelectedPlayers[p] and SelectedColor or ButtonColor
+						local isSelected = self.SelectedPlayers[p]
+						local sbar = btn:FindFirstChild("SelBar")
+						TPlay(btn,TW.Fast,{BackgroundColor3=isSelected and GetSelectedBg() or NexusLib.Theme.BgPanel})
+						if sbar then TPlay(sbar,TW.Fast,{BackgroundTransparency=isSelected and 0 or 1}) end
+						-- Update display name label color
+						for _, lbl in ipairs(btn:GetChildren()) do
+							if lbl:IsA("TextLabel") and lbl.Font == Enum.Font.GothamBold then
+								TPlay(lbl,TW.Fast,{TextColor3=isSelected and NexusLib.Theme.Accent or NexusLib.Theme.TextPrimary})
+							end
+						end
 					end
 
-					return cfg.Callback(selectedUsernames)
+					return pdCfg.Callback(selectedUsernames)
 				end
 
 				local Hbtn = New("TextButton",{
@@ -2085,7 +2281,7 @@ function NexusLib:MakeWindow(cfg)
 				Connect(Players.PlayerRemoving, updateList)
 
 				updateList()
-				if cfg.Flag then NexusLib.Flags[cfg.Flag] = DD end
+				if pdCfg.Flag then NexusLib.Flags[pdCfg.Flag] = DD end
 				return DD
 			end
 
@@ -2145,9 +2341,14 @@ function NexusLib:MakeWindow(cfg)
 				bCfg.Flag     = bCfg.Flag     or nil
 				bCfg.Save     = bCfg.Save     or false
 
-				local Blacklist = {Enum.KeyCode.Unknown,Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,
-				                   Enum.KeyCode.Slash,Enum.KeyCode.Tab,Enum.KeyCode.Backspace,Enum.KeyCode.Escape,Enum.KeyCode.Up,Enum.KeyCode.Down,Enum.KeyCode.Left,Enum.KeyCode.Right}
-				local function InBlacklist(k) for _,v in pairs(Blacklist) do if v==k then return true end end end
+				local Blacklist = {
+					Enum.KeyCode.Unknown,Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,
+					Enum.KeyCode.Slash,Enum.KeyCode.Tab,Enum.KeyCode.Backspace,Enum.KeyCode.Escape,
+					Enum.KeyCode.Up,Enum.KeyCode.Down,Enum.KeyCode.Left,Enum.KeyCode.Right
+				}
+				local function InBlacklist(k)
+					for _,v in pairs(Blacklist) do if v==k then return true end end
+				end
 
 				local T_    = NexusLib.Theme
 				local Bind  = {Value = bCfg.Default.Name or tostring(bCfg.Default), Binding = false, Holding = false, Type = "Bind", Save = bCfg.Save}
@@ -2242,7 +2443,6 @@ function NexusLib:MakeWindow(cfg)
 					TextColor3=T_.TextPrimary,TextXAlignment=Enum.TextXAlignment.Left,
 				})
 				ThemeBind(header:FindFirstChildOfClass("TextLabel"),"TextColor3","TextPrimary")
-				-- Color preview box
 				local Preview = New("Frame",{
 					Parent=header,Position=UDim2.new(1,-46,0.5,-12),Size=UDim2.new(0,24,0,24),
 					BackgroundColor3=cpCfg.Default,BorderSizePixel=0,
@@ -2256,14 +2456,12 @@ function NexusLib:MakeWindow(cfg)
 				local sep = New("Frame",{Parent=outer,Position=UDim2.new(0,0,0,36),Size=UDim2.new(1,0,0,1),BackgroundColor3=T_.Border,BorderSizePixel=0,Visible=false})
 				ThemeBind(sep,"BackgroundColor3","Border")
 
-				-- Picker area
 				local pickerArea = New("Frame",{
 					Parent=outer,Position=UDim2.new(0,10,0,44),
 					Size=UDim2.new(1,-20,0,110),
 					BackgroundTransparency=1,Visible=false,
 				})
 
-				-- Saturation/Value box
 				local SVBox = New("ImageLabel",{
 					Parent=pickerArea,Position=UDim2.new(0,0,0,0),
 					Size=UDim2.new(1,-26,1,0),
@@ -2279,7 +2477,6 @@ function NexusLib:MakeWindow(cfg)
 					BorderSizePixel=0,AnchorPoint=Vector2.new(0.5,0.5),
 				},{New("UICorner",{CornerRadius=UDim.new(1,0)}),New("UIStroke",{Color=Color3.fromRGB(50,50,50),Thickness=2})})
 
-				-- Hue slider
 				local HueBar = New("Frame",{
 					Parent=pickerArea,Position=UDim2.new(1,-22,0,0),
 					Size=UDim2.new(0,14,1,0),
@@ -2311,7 +2508,6 @@ function NexusLib:MakeWindow(cfg)
 					SaveConfig(cfg.ConfigName)
 				end
 
-				-- SV drag
 				local svDrag, svInp = false
 				Connect(SVBox.InputBegan, function(inp)
 					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
@@ -2330,7 +2526,6 @@ function NexusLib:MakeWindow(cfg)
 						UpdateCP()
 					end
 				end)
-				-- Hue drag
 				local hDrag, hInp = false
 				Connect(HueBar.InputBegan, function(inp)
 					if inp.UserInputType==Enum.UserInputType.MouseButton1 or inp.UserInputType==Enum.UserInputType.Touch then
@@ -2349,7 +2544,6 @@ function NexusLib:MakeWindow(cfg)
 					end
 				end)
 
-				-- Toggle open/close
 				local Hbtn = New("TextButton",{Parent=header,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
 				Connect(Hbtn.MouseButton1Up, function()
 					CP.Toggled = not CP.Toggled
@@ -2384,12 +2578,10 @@ function NexusLib:MakeWindow(cfg)
 					AutomaticSize=Enum.AutomaticSize.Y,
 					BackgroundTransparency=1,
 				})
-				-- Section label
 				local row = New("Frame",{
 					Parent=wrap,Size=UDim2.new(1,0,0,22),
 					BackgroundTransparency=1,
 				})
-				-- Accent line
 				New("Frame",{
 					Parent=row,Position=UDim2.new(0,0,0.5,-1),
 					Size=UDim2.new(0,3,0,12),
@@ -2417,13 +2609,11 @@ function NexusLib:MakeWindow(cfg)
 			return E
 		end -- BuildElements
 
-		-- Expose elements on the tab
 		local EF = {}
 		for k, v in pairs(BuildElements(ContentScroll)) do
 			EF[k] = v
 		end
 
-		-- AddSection is handled inside BuildElements but also at tab level
 		return EF
 	end -- MakeTab
 
@@ -2433,10 +2623,8 @@ function NexusLib:MakeWindow(cfg)
 	local function CreateSettingsTab()
 		local ST = TabFunction:MakeTab({ Name = "⚙ Settings", Icon = "" })
 
-		-- ── APPEARANCE SECTION ──────────────────────────────────
 		local Appearance = ST:AddSection({ Name = "APPEARANCE" })
 
-		-- Background color
 		Appearance:AddColorpicker({
 			Name     = "Background Base",
 			Default  = NexusLib.Theme.BgBase,
@@ -2477,7 +2665,22 @@ function NexusLib:MakeWindow(cfg)
 			Callback = function(c) NexusLib:SetThemeColor("TopbarBg", c) end,
 		})
 
-		-- ── ACCENT SECTION ──────────────────────────────────────
+		-- FIX: Background image transparency slider
+		Appearance:AddSlider({
+			Name      = "BG Image Opacity",
+			Min       = 0,
+			Max       = 100,
+			Default   = math.floor((1 - cfg.BackgroundImageTransparency) * 100),
+			Increment = 5,
+			Suffix    = "%",
+			Callback  = function(v)
+				local t = 1 - (v / 100)
+				BgImage.ImageTransparency = t
+				-- Adjust dim overlay proportionally
+				BgDim.BackgroundTransparency = 0.3 + (t * 0.4)
+			end,
+		})
+
 		local AccentSec = ST:AddSection({ Name = "ACCENT" })
 
 		AccentSec:AddColorpicker({
@@ -2501,7 +2704,6 @@ function NexusLib:MakeWindow(cfg)
 			end,
 		})
 
-		-- ── BORDERS SECTION ────────────────────────────────────
 		local BorderSec = ST:AddSection({ Name = "BORDERS" })
 
 		BorderSec:AddColorpicker({
@@ -2510,7 +2712,6 @@ function NexusLib:MakeWindow(cfg)
 			Callback = function(c) NexusLib:SetThemeColor("Border", c) end,
 		})
 
-		-- ── TEXT SECTION ────────────────────────────────────────
 		local TextSec = ST:AddSection({ Name = "TEXT" })
 
 		TextSec:AddColorpicker({
@@ -2529,39 +2730,17 @@ function NexusLib:MakeWindow(cfg)
 			Callback = function(c) NexusLib:SetThemeColor("TextMuted", c) end,
 		})
 
-		-- ── PRESETS SECTION ─────────────────────────────────────
 		local PresetSec = ST:AddSection({ Name = "PRESETS" })
 
 		local Presets = {
-			["Neon Cyan"]   = { BgBase=Color3.fromRGB(14,14,20),  BgCard=Color3.fromRGB(22,22,32),  Accent=Color3.fromRGB(0,220,180),  Border=Color3.fromRGB(40,42,60),   SidebarBg=Color3.fromRGB(11,11,17) },
-			["Blood Red"]   = { BgBase=Color3.fromRGB(14,8,8),    BgCard=Color3.fromRGB(28,12,12),  Accent=Color3.fromRGB(220,50,50),  Border=Color3.fromRGB(60,20,20),   SidebarBg=Color3.fromRGB(10,6,6)  },
-			["Electric Blue"]={ BgBase=Color3.fromRGB(8,10,20),   BgCard=Color3.fromRGB(14,18,36),  Accent=Color3.fromRGB(80,140,255), Border=Color3.fromRGB(30,40,80),   SidebarBg=Color3.fromRGB(6,8,16)  },
-			["Golden Hour"]  = { BgBase=Color3.fromRGB(18,14,8),  BgCard=Color3.fromRGB(30,22,10),  Accent=Color3.fromRGB(255,195,50), Border=Color3.fromRGB(60,45,18),   SidebarBg=Color3.fromRGB(12,10,5) },
-			["Void Purple"]  = { BgBase=Color3.fromRGB(10,8,18),  BgCard=Color3.fromRGB(18,14,32),  Accent=Color3.fromRGB(160,80,255), Border=Color3.fromRGB(40,30,70),   SidebarBg=Color3.fromRGB(8,6,14)  },
-			["Arctic White"] = { BgBase=Color3.fromRGB(235,237,245),BgCard=Color3.fromRGB(220,222,234),Accent=Color3.fromRGB(60,120,255),Border=Color3.fromRGB(190,195,215),SidebarBg=Color3.fromRGB(210,212,225),TextPrimary=Color3.fromRGB(30,32,50),TextSecondary=Color3.fromRGB(80,85,115),TextMuted=Color3.fromRGB(140,145,170) },
+			["Neon Cyan"]    = { BgBase=Color3.fromRGB(14,14,20),    BgCard=Color3.fromRGB(22,22,32),    Accent=Color3.fromRGB(0,220,180),   Border=Color3.fromRGB(40,42,60),    SidebarBg=Color3.fromRGB(11,11,17) },
+			["Blood Red"]    = { BgBase=Color3.fromRGB(14,8,8),      BgCard=Color3.fromRGB(28,12,12),    Accent=Color3.fromRGB(220,50,50),   Border=Color3.fromRGB(60,20,20),    SidebarBg=Color3.fromRGB(10,6,6)   },
+			["Electric Blue"]= { BgBase=Color3.fromRGB(8,10,20),     BgCard=Color3.fromRGB(14,18,36),    Accent=Color3.fromRGB(80,140,255),  Border=Color3.fromRGB(30,40,80),    SidebarBg=Color3.fromRGB(6,8,16)   },
+			["Golden Hour"]  = { BgBase=Color3.fromRGB(18,14,8),     BgCard=Color3.fromRGB(30,22,10),    Accent=Color3.fromRGB(255,195,50),  Border=Color3.fromRGB(60,45,18),    SidebarBg=Color3.fromRGB(12,10,5)  },
+			["Void Purple"]  = { BgBase=Color3.fromRGB(10,8,18),     BgCard=Color3.fromRGB(18,14,32),    Accent=Color3.fromRGB(160,80,255),  Border=Color3.fromRGB(40,30,70),    SidebarBg=Color3.fromRGB(8,6,14)   },
+			["Arctic White"] = { BgBase=Color3.fromRGB(235,237,245), BgCard=Color3.fromRGB(220,222,234), Accent=Color3.fromRGB(60,120,255),  Border=Color3.fromRGB(190,195,215), SidebarBg=Color3.fromRGB(210,212,225), TextPrimary=Color3.fromRGB(30,32,50), TextSecondary=Color3.fromRGB(80,85,115), TextMuted=Color3.fromRGB(140,145,170) },
 		}
 
-		local presetNames = {}
-		for k in pairs(Presets) do table.insert(presetNames, k) end
-
-		PresetSec:AddDropdown({
-			Name     = "Load Preset",
-			Options  = presetNames,
-			Default  = presetNames[1],
-			Callback = function() end,  -- just for selection display
-		})
-
-		PresetSec:AddButton({
-			Name     = "Apply Preset",
-			Callback = function()
-				-- Get current selected preset from dropdown — we'll use the last set value
-				-- For simplicity, iterate and apply from a stored selection
-				-- (In full implementation you'd cache the dropdown value)
-				NexusLib:Notify({ Title = "Preset Applied", Message = "Theme updated successfully!", Duration = 3 })
-			end,
-		})
-
-		-- Apply preset buttons directly
 		for pName, pData in pairs(Presets) do
 			PresetSec:AddButton({
 				Name     = pName,
@@ -2569,7 +2748,6 @@ function NexusLib:MakeWindow(cfg)
 					for k, v in pairs(pData) do
 						NexusLib:SetThemeColor(k, v)
 					end
-					-- Rebuild derived colors
 					local a = pData.Accent or NexusLib.Theme.Accent
 					NexusLib:SetThemeColor("AccentGlow", Color3.fromRGB(math.min(255,a.R*255+35),math.min(255,a.G*255+35),math.min(255,a.B*255+35)))
 					NexusLib:SetThemeColor("AccentDim",  Color3.fromRGB(math.floor(a.R*255*.65),math.floor(a.G*255*.65),math.floor(a.B*255*.65)))
@@ -2585,7 +2763,6 @@ function NexusLib:MakeWindow(cfg)
 			})
 		end
 
-		-- ── CONFIG SECTION ──────────────────────────────────────
 		local CfgSec = ST:AddSection({ Name = "CONFIG" })
 
 		CfgSec:AddButton({
@@ -2617,22 +2794,23 @@ function NexusLib:MakeWindow(cfg)
 		})
 
 		CfgSec:AddTextbox({
-			Name       = "Background Image ID",
-			Default    = cfg.BackgroundImage,
+			Name        = "Background Image ID",
+			Default     = cfg.BackgroundImage,
 			Placeholder = "e.g. 123456789",
-			Callback   = function(id)
+			Callback    = function(id)
 				cfg.BackgroundImage = id
 				BgImage.Image = id ~= "" and "rbxassetid://" .. id or ""
+				-- Show/hide dim overlay based on whether image is set
+				BgDim.BackgroundTransparency = id ~= "" and 0.55 or 1
 				NexusLib:Notify({ Title = "Background Updated", Message = id ~= "" and "Image set" or "Image removed", Duration = 3 })
 			end,
-			Flag       = "BackgroundImage",
-			Save       = true,
+			Flag        = "BackgroundImage",
+			Save        = true,
 		})
 	end
 
 	CreateSettingsTab()
 
-	-- Load config after all tabs built
 	if cfg.SaveConfig then
 		task.defer(function()
 			LoadConfig(cfg.ConfigName)
