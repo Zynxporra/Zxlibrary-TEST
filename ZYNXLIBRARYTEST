@@ -485,6 +485,7 @@ function NexusLib:MakeWindow(cfg)
 	cfg.IntroEnabled   = cfg.IntroEnabled   ~= false
 	cfg.IntroText      = cfg.IntroText      or cfg.Title
 	cfg.ToggleKey      = cfg.ToggleKey      or "RightShift"
+	cfg.BackgroundImage = cfg.BackgroundImage or ""
 	cfg.Icon           = cfg.Icon           or ""
 	cfg.CloseCallback  = cfg.CloseCallback  or function() end
 	cfg.Size           = cfg.Size           or Vector2.new(720, 440)
@@ -511,6 +512,15 @@ function NexusLib:MakeWindow(cfg)
 	})
 	ThemeBind(Win, "BackgroundColor3", "BgBase")
 	ThemeBind(Win:FindFirstChildOfClass("UIStroke"), "Color", "Border")
+
+	-- Background Image
+	local BgImage = New("ImageLabel", {
+		Parent = Win,
+		Size = UDim2.new(1, 0, 1, 0),
+		BackgroundTransparency = 1,
+		Image = cfg.BackgroundImage ~= "" and "rbxassetid://" .. cfg.BackgroundImage or "",
+		ZIndex = -1,
+	})
 
 	-- ── TOPBAR ─────────────────────────────────────────────────
 	local Topbar = New("Frame", {
@@ -1633,7 +1643,6 @@ function NexusLib:MakeWindow(cfg)
 
 					if not n then
 						table.insert(SelectedValues, val)
-						selLbl.Text = DD.Value
 						TPlay(DD.Buttons[val],TW.Fast,{BackgroundTransparency=0})
 						local lbl = DD.Buttons[val]:FindFirstChildOfClass("TextLabel")
 						if lbl then TPlay(lbl,TW.Fast,{TextTransparency=0}) end
@@ -1811,9 +1820,9 @@ function NexusLib:MakeWindow(cfg)
 					end
 				end
 
-				for _, p in pairs(PlayerService:GetPlayers()) do AddOption(p) end
-				Connect(PlayerService.PlayerAdded, function(p) AddOption(p) end)
-				Connect(PlayerService.PlayerRemoving, function(p) RemoveOption(p.Name) end)
+				for _, p in pairs(Players:GetPlayers()) do AddOption(p) end
+				Connect(Players.PlayerAdded, function(p) AddOption(p) end)
+				Connect(Players.PlayerRemoving, function(p) RemoveOption(p.Name) end)
 
 				local function DeleteAllDisconnectedPlayers()
 					for i, v in pairs(DD.Buttons) do
@@ -2003,12 +2012,7 @@ function NexusLib:MakeWindow(cfg)
 						ThemeBind(uname,"TextColor3","TextSecondary")
 
 						Connect(ob.MouseButton1Up,function()
-							if DD.SelectedPlayers[p] then
-								DD.SelectedPlayers[p] = nil
-							else
-								DD.SelectedPlayers[p] = true
-							end
-							DD:Set()
+							DD:Set(p)
 							if cfg.Save then SaveConfig(cfg.ConfigName) end
 						end)
 						Connect(ob.MouseEnter,function() TPlay(ob,TW.Fast,{BackgroundColor3=NexusLib.Theme.BgHover}) end)
@@ -2029,7 +2033,7 @@ function NexusLib:MakeWindow(cfg)
 				function DD:Set()
 					local selectedUsernames = {}
 					for p in pairs(self.SelectedPlayers) do
-						if PlayerService:FindFirstChild(p.Name) then
+						if Players:FindFirstChild(p.Name) then
 							table.insert(selectedUsernames, p.Name)
 						else
 							self.SelectedPlayers[p] = nil
@@ -2066,10 +2070,10 @@ function NexusLib:MakeWindow(cfg)
 				end)
 
 				local function updateList()
-					local allPlayers = PlayerService:GetPlayers()
+					local allPlayers = Players:GetPlayers()
 					local filtered = {}
 					for _, p in ipairs(allPlayers) do
-						if p ~= PlayerService.LocalPlayer then
+						if p ~= Players.LocalPlayer then
 							table.insert(filtered, p)
 						end
 					end
@@ -2077,8 +2081,8 @@ function NexusLib:MakeWindow(cfg)
 					DD:Set()
 				end
 
-				Connect(PlayerService.PlayerAdded, updateList)
-				Connect(PlayerService.PlayerRemoving, updateList)
+				Connect(Players.PlayerAdded, updateList)
+				Connect(Players.PlayerRemoving, updateList)
 
 				updateList()
 				if cfg.Flag then NexusLib.Flags[cfg.Flag] = DD end
@@ -2599,6 +2603,30 @@ function NexusLib:MakeWindow(cfg)
 				ApplyTheme()
 				NexusLib:Notify({ Title = "Theme Reset", Message = "Default theme restored.", Duration = 3 })
 			end,
+		})
+
+		CfgSec:AddBind({
+			Name     = "Toggle Key",
+			Default  = Enum.KeyCode[cfg.ToggleKey] or Enum.KeyCode.RightShift,
+			Callback = function(key)
+				cfg.ToggleKey = key
+				NexusLib:Notify({ Title = "Toggle Key Changed", Message = "New key: " .. key, Duration = 3 })
+			end,
+			Flag     = "ToggleKey",
+			Save     = true,
+		})
+
+		CfgSec:AddTextbox({
+			Name       = "Background Image ID",
+			Default    = cfg.BackgroundImage,
+			Placeholder = "e.g. 123456789",
+			Callback   = function(id)
+				cfg.BackgroundImage = id
+				BgImage.Image = id ~= "" and "rbxassetid://" .. id or ""
+				NexusLib:Notify({ Title = "Background Updated", Message = id ~= "" and "Image set" or "Image removed", Duration = 3 })
+			end,
+			Flag       = "BackgroundImage",
+			Save       = true,
 		})
 	end
 
