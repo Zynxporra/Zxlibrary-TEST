@@ -1,17 +1,29 @@
--- ══════════════════════════════════════════════════════════════════════
---  NEXUSLIB v3.0 — Hub UI Library for Roblox
+-- ════════════════════════════════════════════════════════════════
+--  NEXUS UI LIBRARY  v4.0
 --  Dark Cyberpunk | Neon Accents | Live Theme | BG Image Library
--- ══════════════════════════════════════════════════════════════════════
+--  Full elements: Toggle, Slider (fixed), Dropdown, Colorpicker,
+--  Bind, Textbox, Label, Paragraph, Section, PlayerDropdown
+--  Built-in Settings Tab: theme, BG images, presets, save/load
+-- ════════════════════════════════════════════════════════════════
 
--- ── MULTI-INSTANCE GUARD ─────────────────────────────────────────────
-do
-    local ok,v = pcall(function() return _G.__NexusLibActive end)
-    if ok and v then warn("[NexusLib] Already running."); return end
-    _G.__NexusLibActive = true
-end
-getgenv().gethui = getgenv().gethui or function() return game:GetService("CoreGui") end
+-- ── MULTI-INSTANCE GUARD ─────────────────────────────────────
+getgenv().gethui = function() return game.CoreGui end
+local ok, v = pcall(function() return _G.__NexusFirstRun end)
+if ok and v then warn("[Nexus] Already running."); return end
+_G.__NexusFirstRun = true
 
--- ── SERVICES ─────────────────────────────────────────────────────────
+-- ── MODAL BUTTON (keeps cursor free) ─────────────────────────
+local _LP     = game.Players.LocalPlayer
+local _PGui   = _LP:WaitForChild("PlayerGui")
+local _UIS    = game:GetService("UserInputService")
+_UIS.MouseIconEnabled = true
+local _mscGui = _PGui:FindFirstChild("__NexusModal") or Instance.new("ScreenGui")
+_mscGui.Name="__NexusModal"; _mscGui.ResetOnSpawn=false; _mscGui.Parent=_PGui
+local _mBtn   = Instance.new("TextButton")
+_mBtn.Size=UDim2.new(0,0,0,0); _mBtn.BackgroundTransparency=1; _mBtn.Text=""
+_mBtn.Parent=_mscGui; _mBtn.Modal=true
+
+-- ── SERVICES ─────────────────────────────────────────────────
 local UIS          = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local RunService   = game:GetService("RunService")
@@ -22,59 +34,56 @@ local SoundService = game:GetService("SoundService")
 local Stats        = game:GetService("Stats")
 local LP           = Players.LocalPlayer
 
--- ── TWEEN PRESETS ────────────────────────────────────────────────────
+-- ── TWEEN CACHE ───────────────────────────────────────────────
 local TI = {
-    Snap    = TweenInfo.new(0.06, Enum.EasingStyle.Linear),
-    Fast    = TweenInfo.new(0.18, Enum.EasingStyle.Quint,  Enum.EasingDirection.Out),
-    Mid     = TweenInfo.new(0.28, Enum.EasingStyle.Quint,  Enum.EasingDirection.Out),
-    Smooth  = TweenInfo.new(0.38, Enum.EasingStyle.Expo,   Enum.EasingDirection.Out),
-    Back    = TweenInfo.new(0.35, Enum.EasingStyle.Back,   Enum.EasingDirection.Out),
-    Spring  = TweenInfo.new(0.45, Enum.EasingStyle.Elastic,Enum.EasingDirection.Out),
-    Sine    = TweenInfo.new(0.40, Enum.EasingStyle.Sine,   Enum.EasingDirection.InOut),
+    UltraFast = TweenInfo.new(0.10, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    Fast      = TweenInfo.new(0.18, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    Mid       = TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
+    Smooth    = TweenInfo.new(0.38, Enum.EasingStyle.Expo,  Enum.EasingDirection.Out),
+    Back      = TweenInfo.new(0.35, Enum.EasingStyle.Back,  Enum.EasingDirection.Out),
+    Spring    = TweenInfo.new(0.45, Enum.EasingStyle.Elastic,Enum.EasingDirection.Out),
+    Sine      = TweenInfo.new(0.40, Enum.EasingStyle.Sine,  Enum.EasingDirection.InOut),
+    Slow      = TweenInfo.new(0.55, Enum.EasingStyle.Expo,  Enum.EasingDirection.Out),
 }
 local function Tw(obj,ti,props) TweenService:Create(obj,ti,props):Play() end
 
--- ── UTILS ────────────────────────────────────────────────────────────
+-- ── COLOR / MATH UTILS ───────────────────────────────────────
 local function Clamp(v,a,b)  return math.clamp(v,a,b) end
-local function Lerp(a,b,t)   return a+(b-a)*t end
-local function Round(n,step) if step==0 then return n end; return math.floor(n/step+0.5)*step end
+local function Round(n,step) if step==0 then return n end return math.floor(n/step+0.5)*step end
 local function C3(r,g,b)     return Color3.fromRGB(r,g,b) end
 local function HSV(h,s,v)    return Color3.fromHSV(h,s,v) end
+local function Lrp(a,b,t)    return a+(b-a)*t end
 
-local function ColorPack(c)
-    return {R=math.round(c.R*255),G=math.round(c.G*255),B=math.round(c.B*255)}
-end
+local function Lighten(c,a) local h,s,v=Color3.toHSV(c); return HSV(h,math.max(0,s-a*.3),math.min(1,v+a)) end
+local function Darken(c,a)  local h,s,v=Color3.toHSV(c); return HSV(h,s,math.max(0,v-a)) end
+local function Tint(c,t,s)  return Color3.new(Lrp(c.R,t.R,s),Lrp(c.G,t.G,s),Lrp(c.B,t.B,s)) end
+
+local function ColorPack(c)   return {R=math.round(c.R*255),G=math.round(c.G*255),B=math.round(c.B*255)} end
 local function ColorUnpack(t)
-    if type(t)=="table" and t.R then
-        return C3(Clamp(t.R,0,255),Clamp(t.G,0,255),Clamp(t.B,0,255))
-    end; return C3(200,200,200)
+    if type(t)=="table" and t.R then return C3(Clamp(t.R,0,255),Clamp(t.G,0,255),Clamp(t.B,0,255)) end
+    return C3(200,200,200)
 end
-local function C3toHex(c)
-    return ("%02X%02X%02X"):format(math.round(c.R*255),math.round(c.G*255),math.round(c.B*255))
-end
-local function HextoC3(h)
+local function C3Hex(c)   return ("%02X%02X%02X"):format(math.round(c.R*255),math.round(c.G*255),math.round(c.B*255)) end
+local function HexC3(h)
     h=h:gsub("#","")
     if #h~=6 then return nil end
     local r,g,b=tonumber(h:sub(1,2),16),tonumber(h:sub(3,4),16),tonumber(h:sub(5,6),16)
     return (r and g and b) and C3(r,g,b) or nil
 end
-local function Lighten(c,a) local h,s,v=Color3.toHSV(c); return HSV(h,math.max(0,s-a*.3),math.min(1,v+a)) end
-local function Darken(c,a)  local h,s,v=Color3.toHSV(c); return HSV(h,s,math.max(0,v-a)) end
-local function Tint(c,t,s)  return Color3.new(Lerp(c.R,t.R,s),Lerp(c.G,t.G,s),Lerp(c.B,t.B,s)) end
 
--- ── GUI FACTORY ──────────────────────────────────────────────────────
-local function New(class,props,children)
-    local o=Instance.new(class)
+-- ── GUI FACTORY ───────────────────────────────────────────────
+local function New(cls,props,children)
+    local o=Instance.new(cls)
     for k,v in pairs(props or {}) do o[k]=v end
     for _,c in pairs(children or {}) do if c then c.Parent=o end end
     return o
 end
-local function Crn(r)  return New("UICorner",{CornerRadius=UDim.new(0,r or 8)}) end
-local function Str(col,th) return New("UIStroke",{Color=col or C3(50,52,75),Thickness=th or 1}) end
+local function Crn(r)    return New("UICorner",{CornerRadius=UDim.new(0,r or 8)}) end
+local function Str(col,t) return New("UIStroke",{Color=col or C3(50,52,75),Thickness=t or 1}) end
 local function Pad(t,r,b,l) return New("UIPadding",{
     PaddingTop=UDim.new(0,t or 0),PaddingRight=UDim.new(0,r or 0),
     PaddingBottom=UDim.new(0,b or 0),PaddingLeft=UDim.new(0,l or 0)}) end
-local function List(gap) return New("UIListLayout",{
+local function LL(gap) return New("UIListLayout",{
     Padding=UDim.new(0,gap or 0),SortOrder=Enum.SortOrder.LayoutOrder,
     FillDirection=Enum.FillDirection.Vertical,
     HorizontalAlignment=Enum.HorizontalAlignment.Left,
@@ -83,191 +92,205 @@ local function SzC(minX,minY,maxX,maxY) return New("UISizeConstraint",{
     MinSize=Vector2.new(minX or 0,minY or 0),
     MaxSize=Vector2.new(maxX or math.huge,maxY or math.huge)}) end
 
--- ── ROOT GUI ─────────────────────────────────────────────────────────
+-- ── ROOT SCREENGUI ────────────────────────────────────────────
 local GuiParent  = gethui()
 local ProtectGui = protectgui or (syn and syn.protect_gui) or function() end
 local Root = New("ScreenGui",{
-    Name="NexusLib_v3",ResetOnSpawn=false,IgnoreGuiInset=true,
+    Name="NexusLib_v4",ResetOnSpawn=false,IgnoreGuiInset=true,
     ZIndexBehavior=Enum.ZIndexBehavior.Sibling,DisplayOrder=999})
 Root.Parent=GuiParent; pcall(ProtectGui,Root)
 for _,g in ipairs(GuiParent:GetChildren()) do
-    if g.Name=="NexusLib_v3" and g~=Root then g:Destroy() end
+    if g.Name=="NexusLib_v4" and g~=Root then g:Destroy() end
 end
-local ModalBtn=New("TextButton",{Parent=Root,Size=UDim2.new(0,0,0,0),
-    BackgroundTransparency=1,Text="",Modal=true,Visible=false,Active=true})
+local FreeMouseBtn = New("TextButton",{Parent=Root,Size=UDim2.new(0,0,0,0),
+    BackgroundTransparency=1,Text="",Modal=true,Visible=false,Active=true,Name="FreeMouse"})
 
--- ── DEFAULT THEME ────────────────────────────────────────────────────
+-- ══════════════════════════════════════════════════════════════
+-- DEFAULT THEME
+-- ══════════════════════════════════════════════════════════════
 local DT = {
-    WinBg=C3(10,10,15),       WinBgAlt=C3(14,14,21),
-    TopbarBg=C3(8,8,13),      SidebarBg=C3(9,9,14),
-    CardBg=C3(18,18,28),      CardHover=C3(25,25,38),    CardActive=C3(21,21,34),
-    InputBg=C3(12,12,20),
-    Border=C3(35,37,58),      BorderBright=C3(55,58,90),
-    Accent=C3(0,210,175),     AccentBright=C3(0,245,205),
-    AccentDim=C3(0,130,108),  AccentAlpha=C3(0,50,42),
-    Danger=C3(220,60,60),     Warning=C3(220,170,50),    Success=C3(60,200,120),
-    TextH1=C3(240,242,255),   TextH2=C3(200,203,225),
-    Text=C3(170,173,200),     TextDim=C3(100,103,135),   TextMuted=C3(60,63,90),
-    TrackOff=C3(40,42,65),    TrackOn=C3(0,180,150),     ScrollBar=C3(0,180,150),
-    BgImageUrl="",            BgImageTrans=0.85,
+    -- surfaces
+    WinBg       = C3(10,10,15),   WinBgAlt  = C3(14,14,22),
+    TopbarBg    = C3(8,8,13),     SidebarBg = C3(9,9,14),
+    CardBg      = C3(18,18,28),   CardHov   = C3(26,26,40),   CardAct  = C3(22,22,34),
+    InputBg     = C3(12,12,20),
+    -- borders
+    Border      = C3(35,37,58),   BorderBright = C3(55,58,90),
+    -- accent (neon teal-cyan)
+    Accent      = C3(0,210,175),  AccentBright = C3(0,245,205),
+    AccentDim   = C3(0,130,108),  AccentAlpha  = C3(0,50,42),
+    -- status
+    Danger      = C3(220,60,60),  Warning = C3(220,170,50),   Success = C3(60,200,120),
+    -- text
+    TextH1      = C3(240,242,255),TextH2 = C3(200,203,225),
+    Text        = C3(170,173,200),TextDim = C3(100,103,135),  TextMuted = C3(60,63,90),
+    -- toggle
+    TrackOff    = C3(40,42,65),   TrackOn = C3(0,180,150),
+    -- scroll
+    ScrollBar   = C3(0,180,150),
+    -- background image
+    BgUrl       = "",   BgTrans = 0.85,
 }
 
--- ── NEXUSLIB TABLE ───────────────────────────────────────────────────
-local NL = {
-    Version="3.0", Flags={}, Connections={}, Theme={},
-    _Watchers={}, _WatcherFns={},
-    SaveEnabled=false, SaveFolder="nexus_configs",
-    _CfgName="default", _BgLib={},
+-- ══════════════════════════════════════════════════════════════
+-- NEXUS LIBRARY TABLE
+-- ══════════════════════════════════════════════════════════════
+local Nexus = {
+    Version    = "4.0",
+    Flags      = {},
+    Conns      = {},
+    Theme      = {},
+    _Watchers  = {},
+    _WatchFns  = {},
+    SaveOn     = false,
+    SaveDir    = "nexus_cfg",
+    _CfgName   = "default",
+    _BgLib     = {},
 }
-for k,v in pairs(DT) do NL.Theme[k]=v end
+for k,v in pairs(DT) do Nexus.Theme[k]=v end
 
--- ── CONNECTION MANAGER ───────────────────────────────────────────────
+-- ── CONNECTIONS ───────────────────────────────────────────────
 local function Alive() return Root and Root.Parent~=nil end
 local function Conn(sig,fn)
     if not Alive() then return end
-    local c=sig:Connect(fn); table.insert(NL.Connections,c); return c
+    local c=sig:Connect(fn); table.insert(Nexus.Conns,c); return c
 end
 task.spawn(function()
     while Alive() do task.wait(0.5) end
-    for _,c in pairs(NL.Connections) do pcall(function() c:Disconnect() end) end
+    for _,c in pairs(Nexus.Conns) do pcall(function() c:Disconnect() end) end
 end)
 
--- ── THEME BINDING SYSTEM ─────────────────────────────────────────────
+-- ── THEME BINDING ─────────────────────────────────────────────
 local function Bind(obj,prop,key,fn)
     if not obj or not prop or not key then return obj end
-    table.insert(NL._Watchers,{obj=obj,prop=prop,key=key,fn=fn})
-    local v=NL.Theme[key]
+    table.insert(Nexus._Watchers,{obj=obj,prop=prop,key=key,fn=fn})
+    local v=Nexus.Theme[key]
     if v~=nil then pcall(function() obj[prop]=fn and fn(v) or v end) end
     return obj
 end
-local function BindFn(fn) table.insert(NL._WatcherFns,fn); pcall(fn) end
+local function BindFn(fn) table.insert(Nexus._WatchFns,fn); pcall(fn) end
 local function ApplyTheme()
-    local T=NL.Theme
-    for _,w in ipairs(NL._Watchers) do
+    local T=Nexus.Theme
+    for _,w in ipairs(Nexus._Watchers) do
         if w.obj and w.obj.Parent then
             local v=T[w.key]
             if v~=nil then pcall(function() w.obj[w.prop]=w.fn and w.fn(v) or v end) end
         end
     end
-    for _,fn in ipairs(NL._WatcherFns) do pcall(fn) end
+    for _,fn in ipairs(Nexus._WatchFns) do pcall(fn) end
 end
-function NL:SetColor(key,val) NL.Theme[key]=val; ApplyTheme() end
-function NL:SetTheme(tbl) for k,v in pairs(tbl) do NL.Theme[k]=v end; ApplyTheme() end
+function Nexus:Set(key,val) Nexus.Theme[key]=val; ApplyTheme() end
+function Nexus:SetTheme(tbl) for k,v in pairs(tbl) do Nexus.Theme[k]=v end; ApplyTheme() end
 
--- ── SOUND ────────────────────────────────────────────────────────────
+-- ── SOUND ─────────────────────────────────────────────────────
 local SFX={Click="rbxassetid://6026984224",Toggle="rbxassetid://9118776541",
-    Open="rbxassetid://6698737249",Notif="rbxassetid://9118776541"}
-local function PlaySFX(name,vol)
+    Open="rbxassetid://6698737249",Notif="rbxassetid://9118776541",
+    Notify="rbxassetid://127441833735276"}
+local function SPlay(name,vol)
     pcall(function()
         local s=New("Sound",{SoundId=SFX[name] or name,Volume=vol or 0.3,Parent=SoundService})
         s:Play(); game.Debris:AddItem(s,5)
     end)
 end
 
--- ── CONFIG SAVE / LOAD ───────────────────────────────────────────────
-local _sLast,_sPending=0,false
-local function EnsureDir()
+-- ── SAVE / LOAD CONFIG ────────────────────────────────────────
+local _sl,_sp=0,false
+local function EDir()
     if not isfolder then return false end
-    if not isfolder(NL.SaveFolder) then makefolder(NL.SaveFolder) end
-    return true
+    if not isfolder(Nexus.SaveDir) then makefolder(Nexus.SaveDir) end; return true
 end
 local function DoSave(name)
-    if not NL.SaveEnabled or not writefile or not EnsureDir() then return end
-    local d={Ver=NL.Version,At=os.date("%Y-%m-%d %H:%M:%S"),Flags={},Theme={},BgLib=NL._BgLib}
-    for fn,fo in pairs(NL.Flags) do
+    if not Nexus.SaveOn or not writefile or not EDir() then return end
+    local d={Ver=Nexus.Version,At=os.date("%Y-%m-%d %H:%M:%S"),Flags={},Theme={},BgLib=Nexus._BgLib}
+    for fn,fo in pairs(Nexus.Flags) do
         if fo.Save then
-            d.Flags[fn]= fo.Type=="Colorpicker"
+            d.Flags[fn]=fo.Type=="Colorpicker"
                 and {Type="Colorpicker",Value=ColorPack(fo.Value)}
                 or  {Type=fo.Type or "?",Value=fo.Value}
         end
     end
-    for k,v in pairs(NL.Theme) do
+    for k,v in pairs(Nexus.Theme) do
         if typeof(v)=="Color3" then d.Theme[k]=ColorPack(v)
         elseif type(v)=="number" or type(v)=="string" or type(v)=="boolean" then d.Theme[k]=v end
     end
-    pcall(function() writefile(NL.SaveFolder.."/"..name..".json",HttpService:JSONEncode(d)) end)
+    pcall(function() writefile(Nexus.SaveDir.."/"..name..".json",HttpService:JSONEncode(d)) end)
 end
-local function Save(name)
+local function SaveCfg(name)
     local now=tick()
-    if now-_sLast<1.2 then
-        if not _sPending then _sPending=true
-            task.delay(1.4,function() _sPending=false; DoSave(name or NL._CfgName) end)
-        end; return
-    end
-    _sLast=now; task.spawn(DoSave,name or NL._CfgName)
+    if now-_sl<1.2 then
+        if not _sp then _sp=true; task.delay(1.4,function() _sp=false; DoSave(name or Nexus._CfgName) end) end; return
+    end; _sl=now; task.spawn(DoSave,name or Nexus._CfgName)
 end
-local function Load(name)
+local function LoadCfg(name)
     if not readfile or not isfile then return end
-    local path=NL.SaveFolder.."/"..name..".json"
+    local path=Nexus.SaveDir.."/"..name..".json"
     if not isfile(path) then return end
     local ok,d=pcall(function() return HttpService:JSONDecode(readfile(path)) end)
     if not ok or not d then return end
     if d.Theme then
         for k,v in pairs(d.Theme) do
             if type(v)=="table" and v.R then
-                if NL.Theme[k]~=nil then NL.Theme[k]=ColorUnpack(v) end
-            elseif type(v)~="nil" and NL.Theme[k]~=nil then NL.Theme[k]=v end
+                if Nexus.Theme[k]~=nil then Nexus.Theme[k]=ColorUnpack(v) end
+            elseif type(v)~="nil" and Nexus.Theme[k]~=nil then Nexus.Theme[k]=v end
         end; ApplyTheme()
     end
-    if d.BgLib then NL._BgLib=d.BgLib end
+    if d.BgLib then Nexus._BgLib=d.BgLib end
     task.defer(function()
         task.wait(0.3)
         for fn,fd in pairs(d.Flags or {}) do
-            if NL.Flags[fn] then pcall(function()
-                if fd.Type=="Colorpicker" then NL.Flags[fn]:Set(ColorUnpack(fd.Value))
-                elseif fd.Value~=nil then NL.Flags[fn]:Set(fd.Value) end
+            if Nexus.Flags[fn] then pcall(function()
+                if fd.Type=="Colorpicker" then Nexus.Flags[fn]:Set(ColorUnpack(fd.Value))
+                elseif fd.Value~=nil then Nexus.Flags[fn]:Set(fd.Value) end
             end) end
         end
     end)
 end
 
--- ── DRAG ─────────────────────────────────────────────────────────────
-local function Drag(handle,target)
+-- ── DRAG ──────────────────────────────────────────────────────
+local function MakeDrag(handle,target)
     pcall(function()
-        local drag,dStart,wStart=false
-        Conn(handle.InputBegan,function(inp)
-            if inp.UserInputType==Enum.UserInputType.MouseButton1
-            or inp.UserInputType==Enum.UserInputType.Touch then
-                drag=true
-                dStart=Vector2.new(inp.Position.X,inp.Position.Y)
-                wStart=Vector2.new(target.Position.X.Offset,target.Position.Y.Offset)
-                Conn(inp.Changed,function()
-                    if inp.UserInputState==Enum.UserInputState.End then drag=false end
+        local drag,dS,wS=false
+        Conn(handle.InputBegan,function(i)
+            if i.UserInputType==Enum.UserInputType.MouseButton1
+            or i.UserInputType==Enum.UserInputType.Touch then
+                drag=true; dS=Vector2.new(i.Position.X,i.Position.Y)
+                wS=Vector2.new(target.Position.X.Offset,target.Position.Y.Offset)
+                Conn(i.Changed,function()
+                    if i.UserInputState==Enum.UserInputState.End then drag=false end
                 end)
             end
         end)
-        Conn(UIS.InputChanged,function(inp)
+        Conn(UIS.InputChanged,function(i)
             if not drag then return end
-            if inp.UserInputType~=Enum.UserInputType.MouseMovement
-            and inp.UserInputType~=Enum.UserInputType.Touch then return end
-            local d=Vector2.new(inp.Position.X,inp.Position.Y)-dStart
-            target.Position=UDim2.new(target.Position.X.Scale,wStart.X+d.X,
-                                       target.Position.Y.Scale,wStart.Y+d.Y)
+            if i.UserInputType~=Enum.UserInputType.MouseMovement
+            and i.UserInputType~=Enum.UserInputType.Touch then return end
+            local d=Vector2.new(i.Position.X,i.Position.Y)-dS
+            target.Position=UDim2.new(target.Position.X.Scale,wS.X+d.X,target.Position.Y.Scale,wS.Y+d.Y)
         end)
     end)
 end
 
--- ── SCROLL ───────────────────────────────────────────────────────────
-local function MkScroll(parent,size,pos)
+-- ── SCROLLFRAME ───────────────────────────────────────────────
+local function MkSF(parent,size,pos)
     local sf=New("ScrollingFrame",{
         Parent=parent,Size=size or UDim2.new(1,0,1,0),Position=pos or UDim2.new(0,0,0,0),
         BackgroundTransparency=1,BorderSizePixel=0,ScrollBarThickness=3,
-        ScrollBarImageColor3=NL.Theme.ScrollBar,CanvasSize=UDim2.new(0,0,0,0),
+        ScrollBarImageColor3=Nexus.Theme.ScrollBar,CanvasSize=UDim2.new(0,0,0,0),
         ScrollingDirection=Enum.ScrollingDirection.Y,ElasticBehavior=Enum.ElasticBehavior.Never,
         MidImage="rbxassetid://7445543667",TopImage="rbxassetid://7445543667",
         BottomImage="rbxassetid://7445543667",ScrollBarImageTransparency=0.3})
     Bind(sf,"ScrollBarImageColor3","ScrollBar"); return sf
 end
-local function AutoCV(sf,ll)
+local function ACV(sf,ll)
     Conn(ll:GetPropertyChangedSignal("AbsoluteContentSize"),function()
         sf.CanvasSize=UDim2.new(0,0,0,ll.AbsoluteContentSize.Y+20)
     end)
 end
 
--- ══════════════════════════════════════════════════════════════════════
--- NOTIFICATIONS
--- ══════════════════════════════════════════════════════════════════════
-local NHolder=New("Frame",{Parent=Root,Size=UDim2.new(0,330,1,-20),
+-- ══════════════════════════════════════════════════════════════
+-- NOTIFICATION SYSTEM
+-- ══════════════════════════════════════════════════════════════
+local NH=New("Frame",{Parent=Root,Size=UDim2.new(0,330,1,-20),
     Position=UDim2.new(1,-345,0,10),BackgroundTransparency=1,
     AnchorPoint=Vector2.new(1,0),ZIndex=9000},
     {New("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,
@@ -275,26 +298,26 @@ local NHolder=New("Frame",{Parent=Root,Size=UDim2.new(0,330,1,-20),
         HorizontalAlignment=Enum.HorizontalAlignment.Center,
         Padding=UDim.new(0,6),FillDirection=Enum.FillDirection.Vertical})})
 
-function NL:Notify(cfg)
+function Nexus:Notify(cfg)
     cfg=cfg or {}
     cfg.Title=cfg.Title or "Notice"; cfg.Message=cfg.Message or ""
     cfg.Icon=cfg.Icon or "rbxassetid://16913919445"
     cfg.Duration=cfg.Duration or 5; cfg.Type=cfg.Type or "info"
-    local cols={info=NL.Theme.Accent,success=NL.Theme.Success,
-        error=NL.Theme.Danger,warning=NL.Theme.Warning}
-    local bc=cols[cfg.Type] or NL.Theme.Accent
-    PlaySFX("Notif",0.3)
+    local cols={info=Nexus.Theme.Accent,success=Nexus.Theme.Success,
+        error=Nexus.Theme.Danger,warning=Nexus.Theme.Warning}
+    local bc=cols[cfg.Type] or Nexus.Theme.Accent
+    SPlay("Notify",0.4)
     task.spawn(function()
-        local T=NL.Theme
-        local W=New("Frame",{Parent=NHolder,Size=UDim2.new(1,0,0,0),
+        local T=Nexus.Theme
+        local W=New("Frame",{Parent=NH,Size=UDim2.new(1,0,0,0),
             BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y})
         local Card=New("Frame",{Parent=W,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
             BackgroundColor3=T.CardBg,BorderSizePixel=0,Position=UDim2.new(1,20,0,0),ZIndex=9001},
             {Crn(8),Str(T.Border,1),Pad(10,12,10,14)})
-        -- accent bar left
+        -- left bar
         local AB=New("Frame",{Parent=Card,Size=UDim2.new(0,3,1,-16),Position=UDim2.new(0,-14,0,8),
             BackgroundColor3=bc,BorderSizePixel=0,ZIndex=9002},{Crn(2)})
-        -- top glow strip
+        -- top strip
         New("Frame",{Parent=Card,Size=UDim2.new(1,0,0,1),Position=UDim2.new(0,0,0,0),
             BackgroundColor3=bc,BackgroundTransparency=0.5,BorderSizePixel=0,ZIndex=9002})
         local Ico=New("ImageLabel",{Parent=Card,Size=UDim2.new(0,20,0,20),Position=UDim2.new(0,0,0,0),
@@ -308,39 +331,49 @@ function NL:Notify(cfg)
             TextXAlignment=Enum.TextXAlignment.Left,TextWrapped=true,ZIndex=9002})
         local PBg=New("Frame",{Parent=Card,Size=UDim2.new(1,0,0,2),Position=UDim2.new(0,0,1,6),
             BackgroundColor3=T.Border,BorderSizePixel=0,ZIndex=9002},{Crn(1)})
-        local PFill=New("Frame",{Parent=PBg,Size=UDim2.new(1,0,1,0),BackgroundColor3=bc,
-            BorderSizePixel=0,ZIndex=9003},{Crn(1)})
+        local PFl=New("Frame",{Parent=PBg,Size=UDim2.new(1,0,1,0),BackgroundColor3=bc,BorderSizePixel=0,ZIndex=9003},{Crn(1)})
         Tw(Card,TI.Back,{Position=UDim2.new(0,0,0,0)})
-        Tw(PFill,TweenInfo.new(cfg.Duration-0.5,Enum.EasingStyle.Linear),{Size=UDim2.new(0,0,1,0)})
+        Tw(PFl,TweenInfo.new(cfg.Duration-0.5,Enum.EasingStyle.Linear),{Size=UDim2.new(0,0,1,0)})
         task.wait(cfg.Duration-0.6)
         for _,o in ipairs({Card,AB}) do Tw(o,TI.Mid,{BackgroundTransparency=1}) end
-        Tw(Ico,TI.Mid,{ImageTransparency=1}); Tw(Ttl,TI.Mid,{TextTransparency=1})
-        Tw(Msg,TI.Mid,{TextTransparency=1}); task.wait(0.3)
-        Tw(Card,TI.Mid,{Position=UDim2.new(1,20,0,0)}); task.wait(0.4); W:Destroy()
+        Tw(Ico,TI.Mid,{ImageTransparency=1}); Tw(Ttl,TI.Mid,{TextTransparency=1}); Tw(Msg,TI.Mid,{TextTransparency=1})
+        task.wait(0.3); Tw(Card,TI.Mid,{Position=UDim2.new(1,20,0,0)}); task.wait(0.4); W:Destroy()
     end)
 end
 
--- ══════════════════════════════════════════════════════════════════════
+-- ══════════════════════════════════════════════════════════════
 -- MAKE WINDOW
--- ══════════════════════════════════════════════════════════════════════
-function NL:MakeWindow(WC)
+-- ══════════════════════════════════════════════════════════════
+function Nexus:MakeWindow(WC)
     WC=WC or {}
-    WC.Title=WC.Title or "NexusLib"; WC.SubTitle=WC.SubTitle or ""
-    WC.ConfigName=WC.ConfigName or WC.Title
-    WC.SaveConfig=WC.SaveConfig~=false; WC.IntroEnabled=WC.IntroEnabled~=false
-    WC.IntroText=WC.IntroText or WC.Title; WC.IntroSubText=WC.IntroSubText or ""
-    WC.ToggleKey=WC.ToggleKey or "RightShift"; WC.Icon=WC.Icon or ""
-    WC.CloseCallback=WC.CloseCallback or function() end
-    WC.Size=WC.Size or Vector2.new(740,460)
-    WC.MinSize=WC.MinSize or Vector2.new(500,330)
-    WC.MaxSize=WC.MaxSize or Vector2.new(1400,900)
-    NL.SaveEnabled=WC.SaveConfig; NL._CfgName=WC.ConfigName
+    WC.Title        = WC.Title        or "Nexus"
+    WC.SubTitle     = WC.SubTitle     or ""
+    WC.ConfigName   = WC.ConfigName   or WC.Title
+    WC.SaveConfig   = WC.SaveConfig   ~= false
+    WC.IntroEnabled = WC.IntroEnabled ~= false
+    WC.IntroText    = WC.IntroText    or WC.Title
+    WC.IntroSubText = WC.IntroSubText or ""
+    WC.ToggleKey    = WC.ToggleKey    or "RightShift"
+    WC.Icon         = WC.Icon         or ""
+    WC.CloseCallback= WC.CloseCallback or function() end
+    WC.Size         = WC.Size         or Vector2.new(740,460)
+    WC.MinSize      = WC.MinSize      or Vector2.new(500,320)
+    WC.MaxSize      = WC.MaxSize      or Vector2.new(1400,900)
+    WC.FreeMouse    = WC.FreeMouse    or false
 
-    local T=NL.Theme
-    local Hidden=false; local Mini=false
-    local AllTabs={}; local FirstTab=true
+    Nexus.SaveOn   = WC.SaveConfig
+    Nexus._CfgName = WC.ConfigName
+    if WC.SaveConfig and isfolder then
+        if not isfolder(Nexus.SaveDir) then makefolder(Nexus.SaveDir) end
+    end
 
-    -- Main window frame
+    local T        = Nexus.Theme
+    local Hidden   = false
+    local Mini     = false
+    local AllTabs  = {}
+    local FTab     = true
+
+    -- ── WINDOW FRAME ─────────────────────────────────────────
     local Win=New("Frame",{
         Parent=Root,Size=UDim2.new(0,WC.Size.X,0,WC.Size.Y),
         Position=UDim2.new(0.5,-WC.Size.X/2,0.5,-WC.Size.Y/2),
@@ -349,26 +382,26 @@ function NL:MakeWindow(WC)
     Bind(Win,"BackgroundColor3","WinBg")
     Bind(Win:FindFirstChildOfClass("UIStroke"),"Color","Border")
 
-    -- Background image layer
+    -- Background image
     local BgImg=New("ImageLabel",{Parent=Win,Size=UDim2.new(1,0,1,0),
-        BackgroundTransparency=1,Image=T.BgImageUrl,ScaleType=Enum.ScaleType.Crop,
-        ImageTransparency=T.BgImageTrans,ZIndex=11,Visible=T.BgImageUrl~=""},
+        BackgroundTransparency=1,Image=T.BgUrl,ScaleType=Enum.ScaleType.Crop,
+        ImageTransparency=T.BgTrans,ZIndex=11,Visible=T.BgUrl~=""},
         {Crn(10)})
     local BgDim=New("Frame",{Parent=Win,Size=UDim2.new(1,0,1,0),
         BackgroundColor3=T.WinBg,BackgroundTransparency=0.18,
-        BorderSizePixel=0,ZIndex=12,Visible=T.BgImageUrl~=""},
+        BorderSizePixel=0,ZIndex=12,Visible=T.BgUrl~=""},
         {Crn(10)})
     BindFn(function()
-        local url=NL.Theme.BgImageUrl; local tr=NL.Theme.BgImageTrans
+        local url=Nexus.Theme.BgUrl; local tr=Nexus.Theme.BgTrans
         BgImg.Image=url; BgImg.Visible=url~=""; BgImg.ImageTransparency=tr
-        BgDim.Visible=url~=""; BgDim.BackgroundColor3=NL.Theme.WinBg
+        BgDim.Visible=url~=""; BgDim.BackgroundColor3=Nexus.Theme.WinBg
     end)
 
-    -- Topbar
+    -- ── TOPBAR ────────────────────────────────────────────────
     local TH=48
     local Topbar=New("Frame",{Parent=Win,Size=UDim2.new(1,0,0,TH),
         BackgroundColor3=T.TopbarBg,BorderSizePixel=0,ZIndex=20},
-        {New("UICorner",{CornerRadius=UDim.new(0,10)}),
+        {Crn(10),
          New("Frame",{Name="SqFix",Size=UDim2.new(1,0,0.5,0),Position=UDim2.new(0,0,0.5,0),
              BackgroundColor3=T.TopbarBg,BorderSizePixel=0,ZIndex=20}),
          New("Frame",{Position=UDim2.new(0,0,1,-1),Size=UDim2.new(1,0,0,1),
@@ -376,7 +409,7 @@ function NL:MakeWindow(WC)
     Bind(Topbar,"BackgroundColor3","TopbarBg")
     BindFn(function()
         for _,c in ipairs(Topbar:GetChildren()) do
-            if c.Name=="SqFix" then c.BackgroundColor3=NL.Theme.TopbarBg end
+            if c.Name=="SqFix" then c.BackgroundColor3=Nexus.Theme.TopbarBg end
         end
     end)
 
@@ -387,16 +420,48 @@ function NL:MakeWindow(WC)
         tX=42
     end
     local TitleLbl=New("TextLabel",{Parent=Topbar,Position=UDim2.new(0,tX,0,0),
-        Size=UDim2.new(0,260,1,0),BackgroundTransparency=1,Text=WC.Title,
+        Size=UDim2.new(0,280,1,0),BackgroundTransparency=1,Text=WC.Title,
         Font=Enum.Font.GothamBlack,TextSize=16,TextColor3=T.TextH1,
         TextXAlignment=Enum.TextXAlignment.Left,ZIndex=22})
     Bind(TitleLbl,"TextColor3","TextH1")
+    -- animated letters
+    local wLetters={}
+    do
+        local cW=12; local xO=0
+        for i=1,#WC.Title do
+            local ch=WC.Title:sub(i,i)
+            local cw2=ch==" " and 7 or cW
+            local l=New("TextLabel",{Parent=Topbar,
+                Position=UDim2.new(0,tX+xO,0,0),Size=UDim2.new(0,cw2,1,0),
+                BackgroundTransparency=1,Text=ch,Font=Enum.Font.GothamBlack,TextSize=16,
+                TextColor3=Nexus.Theme.TextH1,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=23})
+            Bind(l,"TextColor3","TextH1"); table.insert(wLetters,l); xO=xO+cw2
+        end
+        TitleLbl.Visible=false
+        -- letter-wave animation
+        task.spawn(function()
+            task.wait(3)
+            while Alive() do
+                for i=#wLetters,1,-1 do
+                    task.spawn(function()
+                        Tw(wLetters[i],TI.Sine,{TextTransparency=1}); task.wait(0.5)
+                        Tw(wLetters[i],TI.Sine,{TextTransparency=0})
+                    end)
+                    task.wait(0.07)
+                end
+                task.wait(8)
+            end
+        end)
+    end
+
     if WC.SubTitle~="" then
-        New("TextLabel",{Parent=Topbar,Position=UDim2.new(0,tX+#WC.Title*9+4,0,0),
+        New("TextLabel",{Parent=Topbar,Position=UDim2.new(0,tX+#WC.Title*12+6,0,0),
             Size=UDim2.new(0,180,1,0),BackgroundTransparency=1,
             Text="/ "..WC.SubTitle,Font=Enum.Font.Gotham,TextSize=13,
             TextColor3=T.TextDim,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=22})
     end
+
+    -- Stats label
     local StatsLbl=New("TextLabel",{Parent=Topbar,Position=UDim2.new(1,-310,0,0),
         Size=UDim2.new(0,200,1,0),BackgroundTransparency=1,
         Text="60 FPS | 0ms | 00:00",Font=Enum.Font.GothamMedium,TextSize=12,
@@ -417,8 +482,8 @@ function NL:MakeWindow(WC)
         end
     end)
 
-    -- Win buttons (close / minimize)
-    local function WinBtn(img,xR,hvr)
+    -- Window control buttons
+    local function WBtn(img,xR,hov)
         local b=New("TextButton",{Parent=Topbar,Position=UDim2.new(1,xR,0.5,-14),
             Size=UDim2.new(0,28,0,28),BackgroundColor3=T.CardBg,BorderSizePixel=0,
             Text="",AutoButtonColor=false,ZIndex=25},{Crn(6),Str(T.Border,1)})
@@ -427,82 +492,19 @@ function NL:MakeWindow(WC)
             Position=UDim2.new(0.5,-7,0.5,-7),BackgroundTransparency=1,
             Image=img,ImageColor3=T.TextDim,ZIndex=26})
         Bind(ic,"ImageColor3","TextDim")
-        Conn(b.MouseEnter,function() Tw(b,TI.Fast,{BackgroundColor3=hvr or NL.Theme.CardHover}); Tw(ic,TI.Fast,{ImageColor3=NL.Theme.TextH1}) end)
-        Conn(b.MouseLeave,function() Tw(b,TI.Fast,{BackgroundColor3=NL.Theme.CardBg}); Tw(ic,TI.Fast,{ImageColor3=NL.Theme.TextDim}) end)
+        Conn(b.MouseEnter,function()
+            Tw(b,TI.Fast,{BackgroundColor3=hov or Nexus.Theme.CardHov}); Tw(ic,TI.Fast,{ImageColor3=Nexus.Theme.TextH1})
+        end)
+        Conn(b.MouseLeave,function()
+            Tw(b,TI.Fast,{BackgroundColor3=Nexus.Theme.CardBg}); Tw(ic,TI.Fast,{ImageColor3=Nexus.Theme.TextDim})
+        end)
         return b,ic
     end
-    local CloseB,CloseI = WinBtn("rbxassetid://7072725342",-10,C3(180,50,50))
-    local MinB,MinI     = WinBtn("rbxassetid://7072719338",-44,nil)
+    local CloseB,CloseI=WBtn("rbxassetid://7072725342",-10,C3(180,50,50))
+    local MinB,MinI    =WBtn("rbxassetid://7072719338",-44,nil)
     CloseI.ImageColor3=C3(200,70,70)
 
-    -- Sidebar
-    local SW=162
-    local Sidebar=New("Frame",{Parent=Win,Position=UDim2.new(0,0,0,TH+1),
-        Size=UDim2.new(0,SW,1,-(TH+1)),BackgroundColor3=T.SidebarBg,
-        BorderSizePixel=0,ClipsDescendants=true,ZIndex=15},
-        {New("UICorner",{CornerRadius=UDim.new(0,10)}),
-         New("Frame",{Name="SqFix2",Size=UDim2.new(0.5,0,1,0),Position=UDim2.new(0.5,0,0,0),
-             BackgroundColor3=T.SidebarBg,BorderSizePixel=0,ZIndex=15}),
-         New("Frame",{Name="SideDiv",Position=UDim2.new(1,-1,0,0),Size=UDim2.new(0,1,1,0),
-             BackgroundColor3=T.Border,BorderSizePixel=0,ZIndex=16})})
-    Bind(Sidebar,"BackgroundColor3","SidebarBg")
-    BindFn(function()
-        for _,c in ipairs(Sidebar:GetChildren()) do
-            if c.Name=="SqFix2" then c.BackgroundColor3=NL.Theme.SidebarBg end
-            if c.Name=="SideDiv" then c.BackgroundColor3=NL.Theme.Border end
-        end
-    end)
-    -- accent strip on sidebar top
-    local SAcc=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,5,0,0),
-        Size=UDim2.new(1,-10,0,2),BackgroundColor3=T.Accent,BorderSizePixel=0,ZIndex=17},{Crn(1)})
-    Bind(SAcc,"BackgroundColor3","Accent")
-
-    -- search
-    local SCont=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,8,0,10),
-        Size=UDim2.new(1,-16,0,30),BackgroundColor3=T.InputBg,BorderSizePixel=0,ZIndex=17},
-        {Crn(6),Str(T.Border,1)})
-    Bind(SCont,"BackgroundColor3","InputBg"); Bind(SCont:FindFirstChildOfClass("UIStroke"),"Color","Border")
-    New("ImageLabel",{Parent=SCont,Position=UDim2.new(0,7,0.5,-8),Size=UDim2.new(0,16,0,16),
-        BackgroundTransparency=1,Image="rbxassetid://3926305904",ImageColor3=T.TextMuted,ZIndex=18})
-    local SBox=New("TextBox",{Parent=SCont,Position=UDim2.new(0,28,0,0),Size=UDim2.new(1,-34,1,0),
-        BackgroundTransparency=1,PlaceholderText="Search...",PlaceholderColor3=T.TextMuted,
-        Text="",Font=Enum.Font.GothamMedium,TextSize=12,TextColor3=T.TextH2,
-        ClearTextOnFocus=false,ZIndex=18})
-    Bind(SBox,"TextColor3","TextH2")
-
-    -- tab list scroll
-    local TabSF=MkScroll(Sidebar,UDim2.new(1,0,1,-118),UDim2.new(0,0,0,48)); TabSF.ZIndex=16
-    local TabList=List(3); TabList.Parent=TabSF
-    Pad(4,7,4,7).Parent=TabSF; AutoCV(TabSF,TabList)
-
-    Conn(SBox:GetPropertyChangedSignal("Text"),function()
-        local q=SBox.Text:lower()
-        for _,td in pairs(AllTabs) do
-            td.Btn.Visible=q=="" or td.Name:lower():find(q,1,true)~=nil
-        end
-    end)
-
-    -- player panel at sidebar bottom
-    local PPan=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,0,1,-70),
-        Size=UDim2.new(1,0,0,70),BackgroundTransparency=1,ZIndex=16})
-    New("Frame",{Parent=PPan,Size=UDim2.new(1,-16,0,1),Position=UDim2.new(0,8,0,0),
-        BackgroundColor3=T.Border,BorderSizePixel=0,ZIndex=17})
-    New("ImageLabel",{Parent=PPan,Position=UDim2.new(0.5,-20,0,8),Size=UDim2.new(0,40,0,40),
-        BackgroundTransparency=1,
-        Image="https://www.roblox.com/headshot-thumbnail/image?userId="..LP.UserId.."&width=420&height=420&format=png",
-        ZIndex=17},{Crn(20),Str(T.Border,1.5)})
-    local PName=New("TextLabel",{Parent=PPan,Position=UDim2.new(0,6,0,52),
-        Size=UDim2.new(1,-12,0,14),BackgroundTransparency=1,Text=LP.DisplayName,
-        Font=Enum.Font.GothamBold,TextSize=11,TextColor3=T.TextDim,
-        TextXAlignment=Enum.TextXAlignment.Center,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=17})
-    Bind(PName,"TextColor3","TextDim")
-
-    -- Content host
-    local ContentHost=New("Frame",{Parent=Win,Position=UDim2.new(0,SW,0,TH+1),
-        Size=UDim2.new(1,-SW,1,-(TH+1)),BackgroundTransparency=1,
-        ClipsDescendants=true,ZIndex=15})
-
-    -- Resize handle (bottom-right)
+    -- Resize handle (bottom-right, 3-dot)
     local RszH=New("TextButton",{Parent=Win,Position=UDim2.new(1,-20,1,-20),
         Size=UDim2.new(0,20,0,20),BackgroundTransparency=1,Text="",AutoButtonColor=false,ZIndex=50})
     for r=0,2 do for c_=0,2 do
@@ -531,36 +533,139 @@ function NL:MakeWindow(WC)
         end)
     end
 
-    Drag(Topbar,Win)
+    -- ── SIDEBAR ───────────────────────────────────────────────
+    local SW=162
+    local Sidebar=New("Frame",{Parent=Win,Position=UDim2.new(0,0,0,TH+1),
+        Size=UDim2.new(0,SW,1,-(TH+1)),BackgroundColor3=T.SidebarBg,
+        BorderSizePixel=0,ClipsDescendants=true,ZIndex=15},
+        {Crn(10),
+         New("Frame",{Name="SqFix2",Size=UDim2.new(0.5,0,1,0),Position=UDim2.new(0.5,0,0,0),
+             BackgroundColor3=T.SidebarBg,BorderSizePixel=0,ZIndex=15}),
+         New("Frame",{Name="SideDiv",Position=UDim2.new(1,-1,0,0),Size=UDim2.new(0,1,1,0),
+             BackgroundColor3=T.Border,BorderSizePixel=0,ZIndex=16})})
+    Bind(Sidebar,"BackgroundColor3","SidebarBg")
+    BindFn(function()
+        for _,c in ipairs(Sidebar:GetChildren()) do
+            if c.Name=="SqFix2" then c.BackgroundColor3=Nexus.Theme.SidebarBg end
+            if c.Name=="SideDiv" then c.BackgroundColor3=Nexus.Theme.Border end
+        end
+    end)
+    -- sidebar accent top strip
+    local SAcc=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,5,0,0),
+        Size=UDim2.new(1,-10,0,2),BackgroundColor3=T.Accent,BorderSizePixel=0,ZIndex=17},{Crn(1)})
+    Bind(SAcc,"BackgroundColor3","Accent")
 
-    -- Show / Hide helpers
+    -- sidebar side-resize handle
+    local SRszH=New("TextButton",{Parent=Sidebar,Position=UDim2.new(1,-8,0.5,-30),
+        Size=UDim2.new(0,8,0,60),BackgroundTransparency=1,Text="",AutoButtonColor=false,ZIndex=50})
+    for ri=0,3 do
+        local dd=New("Frame",{Parent=SRszH,Position=UDim2.new(0.5,-2,0,4+ri*14),
+            Size=UDim2.new(0,4,0,4),BackgroundColor3=T.TextMuted,
+            BackgroundTransparency=0.6,BorderSizePixel=0},{Crn(2)})
+        Bind(dd,"BackgroundColor3","TextMuted")
+    end
+    do
+        local srsz,srS,srO=false
+        Conn(SRszH.InputBegan,function(i)
+            if i.UserInputType==Enum.UserInputType.MouseButton1 then
+                srsz=true; srS=Vector2.new(i.Position.X,0); srO=Vector2.new(Sidebar.AbsoluteSize.X,0)
+            end
+        end)
+        Conn(UIS.InputChanged,function(i)
+            if not srsz or i.UserInputType~=Enum.UserInputType.MouseMovement then return end
+            local d=i.Position.X-srS.X
+            local maxW=Win.AbsoluteSize.X*0.5
+            local nW=Clamp(srO.X+d,80,maxW)
+            Sidebar.Size=UDim2.new(0,nW,1,-(TH+1))
+            -- update content host
+            for _,ch in ipairs(Win:GetChildren()) do
+                if ch.Name=="ContentHost" then
+                    ch.Position=UDim2.new(0,nW,0,TH+1)
+                    ch.Size=UDim2.new(1,-nW,1,-(TH+1))
+                end
+            end
+        end)
+        Conn(UIS.InputEnded,function(i)
+            if i.UserInputType==Enum.UserInputType.MouseButton1 then srsz=false end
+        end)
+    end
+
+    -- Search bar
+    local SCont=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,8,0,10),
+        Size=UDim2.new(1,-16,0,30),BackgroundColor3=T.InputBg,BorderSizePixel=0,ZIndex=17},
+        {Crn(6),Str(T.Border,1)})
+    Bind(SCont,"BackgroundColor3","InputBg"); Bind(SCont:FindFirstChildOfClass("UIStroke"),"Color","Border")
+    New("ImageLabel",{Parent=SCont,Position=UDim2.new(0,7,0.5,-8),Size=UDim2.new(0,16,0,16),
+        BackgroundTransparency=1,Image="rbxassetid://3926305904",ImageColor3=T.TextMuted,ZIndex=18})
+    local SBox=New("TextBox",{Parent=SCont,Position=UDim2.new(0,28,0,0),Size=UDim2.new(1,-34,1,0),
+        BackgroundTransparency=1,PlaceholderText="🔍 Search...",PlaceholderColor3=T.TextMuted,
+        Text="",Font=Enum.Font.GothamMedium,TextSize=12,TextColor3=T.TextH2,
+        ClearTextOnFocus=false,ZIndex=18})
+    Bind(SBox,"TextColor3","TextH2")
+
+    -- Tab scroll list
+    local TabSF=MkSF(Sidebar,UDim2.new(1,0,1,-118),UDim2.new(0,0,0,48)); TabSF.ZIndex=16
+    local TabLL=LL(3); TabLL.Parent=TabSF; Pad(4,7,4,7).Parent=TabSF; ACV(TabSF,TabLL)
+
+    Conn(SBox:GetPropertyChangedSignal("Text"),function()
+        local q=SBox.Text:lower()
+        for _,td in pairs(AllTabs) do
+            td.Btn.Visible=q=="" or td.Name:lower():find(q,1,true)~=nil
+        end
+    end)
+
+    -- Player panel
+    local PPan=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,0,1,-70),
+        Size=UDim2.new(1,0,0,70),BackgroundTransparency=1,ZIndex=16})
+    New("Frame",{Parent=PPan,Size=UDim2.new(1,-16,0,1),Position=UDim2.new(0,8,0,0),
+        BackgroundColor3=T.Border,BorderSizePixel=0,ZIndex=17})
+    New("ImageLabel",{Parent=PPan,Position=UDim2.new(0.5,-20,0,8),Size=UDim2.new(0,40,0,40),
+        BackgroundTransparency=1,
+        Image="https://www.roblox.com/headshot-thumbnail/image?userId="..LP.UserId.."&width=420&height=420&format=png",
+        ZIndex=17},{Crn(20),Str(T.Border,1.5)})
+    local PName=New("TextLabel",{Parent=PPan,Position=UDim2.new(0,6,0,52),
+        Size=UDim2.new(1,-12,0,14),BackgroundTransparency=1,Text=LP.DisplayName,
+        Font=Enum.Font.GothamBold,TextSize=11,TextColor3=T.TextDim,
+        TextXAlignment=Enum.TextXAlignment.Center,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=17})
+    Bind(PName,"TextColor3","TextDim")
+
+    -- ── CONTENT HOST ──────────────────────────────────────────
+    local CH=New("Frame",{Parent=Win,Name="ContentHost",Position=UDim2.new(0,SW,0,TH+1),
+        Size=UDim2.new(1,-SW,1,-(TH+1)),BackgroundTransparency=1,ClipsDescendants=true,ZIndex=15})
+
+    MakeDrag(Topbar,Win)
+
+    -- ── SHOW / HIDE ───────────────────────────────────────────
     local savedSz=Win.Size
     local function Hide()
         Win.Visible=false; Hidden=true
-        ModalBtn.Visible=false; ModalBtn.Modal=false
+        FreeMouseBtn.Visible=false; FreeMouseBtn.Modal=false
+        _mBtn.Modal=false
         UIS.MouseBehavior=Enum.MouseBehavior.LockCenter
         UIS.MouseIconEnabled=false; WC.CloseCallback()
     end
     local function Show()
         Win.Visible=true; Hidden=false
-        ModalBtn.Visible=true; ModalBtn.Modal=true
+        FreeMouseBtn.Visible=true; FreeMouseBtn.Modal=true
+        _mBtn.Modal=true
         UIS.MouseBehavior=Enum.MouseBehavior.Default
         UIS.MouseIconEnabled=true
     end
+
     Conn(CloseB.MouseButton1Up,function()
-        PlaySFX("Open"); Hide()
-        NL:Notify({Title="Interface Hidden",Message="Press "..WC.ToggleKey.." to reopen",Type="info",Duration=4})
+        SPlay("Open"); Hide()
+        Nexus:Notify({Title="Interface Hidden",Message="Press "..WC.ToggleKey.." to reopen",Type="info",Duration=4})
     end)
     Conn(MinB.MouseButton1Up,function()
-        PlaySFX("Open",0.3)
+        SPlay("Open",0.3)
         if Mini then
             Mini=false; MinI.Image="rbxassetid://7072719338"
-            Sidebar.Visible=true; ContentHost.Visible=true
+            Sidebar.Visible=true; CH.Visible=true
             Tw(Win,TI.Back,{Size=savedSz})
         else
             savedSz=Win.Size; Mini=true
             MinI.Image="rbxassetid://7072720870"
-            Sidebar.Visible=false; ContentHost.Visible=false
+            Sidebar.Visible=false; CH.Visible=false
             Tw(Win,TI.Back,{Size=UDim2.new(0,math.max(340,#WC.Title*12+220),0,TH)})
         end
     end)
@@ -570,50 +675,48 @@ function NL:MakeWindow(WC)
         if Hidden then Show() else Hide() end
     end)
 
-    -- Intro sequence
+    if WC.FreeMouse then
+        FreeMouseBtn.Visible=true; FreeMouseBtn.Modal=true
+    end
+
+    -- ── INTRO SEQUENCE ────────────────────────────────────────
     if WC.IntroEnabled then
         task.spawn(function()
-            local Bg=New("Frame",{Parent=Root,Size=UDim2.new(1,0,1,0),
-                BackgroundColor3=C3(4,4,7),ZIndex=500})
-            -- grid lines background
-            local Grid=New("Frame",{Parent=Bg,Size=UDim2.new(1,0,1,0),
-                BackgroundTransparency=1,ZIndex=501,ClipsDescendants=true})
-            for i=1,16 do New("Frame",{Parent=Grid,BackgroundColor3=C3(18,18,26),BorderSizePixel=0,
-                ZIndex=501,Position=UDim2.new(0,i*(math.random(40,70)),0,0),Size=UDim2.new(0,1,1,0)}) end
-            for i=1,10 do New("Frame",{Parent=Grid,BackgroundColor3=C3(18,18,26),BorderSizePixel=0,
-                ZIndex=501,Position=UDim2.new(0,0,0,i*(math.random(50,90))),Size=UDim2.new(1,0,0,1)}) end
+            local Bg=New("Frame",{Parent=Root,Size=UDim2.new(1,0,1,0),BackgroundColor3=C3(4,4,7),ZIndex=500})
+            -- grid lines
+            for i=1,16 do New("Frame",{Parent=Bg,BackgroundColor3=C3(18,18,26),BorderSizePixel=0,ZIndex=501,
+                Position=UDim2.new(0,i*(math.random(40,70)),0,0),Size=UDim2.new(0,1,1,0)}) end
+            for i=1,10 do New("Frame",{Parent=Bg,BackgroundColor3=C3(18,18,26),BorderSizePixel=0,ZIndex=501,
+                Position=UDim2.new(0,0,0,i*(math.random(50,90))),Size=UDim2.new(1,0,0,1)}) end
             -- glow
-            local Glow=New("ImageLabel",{Parent=Bg,AnchorPoint=Vector2.new(0.5,0.5),
-                Position=UDim2.new(0.5,0,0.5,0),Size=UDim2.new(0,700,0,500),
-                BackgroundTransparency=1,Image="rbxassetid://5028857084",
-                ImageColor3=NL.Theme.Accent,ImageTransparency=0.65,ZIndex=502})
+            New("ImageLabel",{Parent=Bg,AnchorPoint=Vector2.new(0.5,0.5),Position=UDim2.new(0.5,0,0.5,0),
+                Size=UDim2.new(0,700,0,500),BackgroundTransparency=1,Image="rbxassetid://5028857084",
+                ImageColor3=Nexus.Theme.Accent,ImageTransparency=0.65,ZIndex=502})
             -- icon
-            local IcoLbl=New("ImageLabel",{Parent=Bg,AnchorPoint=Vector2.new(0.5,0.5),
+            local IcoL=New("ImageLabel",{Parent=Bg,AnchorPoint=Vector2.new(0.5,0.5),
                 Position=UDim2.new(0.5,0,0.44,0),Size=UDim2.new(0,0,0,0),
-                BackgroundTransparency=1,
-                Image=WC.Icon~="" and WC.Icon or "rbxassetid://8834748103",
-                ImageColor3=NL.Theme.Accent,ZIndex=503})
-            -- letter-by-letter title
+                BackgroundTransparency=1,Image=WC.Icon~="" and WC.Icon or "rbxassetid://8834748103",
+                ImageColor3=Nexus.Theme.Accent,ZIndex=503})
+            -- letters
             local txt=WC.IntroText; local cW=22; local totW=#txt*cW; local letters={}
             for i=1,#txt do
-                local l=New("TextLabel",{Parent=Bg,
-                    Position=UDim2.new(0.5,-totW/2+(i-1)*cW,0.5,-17),
-                    Size=UDim2.new(0,cW,0,36),BackgroundTransparency=1,
-                    Text=txt:sub(i,i),Font=Enum.Font.GothamBlack,TextSize=30,
-                    TextColor3=NL.Theme.TextH1,TextTransparency=1,ZIndex=504})
+                local l=New("TextLabel",{Parent=Bg,Position=UDim2.new(0.5,-totW/2+(i-1)*cW,0.5,-17),
+                    Size=UDim2.new(0,cW,0,36),BackgroundTransparency=1,Text=txt:sub(i,i),
+                    Font=Enum.Font.GothamBlack,TextSize=30,TextColor3=Nexus.Theme.TextH1,
+                    TextTransparency=1,ZIndex=504})
                 table.insert(letters,l)
             end
             local Sub=New("TextLabel",{Parent=Bg,AnchorPoint=Vector2.new(0.5,0),
                 Position=UDim2.new(0.5,0,0.5,24),Size=UDim2.new(0,400,0,20),
                 BackgroundTransparency=1,Text=WC.IntroSubText,Font=Enum.Font.GothamMedium,
-                TextSize=14,TextColor3=NL.Theme.TextDim,TextTransparency=1,
+                TextSize=14,TextColor3=Nexus.Theme.TextDim,TextTransparency=1,
                 TextXAlignment=Enum.TextXAlignment.Center,ZIndex=504})
             local PBg2=New("Frame",{Parent=Bg,AnchorPoint=Vector2.new(0.5,0),
                 Position=UDim2.new(0.5,0,0.5,56),Size=UDim2.new(0,260,0,2),
                 BackgroundColor3=C3(30,30,45),BorderSizePixel=0,ZIndex=504},{Crn(1)})
             local PF2=New("Frame",{Parent=PBg2,Size=UDim2.new(0,0,1,0),
-                BackgroundColor3=NL.Theme.Accent,BorderSizePixel=0,ZIndex=505},{Crn(1)})
-            Tw(IcoLbl,TI.Back,{Size=UDim2.new(0,54,0,54)}); task.wait(0.25)
+                BackgroundColor3=Nexus.Theme.Accent,BorderSizePixel=0,ZIndex=505},{Crn(1)})
+            Tw(IcoL,TI.Back,{Size=UDim2.new(0,54,0,54)}); task.wait(0.25)
             for i,l in ipairs(letters) do
                 task.spawn(function() task.wait((i-1)*0.04); Tw(l,TI.Back,{TextTransparency=0}) end)
             end
@@ -622,30 +725,33 @@ function NL:MakeWindow(WC)
             task.wait(1.4)
             Tw(Bg,TweenInfo.new(0.45,Enum.EasingStyle.Quad),{BackgroundTransparency=1})
             for _,l in ipairs(letters) do Tw(l,TI.Mid,{TextTransparency=1}) end
-            Tw(IcoLbl,TI.Mid,{ImageTransparency=1}); Tw(Sub,TI.Mid,{TextTransparency=1})
-            Tw(Glow,TI.Mid,{ImageTransparency=1}); task.wait(0.5); Bg:Destroy(); Show()
+            Tw(IcoL,TI.Mid,{ImageTransparency=1}); Tw(Sub,TI.Mid,{TextTransparency=1}); task.wait(0.5)
+            Bg:Destroy(); Show()
         end)
     else
         Show()
     end
 
-    -- ══════════════════════════════════════════════════════════════════
+    -- ══════════════════════════════════════════════════════════
     -- TAB BUILDER
-    -- ══════════════════════════════════════════════════════════════════
+    -- ══════════════════════════════════════════════════════════
     local TF={}
 
     function TF:MakeTab(TC)
         TC=TC or {}; TC.Name=TC.Name or "Tab"; TC.Icon=TC.Icon or ""
-        local T=NL.Theme
+        local T=Nexus.Theme
 
         local TabBtn=New("TextButton",{Parent=TabSF,Size=UDim2.new(1,0,0,34),
             BackgroundColor3=T.WinBgAlt,BorderSizePixel=0,Text="",AutoButtonColor=false,ZIndex=18},
             {Crn(7)})
         Bind(TabBtn,"BackgroundColor3","WinBgAlt")
+
+        -- active indicator
         local Ind=New("Frame",{Parent=TabBtn,Position=UDim2.new(0,-1,0.1,0),
             Size=UDim2.new(0,3,0.8,0),BackgroundColor3=T.Accent,
             BackgroundTransparency=1,BorderSizePixel=0,ZIndex=19},{Crn(2)})
         Bind(Ind,"BackgroundColor3","Accent")
+
         local BIco=New("ImageLabel",{Parent=TabBtn,Position=UDim2.new(0,9,0.5,-9),
             Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,Image=TC.Icon,
             ImageColor3=T.TextMuted,ZIndex=19})
@@ -656,70 +762,70 @@ function NL:MakeWindow(WC)
             TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd,ZIndex=19})
         Bind(BLbl,"TextColor3","TextDim")
 
-        local TabSFr=MkScroll(ContentHost,UDim2.new(1,0,1,0),UDim2.new(0,0,0,0))
+        -- content scroll
+        local TabSFr=MkSF(CH,UDim2.new(1,0,1,0),UDim2.new(0,0,0,0))
         TabSFr.Visible=false; TabSFr.ZIndex=16
-        local CList=List(6); CList.Parent=TabSFr
-        Pad(14,14,14,14).Parent=TabSFr; AutoCV(TabSFr,CList)
+        local CLL=LL(6); CLL.Parent=TabSFr; Pad(14,14,14,14).Parent=TabSFr; ACV(TabSFr,CLL)
 
         AllTabs[TC.Name]={Btn=TabBtn,Content=TabSFr,Name=TC.Name}
 
         local function Activate()
             for _,td in pairs(AllTabs) do
-                Tw(td.Btn,TI.Fast,{BackgroundColor3=NL.Theme.WinBgAlt})
+                Tw(td.Btn,TI.Fast,{BackgroundColor3=Nexus.Theme.WinBgAlt})
                 local ind=td.Btn:FindFirstChildOfClass("Frame")
                 if ind then Tw(ind,TI.Fast,{BackgroundTransparency=1}) end
                 local ico=td.Btn:FindFirstChildOfClass("ImageLabel")
-                if ico then Tw(ico,TI.Fast,{ImageColor3=NL.Theme.TextMuted}) end
+                if ico then Tw(ico,TI.Fast,{ImageColor3=Nexus.Theme.TextMuted}) end
                 local lbl=td.Btn:FindFirstChildOfClass("TextLabel")
-                if lbl then Tw(lbl,TI.Fast,{TextColor3=NL.Theme.TextDim}); lbl.Font=Enum.Font.GothamSemibold end
+                if lbl then Tw(lbl,TI.Fast,{TextColor3=Nexus.Theme.TextDim}); lbl.Font=Enum.Font.GothamSemibold end
                 td.Content.Visible=false
             end
-            Tw(TabBtn,TI.Fast,{BackgroundColor3=Tint(NL.Theme.Accent,NL.Theme.WinBgAlt,0.92)})
+            Tw(TabBtn,TI.Fast,{BackgroundColor3=Tint(Nexus.Theme.Accent,Nexus.Theme.WinBgAlt,0.92)})
             Tw(Ind,TI.Fast,{BackgroundTransparency=0})
-            Tw(BIco,TI.Fast,{ImageColor3=NL.Theme.Accent})
-            Tw(BLbl,TI.Fast,{TextColor3=NL.Theme.TextH1}); BLbl.Font=Enum.Font.GothamBold
-            TabSFr.Visible=true; PlaySFX("Click",0.2)
+            Tw(BIco,TI.Fast,{ImageColor3=Nexus.Theme.Accent})
+            Tw(BLbl,TI.Fast,{TextColor3=Nexus.Theme.TextH1}); BLbl.Font=Enum.Font.GothamBold
+            TabSFr.Visible=true; SPlay("Click",0.2)
         end
 
         Conn(TabBtn.MouseButton1Up,Activate)
         Conn(TabBtn.MouseEnter,function()
             if AllTabs[TC.Name] and AllTabs[TC.Name].Content.Visible then return end
-            Tw(TabBtn,TI.Fast,{BackgroundColor3=NL.Theme.CardBg})
+            Tw(TabBtn,TI.Fast,{BackgroundColor3=Nexus.Theme.CardBg})
         end)
         Conn(TabBtn.MouseLeave,function()
             if AllTabs[TC.Name] and AllTabs[TC.Name].Content.Visible then return end
-            Tw(TabBtn,TI.Fast,{BackgroundColor3=NL.Theme.WinBgAlt})
+            Tw(TabBtn,TI.Fast,{BackgroundColor3=Nexus.Theme.WinBgAlt})
         end)
-        if FirstTab then FirstTab=false; task.defer(Activate) end
+        if FTab then FTab=false; task.defer(Activate) end
 
-        -- ── ELEMENT BUILDER ──────────────────────────────────────────
-        local function BuildEF(ItemParent)
+        -- ── ELEMENT BUILDER ───────────────────────────────────
+        local function BuildEF(IP)
             local EF={}
 
             local function MkCard(h,autoY)
-                local f=New("Frame",{Parent=ItemParent,
+                local f=New("Frame",{Parent=IP,
                     Size=UDim2.new(1,0,0,h or 36),
                     AutomaticSize=autoY and Enum.AutomaticSize.Y or Enum.AutomaticSize.None,
-                    BackgroundColor3=NL.Theme.CardBg,BorderSizePixel=0,ZIndex=20},
-                    {Crn(7),Str(NL.Theme.Border,1)})
+                    BackgroundColor3=Nexus.Theme.CardBg,BorderSizePixel=0,ZIndex=20},
+                    {Crn(7),Str(Nexus.Theme.Border,1)})
                 Bind(f,"BackgroundColor3","CardBg")
                 Bind(f:FindFirstChildOfClass("UIStroke"),"Color","Border")
                 return f
             end
-            local function HoverCard(card,btn)
-                Conn(btn.MouseEnter,function() Tw(card,TI.Fast,{BackgroundColor3=NL.Theme.CardHover}) end)
-                Conn(btn.MouseLeave,function() Tw(card,TI.Fast,{BackgroundColor3=NL.Theme.CardBg}) end)
-                Conn(btn.MouseButton1Down,function() Tw(card,TI.Snap,{BackgroundColor3=NL.Theme.CardActive}) end)
-                Conn(btn.MouseButton1Up,function() Tw(card,TI.Fast,{BackgroundColor3=NL.Theme.CardHover}) end)
+            local function HovCard(card,btn)
+                Conn(btn.MouseEnter,function() Tw(card,TI.Fast,{BackgroundColor3=Nexus.Theme.CardHov}) end)
+                Conn(btn.MouseLeave,function() Tw(card,TI.Fast,{BackgroundColor3=Nexus.Theme.CardBg}) end)
+                Conn(btn.MouseButton1Down,function() Tw(card,TI.Fast,{BackgroundColor3=Nexus.Theme.CardAct}) end)
+                Conn(btn.MouseButton1Up,function() Tw(card,TI.Fast,{BackgroundColor3=Nexus.Theme.CardHov}) end)
             end
             local function MkTitle(card,text,xO,yO,wO)
                 local l=New("TextLabel",{Parent=card,ZIndex=21,
                     Position=UDim2.new(0,xO or 12,0,yO or 0),Size=UDim2.new(1,wO or -24,1,0),
                     BackgroundTransparency=1,Text=text,Font=Enum.Font.GothamBold,TextSize=14,
-                    TextColor3=NL.Theme.TextH2,TextXAlignment=Enum.TextXAlignment.Left})
+                    TextColor3=Nexus.Theme.TextH2,TextXAlignment=Enum.TextXAlignment.Left})
                 Bind(l,"TextColor3","TextH2"); return l
             end
-            local function ClickBtn(p,z)
+            local function CBtn(p,z)
                 return New("TextButton",{Parent=p,Size=UDim2.new(1,0,1,0),
                     BackgroundTransparency=1,Text="",AutoButtonColor=false,ZIndex=z or 25})
             end
@@ -735,48 +841,47 @@ function NL:MakeWindow(WC)
                 local card=MkCard(nil,true); Pad(10,12,10,12).Parent=card
                 local tl=New("TextLabel",{Parent=card,Size=UDim2.new(1,0,0,18),ZIndex=21,
                     BackgroundTransparency=1,Text=title or "Title",Font=Enum.Font.GothamBold,
-                    TextSize=14,TextColor3=NL.Theme.TextH1,TextXAlignment=Enum.TextXAlignment.Left})
+                    TextSize=14,TextColor3=Nexus.Theme.TextH1,TextXAlignment=Enum.TextXAlignment.Left})
                 Bind(tl,"TextColor3","TextH1")
                 local cl=New("TextLabel",{Parent=card,Position=UDim2.new(0,0,0,22),
                     Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,ZIndex=21,
                     BackgroundTransparency=1,Text=content or "",Font=Enum.Font.GothamMedium,
-                    TextSize=13,TextColor3=NL.Theme.Text,TextWrapped=true,
+                    TextSize=13,TextColor3=Nexus.Theme.Text,TextWrapped=true,
                     TextXAlignment=Enum.TextXAlignment.Left})
                 Bind(cl,"TextColor3","Text")
-                local P={}; function P:Set(t) cl.Text=t end; function P:SetTitle(t) tl.Text=t end
-                return P
+                local P={}; function P:Set(t) cl.Text=t end; function P:SetTitle(t) tl.Text=t end; return P
             end
 
             -- BUTTON
             function EF:AddButton(BC)
-                BC=BC or {}; BC.Name=BC.Name or "Button"
-                BC.Callback=BC.Callback or function() end
-                BC.Desc=BC.Desc or ""
+                BC=BC or {}; BC.Name=BC.Name or "Button"; BC.Callback=BC.Callback or function() end
+                BC.Desc=BC.Desc or ""; BC.Icon=BC.Icon or ""
                 local h=BC.Desc~="" and 52 or 36
-                local card=MkCard(h); local click=ClickBtn(card)
-                HoverCard(card,click); MkTitle(card,BC.Name,12,0,-40)
+                local card=MkCard(h); local click=CBtn(card); HovCard(card,click)
+                MkTitle(card,BC.Name,12,0,-40)
                 if BC.Desc~="" then
                     local d=New("TextLabel",{Parent=card,Position=UDim2.new(0,12,0,20),
                         Size=UDim2.new(1,-24,0,14),ZIndex=21,BackgroundTransparency=1,
                         Text=BC.Desc,Font=Enum.Font.GothamMedium,TextSize=12,
-                        TextColor3=NL.Theme.TextDim,TextXAlignment=Enum.TextXAlignment.Left,
+                        TextColor3=Nexus.Theme.TextDim,TextXAlignment=Enum.TextXAlignment.Left,
                         TextTruncate=Enum.TextTruncate.AtEnd})
                     Bind(d,"TextColor3","TextDim")
                 end
                 local pill=New("Frame",{Parent=card,Position=UDim2.new(1,-36,0.5,-11),
-                    Size=UDim2.new(0,24,0,22),BackgroundColor3=NL.Theme.AccentAlpha,BorderSizePixel=0,ZIndex=21},{Crn(5)})
+                    Size=UDim2.new(0,24,0,22),BackgroundColor3=Nexus.Theme.AccentAlpha,
+                    BorderSizePixel=0,ZIndex=21},{Crn(5)})
                 Bind(pill,"BackgroundColor3","AccentAlpha")
                 local pico=New("ImageLabel",{Parent=pill,Position=UDim2.new(0.5,-6,0.5,-6),
                     Size=UDim2.new(0,12,0,12),BackgroundTransparency=1,
-                    Image="rbxassetid://3944703587",ImageColor3=NL.Theme.Accent,ZIndex=22})
+                    Image=BC.Icon~="" and BC.Icon or "rbxassetid://3944703587",
+                    ImageColor3=Nexus.Theme.Accent,ZIndex=22})
                 Bind(pico,"ImageColor3","Accent")
-                -- bottom accent sweep line
                 local aline=New("Frame",{Parent=card,Position=UDim2.new(0,0,1,-2),
-                    Size=UDim2.new(0,0,0,2),BackgroundColor3=NL.Theme.Accent,BorderSizePixel=0,ZIndex=22},{Crn(1)})
+                    Size=UDim2.new(0,0,0,2),BackgroundColor3=Nexus.Theme.Accent,BorderSizePixel=0,ZIndex=22},{Crn(1)})
                 Bind(aline,"BackgroundColor3","Accent")
                 Conn(click.MouseEnter,function() Tw(aline,TI.Mid,{Size=UDim2.new(1,0,0,2)}) end)
                 Conn(click.MouseLeave,function() Tw(aline,TI.Mid,{Size=UDim2.new(0,0,0,2)}) end)
-                Conn(click.MouseButton1Up,function() PlaySFX("Click",0.3); task.spawn(BC.Callback) end)
+                Conn(click.MouseButton1Up,function() SPlay("Click",0.3); task.spawn(BC.Callback) end)
                 local BF={}
                 function BF:Set(t)
                     local l=card:FindFirstChildOfClass("TextLabel"); if l then l.Text=t end
@@ -789,127 +894,110 @@ function NL:MakeWindow(WC)
                 TC2=TC2 or {}; TC2.Name=TC2.Name or "Toggle"
                 TC2.Default=TC2.Default~=nil and TC2.Default or false
                 TC2.Callback=TC2.Callback or function() end
-                TC2.Flag=TC2.Flag or nil; TC2.Save=TC2.Save or false
-                TC2.Desc=TC2.Desc or ""
+                TC2.Flag=TC2.Flag or nil; TC2.Save=TC2.Save or false; TC2.Desc=TC2.Desc or ""
                 local Tog={Value=TC2.Default,Type="Toggle",Save=TC2.Save}
                 local h=TC2.Desc~="" and 52 or 36
-                local card=MkCard(h); local click=ClickBtn(card); HoverCard(card,click)
+                local card=MkCard(h); local click=CBtn(card); HovCard(card,click)
                 MkTitle(card,TC2.Name,12,0,-68)
                 if TC2.Desc~="" then
                     local d=New("TextLabel",{Parent=card,Position=UDim2.new(0,12,0,20),
                         Size=UDim2.new(1,-68,0,14),ZIndex=21,BackgroundTransparency=1,
                         Text=TC2.Desc,Font=Enum.Font.GothamMedium,TextSize=12,
-                        TextColor3=NL.Theme.TextDim,TextXAlignment=Enum.TextXAlignment.Left})
+                        TextColor3=Nexus.Theme.TextDim,TextXAlignment=Enum.TextXAlignment.Left})
                     Bind(d,"TextColor3","TextDim")
                 end
-                -- track
                 local Track=New("Frame",{Parent=card,Position=UDim2.new(1,-54,0.5,-11),
-                    Size=UDim2.new(0,42,0,22),BackgroundColor3=NL.Theme.TrackOff,
+                    Size=UDim2.new(0,42,0,22),BackgroundColor3=Nexus.Theme.TrackOff,
                     BorderSizePixel=0,ZIndex=22},{Crn(11)})
                 Bind(Track,"BackgroundColor3","TrackOff")
-                -- thumb
                 local Thumb=New("Frame",{Parent=Track,Position=UDim2.new(0,2,0.5,-9),
                     Size=UDim2.new(0,18,0,18),BackgroundColor3=C3(200,200,215),
                     BorderSizePixel=0,ZIndex=23},{Crn(9)})
-                -- inner glow
                 local GDot=New("Frame",{Parent=Thumb,AnchorPoint=Vector2.new(0.5,0.5),
                     Position=UDim2.new(0.5,0,0.5,0),Size=UDim2.new(0,8,0,8),
-                    BackgroundColor3=NL.Theme.Accent,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=24},{Crn(4)})
+                    BackgroundColor3=Nexus.Theme.Accent,BackgroundTransparency=1,BorderSizePixel=0,ZIndex=24},{Crn(4)})
                 Bind(GDot,"BackgroundColor3","Accent")
                 function Tog:Set(val)
                     Tog.Value=val
                     if val then
-                        Tw(Track,TI.Mid,{BackgroundColor3=NL.Theme.TrackOn})
+                        Tw(Track,TI.Mid,{BackgroundColor3=Nexus.Theme.TrackOn})
                         Tw(Thumb,TI.Mid,{Position=UDim2.new(1,-20,0.5,-9),BackgroundColor3=C3(255,255,255)})
                         Tw(GDot,TI.Mid,{BackgroundTransparency=0.2})
                     else
-                        Tw(Track,TI.Mid,{BackgroundColor3=NL.Theme.TrackOff})
+                        Tw(Track,TI.Mid,{BackgroundColor3=Nexus.Theme.TrackOff})
                         Tw(Thumb,TI.Mid,{Position=UDim2.new(0,2,0.5,-9),BackgroundColor3=C3(200,200,215)})
                         Tw(GDot,TI.Mid,{BackgroundTransparency=1})
                     end
                     TC2.Callback(Tog.Value)
                 end
                 Conn(click.MouseButton1Up,function()
-                    PlaySFX("Toggle",0.25); Tog:Set(not Tog.Value); Save(WC.ConfigName)
+                    SPlay("Toggle",0.25); Tog:Set(not Tog.Value); SaveCfg(WC.ConfigName)
                 end)
                 task.spawn(function() Tog:Set(Tog.Value) end)
-                if TC2.Flag then NL.Flags[TC2.Flag]=Tog end
+                if TC2.Flag then Nexus.Flags[TC2.Flag]=Tog end
                 return Tog
             end
 
-            -- SLIDER  ── FULLY FIXED ──
+            -- SLIDER (fully fixed drag)
             function EF:AddSlider(SC)
                 SC=SC or {}; SC.Name=SC.Name or "Slider"
-                SC.Min=SC.Min or 0; SC.Max=SC.Max or 100
-                SC.Increment=SC.Increment or 1
+                SC.Min=SC.Min or 0; SC.Max=SC.Max or 100; SC.Increment=SC.Increment or 1
                 SC.Default=Clamp(SC.Default~=nil and SC.Default or SC.Min,SC.Min,SC.Max)
                 SC.Suffix=SC.Suffix or ""; SC.Callback=SC.Callback or function() end
                 SC.Flag=SC.Flag or nil; SC.Save=SC.Save or false
-
                 local Sl={Value=SC.Default,Type="Slider",Save=SC.Save}
-                local isDrag=false; local dragInp=nil
+                local isDrag,dragInp=false,nil
 
                 local card=MkCard(58)
-                -- name label
-                local NmLbl=MkTitle(card,SC.Name,12,9,-90)
-                -- value label
+                MkTitle(card,SC.Name,12,9,-90)
                 local VLbl=New("TextLabel",{Parent=card,Position=UDim2.new(1,-86,0,9),
                     Size=UDim2.new(0,74,0,18),ZIndex=21,BackgroundTransparency=1,
                     Text=tostring(SC.Default)..(SC.Suffix~="" and " "..SC.Suffix or ""),
-                    Font=Enum.Font.GothamBold,TextSize=13,TextColor3=NL.Theme.Accent,
+                    Font=Enum.Font.GothamBold,TextSize=13,TextColor3=Nexus.Theme.Accent,
                     TextXAlignment=Enum.TextXAlignment.Right})
                 Bind(VLbl,"TextColor3","Accent")
-                -- track bg
                 local TrkBg=New("Frame",{Parent=card,Position=UDim2.new(0,12,0,36),
-                    Size=UDim2.new(1,-24,0,6),BackgroundColor3=NL.Theme.Border,
+                    Size=UDim2.new(1,-24,0,6),BackgroundColor3=Nexus.Theme.Border,
                     BorderSizePixel=0,ZIndex=22},{Crn(3)})
                 Bind(TrkBg,"BackgroundColor3","Border")
-                -- track fill
                 local TrkFl=New("Frame",{Parent=TrkBg,Size=UDim2.new(0,0,1,0),
-                    BackgroundColor3=NL.Theme.Accent,BorderSizePixel=0,ZIndex=23},{Crn(3)})
+                    BackgroundColor3=Nexus.Theme.Accent,BorderSizePixel=0,ZIndex=23},{Crn(3)})
                 Bind(TrkFl,"BackgroundColor3","Accent")
-                -- thumb button (wider hit area)
                 local ThBtn=New("TextButton",{Parent=TrkBg,
                     Size=UDim2.new(0,20,0,20),Position=UDim2.new(0,-10,0.5,-10),
-                    BackgroundColor3=NL.Theme.AccentBright,BorderSizePixel=0,
+                    BackgroundColor3=Nexus.Theme.AccentBright,BorderSizePixel=0,
                     Text="",AutoButtonColor=false,ZIndex=26},{Crn(10)})
                 Bind(ThBtn,"BackgroundColor3","AccentBright")
                 New("Frame",{Parent=ThBtn,AnchorPoint=Vector2.new(0.5,0.5),
                     Position=UDim2.new(0.5,0,0.5,0),Size=UDim2.new(0,6,0,6),
                     BackgroundColor3=C3(255,255,255),BorderSizePixel=0,ZIndex=27},{Crn(3)})
-
-                -- hit area covering full track zone
-                local HitA=New("TextButton",{Parent=card,Text="",AutoButtonColor=false,
-                    Position=UDim2.new(0,6,0,28),Size=UDim2.new(1,-12,0,22),
-                    BackgroundTransparency=1,ZIndex=28})
-
                 -- tooltip
                 local TTip=New("Frame",{Parent=TrkBg,AnchorPoint=Vector2.new(0.5,1),
                     Position=UDim2.new(0,-10,0,-8),Size=UDim2.new(0,54,0,22),
-                    BackgroundColor3=NL.Theme.CardBg,BorderSizePixel=0,ZIndex=30,Visible=false},
-                    {Crn(5),Str(NL.Theme.Border,1)})
+                    BackgroundColor3=Nexus.Theme.CardBg,BorderSizePixel=0,ZIndex=30,Visible=false},
+                    {Crn(5),Str(Nexus.Theme.Border,1)})
                 local TTLbl=New("TextLabel",{Parent=TTip,Size=UDim2.new(1,0,1,0),
                     BackgroundTransparency=1,Font=Enum.Font.GothamBold,TextSize=12,
-                    TextColor3=NL.Theme.Accent,TextXAlignment=Enum.TextXAlignment.Center,ZIndex=31})
+                    TextColor3=Nexus.Theme.Accent,TextXAlignment=Enum.TextXAlignment.Center,ZIndex=31})
                 Bind(TTLbl,"TextColor3","Accent")
+                -- wide hit area
+                local HitA=New("TextButton",{Parent=card,Text="",AutoButtonColor=false,
+                    Position=UDim2.new(0,6,0,28),Size=UDim2.new(1,-12,0,22),
+                    BackgroundTransparency=1,ZIndex=28})
 
                 local function GetPct(inputX)
                     local abs=TrkBg.AbsolutePosition.X; local sz=TrkBg.AbsoluteSize.X
                     if sz==0 then return 0 end; return Clamp((inputX-abs)/sz,0,1)
                 end
-
-                function Sl:Set(v)
-                    Sl.Value=Clamp(Round(v,SC.Increment),SC.Min,SC.Max)
+                function Sl:Set(val)
+                    Sl.Value=Clamp(Round(val,SC.Increment),SC.Min,SC.Max)
                     local pct=(Sl.Value-SC.Min)/math.max(0.0001,SC.Max-SC.Min)
                     TrkFl.Size=UDim2.new(pct,0,1,0)
                     ThBtn.Position=UDim2.new(pct,-10,0.5,-10)
                     TTip.Position=UDim2.new(pct,-27,0,-8)
                     local txt=tostring(Sl.Value)..(SC.Suffix~="" and " "..SC.Suffix or "")
-                    VLbl.Text=txt; TTLbl.Text=txt
-                    SC.Callback(Sl.Value)
+                    VLbl.Text=txt; TTLbl.Text=txt; SC.Callback(Sl.Value)
                 end
-
-                -- drag via HitArea
                 Conn(HitA.InputBegan,function(inp)
                     if inp.UserInputType==Enum.UserInputType.MouseButton1
                     or inp.UserInputType==Enum.UserInputType.Touch then
@@ -922,7 +1010,7 @@ function NL:MakeWindow(WC)
                                 Tw(ThBtn,TI.Fast,{Size=UDim2.new(0,20,0,20)})
                                 local p=(Sl.Value-SC.Min)/math.max(0.0001,SC.Max-SC.Min)
                                 ThBtn.Position=UDim2.new(p,-10,0.5,-10)
-                                Save(WC.ConfigName)
+                                SaveCfg(WC.ConfigName)
                             end
                         end)
                     end
@@ -937,49 +1025,41 @@ function NL:MakeWindow(WC)
                     and inp.UserInputType~=Enum.UserInputType.Touch then return end
                     Sl:Set(SC.Min+GetPct(inp.Position.X)*(SC.Max-SC.Min))
                 end)
-
                 Sl:Set(Sl.Value)
-                if SC.Flag then NL.Flags[SC.Flag]=Sl end
+                if SC.Flag then Nexus.Flags[SC.Flag]=Sl end
                 return Sl
             end
 
             -- DROPDOWN
             function EF:AddDropdown(DC)
-                DC=DC or {}; DC.Name=DC.Name or "Dropdown"
-                DC.Options=DC.Options or {}
-                DC.Default=DC.Default or (DC.Options[1] or "")
-                DC.Callback=DC.Callback or function() end
-                DC.Flag=DC.Flag or nil; DC.Save=DC.Save or false
-                DC.MaxShown=DC.MaxShown or 5
-
+                DC=DC or {}; DC.Name=DC.Name or "Dropdown"; DC.Options=DC.Options or {}
+                DC.Default=DC.Default or (DC.Options[1] or ""); DC.Callback=DC.Callback or function() end
+                DC.Flag=DC.Flag or nil; DC.Save=DC.Save or false; DC.MaxShown=DC.MaxShown or 5
                 local DD={Value=DC.Default,Options=DC.Options,Buttons={},Toggled=false,Type="Dropdown",Save=DC.Save}
                 if not table.find(DD.Options,DD.Value) then DD.Value=DD.Options[1] or "None" end
 
-                local Outer=New("Frame",{Parent=ItemParent,Size=UDim2.new(1,0,0,36),
-                    BackgroundColor3=NL.Theme.CardBg,BorderSizePixel=0,ClipsDescendants=true,ZIndex=20},
-                    {Crn(7),Str(NL.Theme.Border,1)})
-                Bind(Outer,"BackgroundColor3","CardBg")
-                Bind(Outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
-
+                local Outer=New("Frame",{Parent=IP,Size=UDim2.new(1,0,0,36),
+                    BackgroundColor3=Nexus.Theme.CardBg,BorderSizePixel=0,ClipsDescendants=true,ZIndex=20},
+                    {Crn(7),Str(Nexus.Theme.Border,1)})
+                Bind(Outer,"BackgroundColor3","CardBg"); Bind(Outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
                 local Hdr=New("Frame",{Parent=Outer,Size=UDim2.new(1,0,0,36),BackgroundTransparency=1,ZIndex=21})
                 MkTitle(Hdr,DC.Name,12,0,-100)
                 local SelLbl=New("TextLabel",{Parent=Hdr,Position=UDim2.new(1,-98,0,0),
                     Size=UDim2.new(0,66,1,0),ZIndex=22,BackgroundTransparency=1,
                     Text=tostring(DD.Value),Font=Enum.Font.GothamMedium,TextSize=13,
-                    TextColor3=NL.Theme.Accent,TextXAlignment=Enum.TextXAlignment.Right,
+                    TextColor3=Nexus.Theme.Accent,TextXAlignment=Enum.TextXAlignment.Right,
                     TextTruncate=Enum.TextTruncate.AtEnd})
                 Bind(SelLbl,"TextColor3","Accent")
                 local Arrow=New("ImageLabel",{Parent=Hdr,Position=UDim2.new(1,-22,0.5,-9),
                     Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,
-                    Image="rbxassetid://7072706796",ImageColor3=NL.Theme.TextDim,ZIndex=22})
+                    Image="rbxassetid://7072706796",ImageColor3=Nexus.Theme.TextDim,ZIndex=22})
                 Bind(Arrow,"ImageColor3","TextDim")
                 local Sep=New("Frame",{Parent=Outer,Position=UDim2.new(0,0,0,36),
-                    Size=UDim2.new(1,0,0,1),BackgroundColor3=NL.Theme.Border,
+                    Size=UDim2.new(1,0,0,1),BackgroundColor3=Nexus.Theme.Border,
                     BorderSizePixel=0,ZIndex=21,Visible=false})
                 Bind(Sep,"BackgroundColor3","Border")
-
-                local OptSF=MkScroll(Outer,UDim2.new(1,0,1,-37),UDim2.new(0,0,0,37)); OptSF.ZIndex=21
-                local OL=List(2); OL.Parent=OptSF; Pad(4,6,4,6).Parent=OptSF; AutoCV(OptSF,OL)
+                local OptSF=MkSF(Outer,UDim2.new(1,0,1,-37),UDim2.new(0,0,0,37)); OptSF.ZIndex=21
+                local OLL=LL(2); OLL.Parent=OptSF; Pad(4,6,4,6).Parent=OptSF; ACV(OptSF,OLL)
 
                 local function Rebuild()
                     for _,b in pairs(DD.Buttons) do if b and b.Parent then b:Destroy() end end
@@ -987,33 +1067,31 @@ function NL:MakeWindow(WC)
                     for _,opt in ipairs(DD.Options) do
                         local isSel=opt==DD.Value
                         local ob=New("TextButton",{Parent=OptSF,Size=UDim2.new(1,0,0,28),
-                            BackgroundColor3=isSel and Tint(NL.Theme.Accent,NL.Theme.CardBg,0.88) or NL.Theme.WinBgAlt,
+                            BackgroundColor3=isSel and Tint(Nexus.Theme.Accent,Nexus.Theme.CardBg,0.88) or Nexus.Theme.WinBgAlt,
                             BorderSizePixel=0,Text="",AutoButtonColor=false,ZIndex=22},{Crn(5)})
                         if isSel then
                             New("Frame",{Parent=ob,Position=UDim2.new(0,4,0.5,-5),
-                                Size=UDim2.new(0,3,0,10),BackgroundColor3=NL.Theme.Accent,BorderSizePixel=0,ZIndex=23},{Crn(1)})
+                                Size=UDim2.new(0,3,0,10),BackgroundColor3=Nexus.Theme.Accent,BorderSizePixel=0,ZIndex=23},{Crn(1)})
                         end
                         local ol=New("TextLabel",{Parent=ob,Position=UDim2.new(0,isSel and 12 or 8,0,0),
                             Size=UDim2.new(1,-16,1,0),ZIndex=23,BackgroundTransparency=1,
                             Text=tostring(opt),Font=isSel and Enum.Font.GothamBold or Enum.Font.GothamMedium,
-                            TextSize=13,TextColor3=isSel and NL.Theme.Accent or NL.Theme.Text,
+                            TextSize=13,TextColor3=isSel and Nexus.Theme.Accent or Nexus.Theme.Text,
                             TextXAlignment=Enum.TextXAlignment.Left})
-                        Conn(ob.MouseEnter,function() Tw(ob,TI.Fast,{BackgroundColor3=NL.Theme.CardHover}) end)
+                        Conn(ob.MouseEnter,function() Tw(ob,TI.Fast,{BackgroundColor3=Nexus.Theme.CardHov}) end)
                         Conn(ob.MouseLeave,function()
                             Tw(ob,TI.Fast,{BackgroundColor3=opt==DD.Value
-                                and Tint(NL.Theme.Accent,NL.Theme.CardBg,0.88) or NL.Theme.WinBgAlt})
+                                and Tint(Nexus.Theme.Accent,Nexus.Theme.CardBg,0.88) or Nexus.Theme.WinBgAlt})
                         end)
                         Conn(ob.MouseButton1Up,function()
-                            PlaySFX("Click",0.2); DD:Set(opt); Save(WC.ConfigName)
+                            SPlay("Click",0.2); DD:Set(opt); SaveCfg(WC.ConfigName)
                         end)
                         DD.Buttons[opt]=ob
                     end
                 end
-
                 function DD:Set(val)
                     DD.Value=table.find(DD.Options,val) and val or (DD.Options[1] or "None")
-                    SelLbl.Text=tostring(DD.Value); Rebuild()
-                    DC.Callback(DD.Value)
+                    SelLbl.Text=tostring(DD.Value); Rebuild(); DC.Callback(DD.Value)
                 end
                 function DD:Refresh(opts,clear)
                     if clear then DD.Options={} end
@@ -1021,47 +1099,129 @@ function NL:MakeWindow(WC)
                     if not table.find(DD.Options,DD.Value) then DD.Value=DD.Options[1] or "None" end
                     Rebuild(); SelLbl.Text=tostring(DD.Value)
                 end
-
-                local HBtn=ClickBtn(Hdr,26)
-                Conn(HBtn.MouseEnter,function() Tw(Outer,TI.Fast,{BackgroundColor3=NL.Theme.CardHover}) end)
-                Conn(HBtn.MouseLeave,function() Tw(Outer,TI.Fast,{BackgroundColor3=NL.Theme.CardBg}) end)
+                local HBtn=CBtn(Hdr,26)
+                Conn(HBtn.MouseEnter,function() Tw(Outer,TI.Fast,{BackgroundColor3=Nexus.Theme.CardHov}) end)
+                Conn(HBtn.MouseLeave,function() Tw(Outer,TI.Fast,{BackgroundColor3=Nexus.Theme.CardBg}) end)
                 Conn(HBtn.MouseButton1Up,function()
                     DD.Toggled=not DD.Toggled; Sep.Visible=DD.Toggled
                     Tw(Arrow,TI.Fast,{Rotation=DD.Toggled and 180 or 0})
                     local n=math.min(#DD.Options,DC.MaxShown)
                     Tw(Outer,TI.Mid,{Size=DD.Toggled and UDim2.new(1,0,0,36+n*30+8) or UDim2.new(1,0,0,36)})
-                    PlaySFX("Click",0.2)
+                    SPlay("Click",0.2)
                 end)
-
                 Rebuild(); DD:Set(DD.Value)
-                if DC.Flag then NL.Flags[DC.Flag]=DD end
+                if DC.Flag then Nexus.Flags[DC.Flag]=DD end
                 return DD
+            end
+
+            -- MULTI-SELECT DROPDOWN
+            function EF:AddMultiDropdown(MC)
+                MC=MC or {}; MC.Name=MC.Name or "Multi Select"; MC.Options=MC.Options or {}
+                MC.Default=MC.Default or {}; MC.Callback=MC.Callback or function() end
+                MC.Flag=MC.Flag or nil; MC.Save=MC.Save or false; MC.MaxShown=MC.MaxShown or 5
+                local MDD={Selected={},Options=MC.Options,Buttons={},Toggled=false,Type="MultiDropdown",Save=MC.Save}
+                for _,v in ipairs(MC.Default) do
+                    if table.find(MC.Options,v) then MDD.Selected[v]=true end
+                end
+                local Outer=New("Frame",{Parent=IP,Size=UDim2.new(1,0,0,36),
+                    BackgroundColor3=Nexus.Theme.CardBg,BorderSizePixel=0,ClipsDescendants=true,ZIndex=20},
+                    {Crn(7),Str(Nexus.Theme.Border,1)})
+                Bind(Outer,"BackgroundColor3","CardBg"); Bind(Outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
+                local Hdr=New("Frame",{Parent=Outer,Size=UDim2.new(1,0,0,36),BackgroundTransparency=1,ZIndex=21})
+                MkTitle(Hdr,MC.Name,12,0,-100)
+                local SelLbl=New("TextLabel",{Parent=Hdr,Position=UDim2.new(1,-98,0,0),
+                    Size=UDim2.new(0,66,1,0),ZIndex=22,BackgroundTransparency=1,Text="None",
+                    Font=Enum.Font.GothamMedium,TextSize=12,TextColor3=Nexus.Theme.Accent,
+                    TextXAlignment=Enum.TextXAlignment.Right,TextTruncate=Enum.TextTruncate.AtEnd})
+                Bind(SelLbl,"TextColor3","Accent")
+                local Arrow2=New("ImageLabel",{Parent=Hdr,Position=UDim2.new(1,-22,0.5,-9),
+                    Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,
+                    Image="rbxassetid://7072706796",ImageColor3=Nexus.Theme.TextDim,ZIndex=22})
+                Bind(Arrow2,"ImageColor3","TextDim")
+                local Sep2=New("Frame",{Parent=Outer,Position=UDim2.new(0,0,0,36),
+                    Size=UDim2.new(1,0,0,1),BackgroundColor3=Nexus.Theme.Border,
+                    BorderSizePixel=0,ZIndex=21,Visible=false})
+                Bind(Sep2,"BackgroundColor3","Border")
+                local OptSF2=MkSF(Outer,UDim2.new(1,0,1,-37),UDim2.new(0,0,0,37)); OptSF2.ZIndex=21
+                local OLL2=LL(2); OLL2.Parent=OptSF2; Pad(4,6,4,6).Parent=OptSF2; ACV(OptSF2,OLL2)
+                local function UpdSel()
+                    local sel={}; for k,v in pairs(MDD.Selected) do if v then table.insert(sel,k) end end
+                    SelLbl.Text=#sel>0 and (#sel.." selected") or "None"; MC.Callback(sel)
+                end
+                local function RebuildM()
+                    for _,b in pairs(MDD.Buttons) do if b and b.Parent then b:Destroy() end end
+                    MDD.Buttons={}
+                    for _,opt in ipairs(MDD.Options) do
+                        local isSel=MDD.Selected[opt]==true
+                        local ob=New("TextButton",{Parent=OptSF2,Size=UDim2.new(1,0,0,28),
+                            BackgroundColor3=isSel and Tint(Nexus.Theme.Accent,Nexus.Theme.CardBg,0.88) or Nexus.Theme.WinBgAlt,
+                            BorderSizePixel=0,Text="",AutoButtonColor=false,ZIndex=22},{Crn(5)})
+                        local cbx=New("Frame",{Parent=ob,Position=UDim2.new(0,6,0.5,-8),
+                            Size=UDim2.new(0,16,0,16),
+                            BackgroundColor3=isSel and Nexus.Theme.Accent or Nexus.Theme.Border,
+                            BorderSizePixel=0,ZIndex=23},{Crn(4)})
+                        if isSel then New("ImageLabel",{Parent=cbx,Size=UDim2.new(0,10,0,10),
+                            Position=UDim2.new(0.5,-5,0.5,-5),BackgroundTransparency=1,
+                            Image="rbxassetid://3944680095",ImageColor3=C3(255,255,255),ZIndex=24}) end
+                        New("TextLabel",{Parent=ob,Position=UDim2.new(0,28,0,0),Size=UDim2.new(1,-34,1,0),ZIndex=23,
+                            BackgroundTransparency=1,Text=tostring(opt),
+                            Font=isSel and Enum.Font.GothamBold or Enum.Font.GothamMedium,TextSize=13,
+                            TextColor3=isSel and Nexus.Theme.TextH1 or Nexus.Theme.Text,
+                            TextXAlignment=Enum.TextXAlignment.Left})
+                        Conn(ob.MouseEnter,function() Tw(ob,TI.Fast,{BackgroundColor3=Nexus.Theme.CardHov}) end)
+                        Conn(ob.MouseLeave,function()
+                            Tw(ob,TI.Fast,{BackgroundColor3=MDD.Selected[opt]
+                                and Tint(Nexus.Theme.Accent,Nexus.Theme.CardBg,0.88) or Nexus.Theme.WinBgAlt})
+                        end)
+                        Conn(ob.MouseButton1Up,function()
+                            MDD.Selected[opt]=not MDD.Selected[opt]; RebuildM(); UpdSel(); SaveCfg(WC.ConfigName)
+                        end)
+                        MDD.Buttons[opt]=ob
+                    end
+                end
+                function MDD:Set(val)
+                    if type(val)=="table" then
+                        MDD.Selected={}; for _,v in ipairs(val) do MDD.Selected[v]=true end
+                        RebuildM(); UpdSel()
+                    end
+                end
+                local HBtn2=CBtn(Hdr,26)
+                Conn(HBtn2.MouseButton1Up,function()
+                    MDD.Toggled=not MDD.Toggled; Sep2.Visible=MDD.Toggled
+                    Tw(Arrow2,TI.Fast,{Rotation=MDD.Toggled and 180 or 0})
+                    Tw(Outer,TI.Mid,{Size=MDD.Toggled and UDim2.new(1,0,0,36+math.min(#MDD.Options,MC.MaxShown)*30+8) or UDim2.new(1,0,0,36)})
+                end)
+                RebuildM(); UpdSel()
+                if MC.Flag then Nexus.Flags[MC.Flag]=MDD end
+                return MDD
             end
 
             -- TEXTBOX
             function EF:AddTextbox(XC)
-                XC=XC or {}; XC.Name=XC.Name or "Input"
-                XC.Default=XC.Default or ""; XC.Placeholder=XC.Placeholder or "Type here..."
-                XC.Callback=XC.Callback or function() end; XC.ClearOnFocus=XC.ClearOnFocus or false
-
+                XC=XC or {}; XC.Name=XC.Name or "Input"; XC.Default=XC.Default or ""
+                XC.Placeholder=XC.Placeholder or "Type here..."; XC.Callback=XC.Callback or function() end
+                XC.ClearOnFocus=XC.ClearOnFocus or false; XC.TextDisappear=XC.TextDisappear or false
                 local card=MkCard(52)
                 New("TextLabel",{Parent=card,Position=UDim2.new(0,12,0,7),
                     Size=UDim2.new(1,-24,0,16),ZIndex=21,BackgroundTransparency=1,
                     Text=XC.Name,Font=Enum.Font.GothamBold,TextSize=13,
-                    TextColor3=NL.Theme.TextH2,TextXAlignment=Enum.TextXAlignment.Left})
+                    TextColor3=Nexus.Theme.TextH2,TextXAlignment=Enum.TextXAlignment.Left})
                 local IBg=New("Frame",{Parent=card,Position=UDim2.new(0,12,0,27),
-                    Size=UDim2.new(1,-24,0,18),BackgroundColor3=NL.Theme.InputBg,
-                    BorderSizePixel=0,ZIndex=21},{Crn(5),Str(NL.Theme.Border,1)})
+                    Size=UDim2.new(1,-24,0,18),BackgroundColor3=Nexus.Theme.InputBg,
+                    BorderSizePixel=0,ZIndex=21},{Crn(5),Str(Nexus.Theme.Border,1)})
                 Bind(IBg,"BackgroundColor3","InputBg")
                 local ISt=IBg:FindFirstChildOfClass("UIStroke"); Bind(ISt,"Color","Border")
                 local TB=New("TextBox",{Parent=IBg,Position=UDim2.new(0,8,0,0),Size=UDim2.new(1,-16,1,0),
                     ZIndex=22,BackgroundTransparency=1,Text=XC.Default,PlaceholderText=XC.Placeholder,
-                    PlaceholderColor3=NL.Theme.TextMuted,Font=Enum.Font.GothamMedium,TextSize=12,
-                    TextColor3=NL.Theme.TextH1,ClearTextOnFocus=XC.ClearOnFocus,
+                    PlaceholderColor3=Nexus.Theme.TextMuted,Font=Enum.Font.GothamMedium,TextSize=12,
+                    TextColor3=Nexus.Theme.TextH1,ClearTextOnFocus=XC.ClearOnFocus,
                     TextXAlignment=Enum.TextXAlignment.Left})
                 Bind(TB,"TextColor3","TextH1")
-                Conn(TB.Focused,function() Tw(ISt,TI.Fast,{Color=NL.Theme.Accent}) end)
-                Conn(TB.FocusLost,function() Tw(ISt,TI.Fast,{Color=NL.Theme.Border}); XC.Callback(TB.Text) end)
+                Conn(TB.Focused,function() Tw(ISt,TI.Fast,{Color=Nexus.Theme.Accent}) end)
+                Conn(TB.FocusLost,function()
+                    Tw(ISt,TI.Fast,{Color=Nexus.Theme.Border}); XC.Callback(TB.Text)
+                    if XC.TextDisappear then TB.Text="" end
+                end)
             end
 
             -- KEYBIND
@@ -1070,31 +1230,27 @@ function NL:MakeWindow(WC)
                 BC2.Default=BC2.Default or Enum.KeyCode.Unknown
                 BC2.Hold=BC2.Hold or false; BC2.Callback=BC2.Callback or function() end
                 BC2.Flag=BC2.Flag or nil; BC2.Save=BC2.Save or false
-
                 local BLst={Enum.KeyCode.Unknown,Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,
                     Enum.KeyCode.D,Enum.KeyCode.Slash,Enum.KeyCode.Tab,Enum.KeyCode.Backspace,
                     Enum.KeyCode.Escape,Enum.KeyCode.Up,Enum.KeyCode.Down,Enum.KeyCode.Left,Enum.KeyCode.Right}
                 local function InBL(k) for _,v in pairs(BLst) do if v==k then return true end end end
-
                 local Bnd={Value="",Binding=false,Holding=false,Type="Bind",Save=BC2.Save}
                 Bnd.Value=type(BC2.Default)=="userdata" and BC2.Default.Name or tostring(BC2.Default)
-
-                local card=MkCard(36); local click=ClickBtn(card); HoverCard(card,click)
+                local card=MkCard(36); local click=CBtn(card); HovCard(card,click)
                 MkTitle(card,BC2.Name,12,0,-90)
                 local KBg=New("Frame",{Parent=card,Position=UDim2.new(1,-82,0.5,-13),
-                    Size=UDim2.new(0,70,0,26),BackgroundColor3=NL.Theme.InputBg,
-                    BorderSizePixel=0,ZIndex=22},{Crn(5),Str(NL.Theme.Border,1)})
+                    Size=UDim2.new(0,70,0,26),BackgroundColor3=Nexus.Theme.InputBg,
+                    BorderSizePixel=0,ZIndex=22},{Crn(5),Str(Nexus.Theme.Border,1)})
                 Bind(KBg,"BackgroundColor3","InputBg")
                 local KSt=KBg:FindFirstChildOfClass("UIStroke"); Bind(KSt,"Color","Border")
                 local KLbl=New("TextLabel",{Parent=KBg,Size=UDim2.new(1,0,1,0),ZIndex=23,
                     BackgroundTransparency=1,Text=Bnd.Value,Font=Enum.Font.GothamBold,TextSize=12,
-                    TextColor3=NL.Theme.Accent,TextXAlignment=Enum.TextXAlignment.Center})
+                    TextColor3=Nexus.Theme.Accent,TextXAlignment=Enum.TextXAlignment.Center})
                 Bind(KLbl,"TextColor3","Accent")
-
                 Conn(click.InputEnded,function(inp)
                     if inp.UserInputType==Enum.UserInputType.MouseButton1 and not Bnd.Binding then
                         Bnd.Binding=true; KLbl.Text="..."
-                        Tw(KSt,TI.Fast,{Color=NL.Theme.Accent})
+                        Tw(KSt,TI.Fast,{Color=Nexus.Theme.Accent})
                     end
                 end)
                 Conn(UIS.InputBegan,function(inp,gp)
@@ -1103,7 +1259,7 @@ function NL:MakeWindow(WC)
                         local Key=nil
                         pcall(function() if not InBL(inp.KeyCode) then Key=inp.KeyCode end end)
                         Key=Key or Enum.KeyCode.Unknown; Bnd:Set(Key)
-                        Tw(KSt,TI.Fast,{Color=NL.Theme.Border}); Save(WC.ConfigName)
+                        Tw(KSt,TI.Fast,{Color=Nexus.Theme.Border}); SaveCfg(WC.ConfigName)
                     elseif inp.KeyCode.Name==Bnd.Value or inp.UserInputType.Name==Bnd.Value then
                         if BC2.Hold then Bnd.Holding=true; BC2.Callback(true) else BC2.Callback() end
                     end
@@ -1118,52 +1274,40 @@ function NL:MakeWindow(WC)
                     KLbl.Text=Bnd.Value
                 end
                 Bnd:Set(BC2.Default)
-                if BC2.Flag then NL.Flags[BC2.Flag]=Bnd end
+                if BC2.Flag then Nexus.Flags[BC2.Flag]=Bnd end
                 return Bnd
             end
 
-            -- COLOR PICKER  ── FIXED (independent SV + Hue drag) ──
+            -- COLORPICKER (fixed independent SV + Hue drag)
             function EF:AddColorpicker(CP)
-                CP=CP or {}; CP.Name=CP.Name or "Color"
-                CP.Default=CP.Default or C3(0,210,175)
-                CP.Callback=CP.Callback or function() end
-                CP.Flag=CP.Flag or nil; CP.Save=CP.Save or false
-
+                CP=CP or {}; CP.Name=CP.Name or "Color"; CP.Default=CP.Default or C3(0,210,175)
+                CP.Callback=CP.Callback or function() end; CP.Flag=CP.Flag or nil; CP.Save=CP.Save or false
                 local cpH,cpS,cpV=Color3.toHSV(CP.Default)
                 local Cpk={Value=CP.Default,Toggled=false,Type="Colorpicker",Save=CP.Save}
-
-                local Outer=New("Frame",{Parent=ItemParent,Size=UDim2.new(1,0,0,36),
-                    BackgroundColor3=NL.Theme.CardBg,BorderSizePixel=0,ClipsDescendants=true,ZIndex=20},
-                    {Crn(7),Str(NL.Theme.Border,1)})
-                Bind(Outer,"BackgroundColor3","CardBg")
-                Bind(Outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
+                local Outer=New("Frame",{Parent=IP,Size=UDim2.new(1,0,0,36),
+                    BackgroundColor3=Nexus.Theme.CardBg,BorderSizePixel=0,ClipsDescendants=true,ZIndex=20},
+                    {Crn(7),Str(Nexus.Theme.Border,1)})
+                Bind(Outer,"BackgroundColor3","CardBg"); Bind(Outer:FindFirstChildOfClass("UIStroke"),"Color","Border")
                 local Hdr=New("Frame",{Parent=Outer,Size=UDim2.new(1,0,0,36),BackgroundTransparency=1,ZIndex=21})
                 MkTitle(Hdr,CP.Name,12,0,-60)
-                -- colour swatch
                 local Swatch=New("Frame",{Parent=Hdr,Position=UDim2.new(1,-48,0.5,-13),
                     Size=UDim2.new(0,26,0,26),BackgroundColor3=CP.Default,BorderSizePixel=0,ZIndex=22},
-                    {Crn(6),Str(NL.Theme.Border,1.5)})
-                local Arr=New("ImageLabel",{Parent=Hdr,Position=UDim2.new(1,-18,0.5,-9),
+                    {Crn(6),Str(Nexus.Theme.Border,1.5)})
+                local Arr3=New("ImageLabel",{Parent=Hdr,Position=UDim2.new(1,-18,0.5,-9),
                     Size=UDim2.new(0,16,0,16),BackgroundTransparency=1,
-                    Image="rbxassetid://7072706796",ImageColor3=NL.Theme.TextDim,ZIndex=22})
-                Bind(Arr,"ImageColor3","TextDim")
-                local Sep2=New("Frame",{Parent=Outer,Position=UDim2.new(0,0,0,36),
-                    Size=UDim2.new(1,0,0,1),BackgroundColor3=NL.Theme.Border,
-                    BorderSizePixel=0,ZIndex=21,Visible=false})
-                Bind(Sep2,"BackgroundColor3","Border")
-                -- picker body
+                    Image="rbxassetid://7072706796",ImageColor3=Nexus.Theme.TextDim,ZIndex=22})
+                Bind(Arr3,"ImageColor3","TextDim")
+                local Sep3=New("Frame",{Parent=Outer,Position=UDim2.new(0,0,0,36),
+                    Size=UDim2.new(1,0,0,1),BackgroundColor3=Nexus.Theme.Border,BorderSizePixel=0,ZIndex=21,Visible=false})
+                Bind(Sep3,"BackgroundColor3","Border")
                 local Body=New("Frame",{Parent=Outer,Position=UDim2.new(0,10,0,44),
                     Size=UDim2.new(1,-20,0,118),BackgroundTransparency=1,ZIndex=21,Visible=false})
-                -- SV box
                 local SVB=New("ImageLabel",{Parent=Body,Size=UDim2.new(1,-26,1,0),
-                    Image="rbxassetid://4155801252",BackgroundColor3=HSV(cpH,1,1),
-                    BorderSizePixel=0,ZIndex=22},{Crn(5)})
-                -- SV cursor
+                    Image="rbxassetid://4155801252",BackgroundColor3=HSV(cpH,1,1),BorderSizePixel=0,ZIndex=22},{Crn(5)})
                 local SVC=New("TextButton",{Parent=SVB,AnchorPoint=Vector2.new(0.5,0.5),
                     Position=UDim2.new(cpS,0,1-cpV,0),Size=UDim2.new(0,16,0,16),
                     BackgroundColor3=C3(255,255,255),BorderSizePixel=0,Text="",AutoButtonColor=false,ZIndex=25},
                     {Crn(8),Str(C3(30,30,30),2)})
-                -- hue bar
                 local HueB=New("Frame",{Parent=Body,Position=UDim2.new(1,-20,0,0),
                     Size=UDim2.new(0,12,1,0),BorderSizePixel=0,ZIndex=22},
                     {Crn(4),New("UIGradient",{Rotation=270,Color=ColorSequence.new({
@@ -1171,36 +1315,32 @@ function NL:MakeWindow(WC)
                         ColorSequenceKeypoint.new(0.33,C3(0,255,0)),ColorSequenceKeypoint.new(0.5,C3(0,255,255)),
                         ColorSequenceKeypoint.new(0.67,C3(0,0,255)),ColorSequenceKeypoint.new(0.83,C3(255,0,255)),
                         ColorSequenceKeypoint.new(1,C3(255,0,4))})})})
-                -- hue cursor
-                local HC=New("TextButton",{Parent=HueB,AnchorPoint=Vector2.new(0.5,0.5),
+                local HC2=New("TextButton",{Parent=HueB,AnchorPoint=Vector2.new(0.5,0.5),
                     Position=UDim2.new(0.5,0,1-cpH,0),Size=UDim2.new(1,4,0,5),
                     BackgroundColor3=C3(255,255,255),BorderSizePixel=0,Text="",AutoButtonColor=false,ZIndex=25},
                     {Crn(2),Str(C3(30,30,30),1.5)})
                 -- hex input
                 local HexBg=New("Frame",{Parent=Outer,Position=UDim2.new(0,10,0,168),
-                    Size=UDim2.new(1,-20,0,24),BackgroundColor3=NL.Theme.InputBg,
-                    BorderSizePixel=0,ZIndex=22,Visible=false},{Crn(5),Str(NL.Theme.Border,1)})
+                    Size=UDim2.new(1,-20,0,24),BackgroundColor3=Nexus.Theme.InputBg,
+                    BorderSizePixel=0,ZIndex=22,Visible=false},{Crn(5),Str(Nexus.Theme.Border,1)})
                 Bind(HexBg,"BackgroundColor3","InputBg")
                 local HexSt=HexBg:FindFirstChildOfClass("UIStroke"); Bind(HexSt,"Color","Border")
                 New("TextLabel",{Parent=HexBg,Position=UDim2.new(0,6,0,0),Size=UDim2.new(0,16,1,0),
                     BackgroundTransparency=1,Text="#",Font=Enum.Font.GothamBold,TextSize=12,
-                    TextColor3=NL.Theme.TextDim,ZIndex=23})
+                    TextColor3=Nexus.Theme.TextDim,ZIndex=23})
                 local HexTB=New("TextBox",{Parent=HexBg,Position=UDim2.new(0,20,0,0),
                     Size=UDim2.new(1,-26,1,0),ZIndex=23,BackgroundTransparency=1,
-                    Text=C3toHex(CP.Default),PlaceholderText="RRGGBB",
-                    PlaceholderColor3=NL.Theme.TextMuted,Font=Enum.Font.GothamBold,
-                    TextSize=12,TextColor3=NL.Theme.TextH1,ClearTextOnFocus=true})
+                    Text=C3Hex(CP.Default),PlaceholderText="RRGGBB",
+                    PlaceholderColor3=Nexus.Theme.TextMuted,Font=Enum.Font.GothamBold,
+                    TextSize=12,TextColor3=Nexus.Theme.TextH1,ClearTextOnFocus=true})
                 Bind(HexTB,"TextColor3","TextH1")
-
                 local lastUp=0
                 local function UpdateCP()
                     local now=tick(); if now-lastUp<0.02 then return end; lastUp=now
                     local nc=HSV(cpH,cpS,cpV)
                     Cpk.Value=nc; Swatch.BackgroundColor3=nc
-                    SVB.BackgroundColor3=HSV(cpH,1,1); HexTB.Text=C3toHex(nc)
-                    CP.Callback(nc)
+                    SVB.BackgroundColor3=HSV(cpH,1,1); HexTB.Text=C3Hex(nc); CP.Callback(nc)
                 end
-
                 -- SV drag (independent)
                 local svD,svI=false,nil
                 Conn(SVB.InputBegan,function(inp)
@@ -1208,9 +1348,7 @@ function NL:MakeWindow(WC)
                     or inp.UserInputType==Enum.UserInputType.Touch then
                         svD=true
                         Conn(inp.Changed,function()
-                            if inp.UserInputState==Enum.UserInputState.End then
-                                svD=false; svI=nil; Save(WC.ConfigName)
-                            end
+                            if inp.UserInputState==Enum.UserInputState.End then svD=false; svI=nil; SaveCfg(WC.ConfigName) end
                         end)
                     end
                 end)
@@ -1224,215 +1362,320 @@ function NL:MakeWindow(WC)
                     cpV=1-Clamp((inp.Position.Y-SVB.AbsolutePosition.Y)/SVB.AbsoluteSize.Y,0,1)
                     SVC.Position=UDim2.new(cpS,0,1-cpV,0); UpdateCP()
                 end)
-
                 -- Hue drag (independent)
-                local hD,hI=false,nil
+                local hD2,hI2=false,nil
                 Conn(HueB.InputBegan,function(inp)
                     if inp.UserInputType==Enum.UserInputType.MouseButton1
                     or inp.UserInputType==Enum.UserInputType.Touch then
-                        hD=true
+                        hD2=true
                         Conn(inp.Changed,function()
-                            if inp.UserInputState==Enum.UserInputState.End then
-                                hD=false; hI=nil; Save(WC.ConfigName)
-                            end
+                            if inp.UserInputState==Enum.UserInputState.End then hD2=false; hI2=nil; SaveCfg(WC.ConfigName) end
                         end)
                     end
                 end)
                 Conn(HueB.InputChanged,function(inp)
                     if inp.UserInputType==Enum.UserInputType.MouseMovement
-                    or inp.UserInputType==Enum.UserInputType.Touch then hI=inp end
+                    or inp.UserInputType==Enum.UserInputType.Touch then hI2=inp end
                 end)
                 Conn(UIS.InputChanged,function(inp)
-                    if not hD or inp~=hI then return end
+                    if not hD2 or inp~=hI2 then return end
                     cpH=1-Clamp((inp.Position.Y-HueB.AbsolutePosition.Y)/HueB.AbsoluteSize.Y,0,1)
-                    HC.Position=UDim2.new(0.5,0,1-cpH,0); UpdateCP()
+                    HC2.Position=UDim2.new(0.5,0,1-cpH,0); UpdateCP()
                 end)
-
                 Conn(HexTB.FocusLost,function()
-                    local c=HextoC3(HexTB.Text); if c then Cpk:Set(c) end
+                    local c=HexC3(HexTB.Text); if c then Cpk:Set(c) end
                 end)
-
-                local HBtn2=ClickBtn(Hdr,26)
-                Conn(HBtn2.MouseButton1Up,function()
+                local HBtn3=CBtn(Hdr,26)
+                Conn(HBtn3.MouseButton1Up,function()
                     Cpk.Toggled=not Cpk.Toggled
-                    Sep2.Visible=Cpk.Toggled; Body.Visible=Cpk.Toggled; HexBg.Visible=Cpk.Toggled
-                    Tw(Arr,TI.Fast,{Rotation=Cpk.Toggled and 180 or 0})
+                    Sep3.Visible=Cpk.Toggled; Body.Visible=Cpk.Toggled; HexBg.Visible=Cpk.Toggled
+                    Tw(Arr3,TI.Fast,{Rotation=Cpk.Toggled and 180 or 0})
                     Tw(Outer,TI.Mid,{Size=Cpk.Toggled and UDim2.new(1,0,0,200) or UDim2.new(1,0,0,36)})
                 end)
-
                 function Cpk:Set(c)
                     Cpk.Value=c; cpH,cpS,cpV=Color3.toHSV(c)
                     Swatch.BackgroundColor3=c; SVB.BackgroundColor3=HSV(cpH,1,1)
-                    SVC.Position=UDim2.new(cpS,0,1-cpV,0); HC.Position=UDim2.new(0.5,0,1-cpH,0)
-                    HexTB.Text=C3toHex(c); CP.Callback(c)
+                    SVC.Position=UDim2.new(cpS,0,1-cpV,0); HC2.Position=UDim2.new(0.5,0,1-cpH,0)
+                    HexTB.Text=C3Hex(c); CP.Callback(c)
                 end
                 Cpk:Set(CP.Default)
-                if CP.Flag then NL.Flags[CP.Flag]=Cpk end
+                if CP.Flag then Nexus.Flags[CP.Flag]=Cpk end
                 return Cpk
+            end
+
+            -- PLAYER PARAGRAPH
+            function EF:AddPlayerParagraph(userId)
+                userId=userId or 0
+                local card=MkCard(66); card.Size=UDim2.new(1,0,0,66)
+                local ava=New("ImageLabel",{Parent=card,Position=UDim2.new(0,10,0.5,-24),
+                    Size=UDim2.new(0,48,0,48),BackgroundTransparency=1,
+                    Image="https://www.roblox.com/headshot-thumbnail/image?userId="..userId.."&width=420&height=420&format=png",
+                    ZIndex=21},{Crn(24),Str(Nexus.Theme.Border,1.5)})
+                local dn=New("TextLabel",{Parent=card,Position=UDim2.new(0,66,0,14),
+                    Size=UDim2.new(1,-76,0,18),ZIndex=21,BackgroundTransparency=1,
+                    Text="...",Font=Enum.Font.GothamBold,TextSize=15,
+                    TextColor3=Nexus.Theme.TextH1,TextXAlignment=Enum.TextXAlignment.Left})
+                Bind(dn,"TextColor3","TextH1")
+                local un=New("TextLabel",{Parent=card,Position=UDim2.new(0,66,0,34),
+                    Size=UDim2.new(1,-76,0,14),ZIndex=21,BackgroundTransparency=1,
+                    Text="@...",Font=Enum.Font.Gotham,TextSize=12,
+                    TextColor3=Nexus.Theme.TextDim,TextXAlignment=Enum.TextXAlignment.Left})
+                Bind(un,"TextColor3","TextDim")
+                task.spawn(function()
+                    local ok,res=pcall(function() return UserService:GetUserInfosByUserIdsAsync({userId}) end)
+                    if ok and res and res[1] then dn.Text=res[1].DisplayName or "?"; un.Text="@"..(res[1].Username or "?") end
+                end)
+                local PP={}
+                function PP:Set(uid)
+                    ava.Image="https://www.roblox.com/headshot-thumbnail/image?userId="..uid.."&width=420&height=420&format=png"
+                    task.spawn(function()
+                        local ok,res=pcall(function() return UserService:GetUserInfosByUserIdsAsync({uid}) end)
+                        if ok and res and res[1] then dn.Text=res[1].DisplayName or "?"; un.Text="@"..(res[1].Username or "?") end
+                    end)
+                end
+                return PP
+            end
+
+            -- PLAYER DROPDOWN
+            function EF:AddPlayerDropdown(PDC)
+                PDC=PDC or {}; PDC.Name=PDC.Name or "Select Player"
+                PDC.Multi=PDC.Multi or false; PDC.Callback=PDC.Callback or function() end
+                PDC.Flag=PDC.Flag or nil; PDC.Save=PDC.Save or false
+                local PDD={Selected={},Buttons={},Toggled=false,Type="PlayerDropdown",Save=PDC.Save}
+                local Outer2=New("Frame",{Parent=IP,Size=UDim2.new(1,0,0,36),
+                    BackgroundColor3=Nexus.Theme.CardBg,BorderSizePixel=0,ClipsDescendants=true,ZIndex=20},
+                    {Crn(7),Str(Nexus.Theme.Border,1)})
+                Bind(Outer2,"BackgroundColor3","CardBg"); Bind(Outer2:FindFirstChildOfClass("UIStroke"),"Color","Border")
+                local Hdr2=New("Frame",{Parent=Outer2,Size=UDim2.new(1,0,0,36),BackgroundTransparency=1,ZIndex=21})
+                MkTitle(Hdr2,PDC.Name,12,0,-100)
+                local SelTxt=New("TextLabel",{Parent=Hdr2,Position=UDim2.new(1,-98,0,0),
+                    Size=UDim2.new(0,78,1,0),ZIndex=22,BackgroundTransparency=1,Text="None",
+                    Font=Enum.Font.GothamMedium,TextSize=12,TextColor3=Nexus.Theme.Accent,
+                    TextXAlignment=Enum.TextXAlignment.Right,TextTruncate=Enum.TextTruncate.AtEnd})
+                Bind(SelTxt,"TextColor3","Accent")
+                local Arr4=New("ImageLabel",{Parent=Hdr2,Position=UDim2.new(1,-22,0.5,-9),
+                    Size=UDim2.new(0,16,0,16),BackgroundTransparency=1,
+                    Image="rbxassetid://7072706796",ImageColor3=Nexus.Theme.TextDim,ZIndex=22})
+                Bind(Arr4,"ImageColor3","TextDim")
+                local Sep4=New("Frame",{Parent=Outer2,Position=UDim2.new(0,0,0,36),
+                    Size=UDim2.new(1,0,0,1),BackgroundColor3=Nexus.Theme.Border,BorderSizePixel=0,Visible=false,ZIndex=21})
+                Bind(Sep4,"BackgroundColor3","Border")
+                local OptSF3=MkSF(Outer2,UDim2.new(1,0,1,-37),UDim2.new(0,0,0,37)); OptSF3.ZIndex=21
+                local OLL3=LL(2); OLL3.Parent=OptSF3; Pad(4,6,4,6).Parent=OptSF3; ACV(OptSF3,OLL3)
+                local function RebuildP()
+                    for _,b in pairs(PDD.Buttons) do if b and b.Parent then b:Destroy() end end
+                    PDD.Buttons={}
+                    for _,plr in ipairs(Players:GetPlayers()) do
+                        local isSel=PDD.Selected[plr.Name]
+                        local pb=New("TextButton",{Parent=OptSF3,Size=UDim2.new(1,0,0,44),
+                            BackgroundColor3=isSel and Tint(Nexus.Theme.Accent,Nexus.Theme.CardBg,0.88) or Nexus.Theme.WinBgAlt,
+                            BorderSizePixel=0,Text="",AutoButtonColor=false,ZIndex=22},{Crn(5)})
+                        New("ImageLabel",{Parent=pb,Position=UDim2.new(0,6,0.5,-18),
+                            Size=UDim2.new(0,36,0,36),BackgroundTransparency=1,
+                            Image="https://www.roblox.com/headshot-thumbnail/image?userId="..plr.UserId.."&width=420&height=420&format=png",
+                            ZIndex=23},{Crn(18)})
+                        New("TextLabel",{Parent=pb,Position=UDim2.new(0,48,0,6),
+                            Size=UDim2.new(1,-54,0,16),ZIndex=23,BackgroundTransparency=1,
+                            Text=plr.DisplayName,Font=Enum.Font.GothamBold,TextSize=13,
+                            TextColor3=isSel and Nexus.Theme.Accent or Nexus.Theme.TextH1,
+                            TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
+                        New("TextLabel",{Parent=pb,Position=UDim2.new(0,48,0,22),
+                            Size=UDim2.new(1,-54,0,14),ZIndex=23,BackgroundTransparency=1,
+                            Text="@"..plr.Name,Font=Enum.Font.Gotham,TextSize=11,
+                            TextColor3=Nexus.Theme.TextDim,TextXAlignment=Enum.TextXAlignment.Left,
+                            TextTruncate=Enum.TextTruncate.AtEnd})
+                        Conn(pb.MouseButton1Up,function()
+                            if PDC.Multi then PDD.Selected[plr.Name]=not PDD.Selected[plr.Name]
+                            else PDD.Selected={}; PDD.Selected[plr.Name]=true end
+                            RebuildP()
+                            local sel={}; for k,v in pairs(PDD.Selected) do if v then table.insert(sel,k) end end
+                            SelTxt.Text=#sel>0 and (#sel==1 and sel[1] or #sel.." players") or "None"
+                            PDC.Callback(sel)
+                        end)
+                        PDD.Buttons[plr.Name]=pb
+                    end
+                end
+                Conn(Players.PlayerAdded,function() if PDD.Toggled then RebuildP() end end)
+                Conn(Players.PlayerRemoving,function(plr)
+                    PDD.Selected[plr.Name]=nil; if PDD.Toggled then RebuildP() end
+                end)
+                local HBtn4=CBtn(Hdr2,26)
+                Conn(HBtn4.MouseButton1Up,function()
+                    PDD.Toggled=not PDD.Toggled; Sep4.Visible=PDD.Toggled
+                    Tw(Arr4,TI.Fast,{Rotation=PDD.Toggled and 180 or 0})
+                    if PDD.Toggled then RebuildP() end
+                    Tw(Outer2,TI.Mid,{Size=PDD.Toggled and UDim2.new(1,0,0,36+math.min(#Players:GetPlayers(),4)*46+8) or UDim2.new(1,0,0,36)})
+                end)
+                if PDC.Flag then Nexus.Flags[PDC.Flag]=PDD end
+                return PDD
             end
 
             -- SECTION
             function EF:AddSection(SC2)
                 SC2=SC2 or {}; SC2.Name=SC2.Name or "Section"
-                local Wrap=New("Frame",{Parent=ItemParent,Size=UDim2.new(1,0,0,0),
+                local Wrap=New("Frame",{Parent=IP,Size=UDim2.new(1,0,0,0),
                     AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1,ZIndex=20})
                 local Row=New("Frame",{Parent=Wrap,Size=UDim2.new(1,0,0,22),BackgroundTransparency=1,ZIndex=20})
-                local AccBar2=New("Frame",{Parent=Row,Position=UDim2.new(0,0,0.5,-6),
-                    Size=UDim2.new(0,3,0,12),BackgroundColor3=NL.Theme.Accent,BorderSizePixel=0,ZIndex=21},{Crn(1)})
-                Bind(AccBar2,"BackgroundColor3","Accent")
+                local AccBar=New("Frame",{Parent=Row,Position=UDim2.new(0,0,0.5,-6),
+                    Size=UDim2.new(0,3,0,12),BackgroundColor3=Nexus.Theme.Accent,BorderSizePixel=0,ZIndex=21},{Crn(1)})
+                Bind(AccBar,"BackgroundColor3","Accent")
                 local SLbl=New("TextLabel",{Parent=Row,Position=UDim2.new(0,10,0,0),
                     Size=UDim2.new(1,-10,1,0),ZIndex=21,BackgroundTransparency=1,
                     Text=SC2.Name:upper(),Font=Enum.Font.GothamBlack,TextSize=11,
-                    TextColor3=NL.Theme.TextDim,TextXAlignment=Enum.TextXAlignment.Left})
+                    TextColor3=Nexus.Theme.TextDim,TextXAlignment=Enum.TextXAlignment.Left})
                 Bind(SLbl,"TextColor3","TextDim")
-                -- faint line after label
                 New("Frame",{Parent=Row,Position=UDim2.new(0,14+#SC2.Name*7,0.5,0),
                     Size=UDim2.new(1,-(14+#SC2.Name*7+4),0,1),
-                    BackgroundColor3=NL.Theme.Border,BorderSizePixel=0,ZIndex=21})
+                    BackgroundColor3=Nexus.Theme.Border,BorderSizePixel=0,ZIndex=21})
                 local Holder=New("Frame",{Parent=Wrap,Position=UDim2.new(0,0,0,24),
                     Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
-                    BackgroundTransparency=1,ZIndex=20},{List(6)})
+                    BackgroundTransparency=1,ZIndex=20},{LL(6)})
                 return BuildEF(Holder)
             end
 
             return EF
         end -- BuildEF
 
-        -- expose tab-level elements
         local tabEF=BuildEF(TabSFr)
         return tabEF
     end -- MakeTab
 
-    -- ══════════════════════════════════════════════════════════════════
+    -- ══════════════════════════════════════════════════════════
     -- BUILT-IN SETTINGS TAB
-    -- ══════════════════════════════════════════════════════════════════
+    -- ══════════════════════════════════════════════════════════
     do
         local ST=TF:MakeTab({Name="⚙ Settings",Icon=""})
 
         -- APPEARANCE
         local App=ST:AddSection({Name="Appearance"})
-        App:AddColorpicker({Name="Window Background",Default=NL.Theme.WinBg,Callback=function(c)
-            NL:SetColor("WinBg",c); NL:SetColor("WinBgAlt",Lighten(c,0.04))
+        App:AddColorpicker({Name="Window Background",Default=Nexus.Theme.WinBg,Callback=function(c)
+            Nexus:Set("WinBg",c); Nexus:Set("WinBgAlt",Lighten(c,0.05))
         end})
-        App:AddColorpicker({Name="Topbar",Default=NL.Theme.TopbarBg,Callback=function(c)
-            NL:SetColor("TopbarBg",c)
+        App:AddColorpicker({Name="Topbar",Default=Nexus.Theme.TopbarBg,Callback=function(c)
+            Nexus:Set("TopbarBg",c)
         end})
-        App:AddColorpicker({Name="Sidebar",Default=NL.Theme.SidebarBg,Callback=function(c)
-            NL:SetColor("SidebarBg",c)
+        App:AddColorpicker({Name="Sidebar",Default=Nexus.Theme.SidebarBg,Callback=function(c)
+            Nexus:Set("SidebarBg",c)
         end})
-        App:AddColorpicker({Name="Cards",Default=NL.Theme.CardBg,Callback=function(c)
-            NL:SetColor("CardBg",c); NL:SetColor("CardHover",Lighten(c,0.06))
-            NL:SetColor("CardActive",Lighten(c,0.03)); NL:SetColor("InputBg",Darken(c,0.04))
+        App:AddColorpicker({Name="Cards",Default=Nexus.Theme.CardBg,Callback=function(c)
+            Nexus:Set("CardBg",c); Nexus:Set("CardHov",Lighten(c,0.07))
+            Nexus:Set("CardAct",Lighten(c,0.03)); Nexus:Set("InputBg",Darken(c,0.05))
         end})
-        App:AddColorpicker({Name="Borders",Default=NL.Theme.Border,Callback=function(c)
-            NL:SetColor("Border",c); NL:SetColor("BorderBright",Lighten(c,0.15))
+        App:AddColorpicker({Name="Borders",Default=Nexus.Theme.Border,Callback=function(c)
+            Nexus:Set("Border",c); Nexus:Set("BorderBright",Lighten(c,0.15))
         end})
 
         -- ACCENT
-        local Acc=ST:AddSection({Name="Accent"})
-        Acc:AddColorpicker({Name="Accent Color",Default=NL.Theme.Accent,Callback=function(c)
-            NL:SetColor("Accent",c); NL:SetColor("AccentBright",Lighten(c,0.15))
-            NL:SetColor("AccentDim",Darken(c,0.25)); NL:SetColor("AccentAlpha",Darken(c,0.68))
-            NL:SetColor("TrackOn",Darken(c,0.12)); NL:SetColor("ScrollBar",c)
+        local AccSec=ST:AddSection({Name="Accent Color"})
+        AccSec:AddColorpicker({Name="Accent",Default=Nexus.Theme.Accent,Callback=function(c)
+            Nexus:Set("Accent",c); Nexus:Set("AccentBright",Lighten(c,0.15))
+            Nexus:Set("AccentDim",Darken(c,0.25)); Nexus:Set("AccentAlpha",Darken(c,0.68))
+            Nexus:Set("TrackOn",Darken(c,0.12)); Nexus:Set("ScrollBar",c)
         end})
 
-        -- TEXT
-        local Txt=ST:AddSection({Name="Text"})
-        Txt:AddColorpicker({Name="Primary Text",Default=NL.Theme.TextH1,Callback=function(c) NL:SetColor("TextH1",c) end})
-        Txt:AddColorpicker({Name="Secondary Text",Default=NL.Theme.TextH2,Callback=function(c) NL:SetColor("TextH2",c) end})
-        Txt:AddColorpicker({Name="Body Text",Default=NL.Theme.Text,Callback=function(c) NL:SetColor("Text",c) end})
-        Txt:AddColorpicker({Name="Dim Text",Default=NL.Theme.TextDim,Callback=function(c) NL:SetColor("TextDim",c) end})
+        -- TEXT COLORS
+        local TxtSec=ST:AddSection({Name="Text"})
+        TxtSec:AddColorpicker({Name="Primary",Default=Nexus.Theme.TextH1,Callback=function(c) Nexus:Set("TextH1",c) end})
+        TxtSec:AddColorpicker({Name="Secondary",Default=Nexus.Theme.TextH2,Callback=function(c) Nexus:Set("TextH2",c) end})
+        TxtSec:AddColorpicker({Name="Body",Default=Nexus.Theme.Text,Callback=function(c) Nexus:Set("Text",c) end})
+        TxtSec:AddColorpicker({Name="Dim",Default=Nexus.Theme.TextDim,Callback=function(c) Nexus:Set("TextDim",c) end})
 
         -- BACKGROUND IMAGE
         local BgSec=ST:AddSection({Name="Background Image"})
-        BgSec:AddTextbox({Name="Image URL / Asset ID",Default=NL.Theme.BgImageUrl,
+        -- Dropdown that refreshes from library
+        local BgDropRef = nil
+        BgSec:AddTextbox({Name="Image URL / AssetID",Default=Nexus.Theme.BgUrl,
             Placeholder="rbxassetid://... or https://...",Callback=function(url)
-                url=url:gsub("%s+",""); NL:SetColor("BgImageUrl",url)
+                url=url:gsub("%s+",""); Nexus:Set("BgUrl",url)
                 if url~="" then
-                    if not table.find(NL._BgLib,url) then table.insert(NL._BgLib,url) end
-                    Save(WC.ConfigName)
-                end
-            end})
-        BgSec:AddSlider({Name="Image Opacity",Min=0,Max=100,Increment=1,
-            Default=math.floor((1-NL.Theme.BgImageTrans)*100),Suffix="%",
-            Callback=function(v) NL:SetColor("BgImageTrans",1-(v/100)) end})
-        BgSec:AddDropdown({Name="Saved Backgrounds",
-            Options=#NL._BgLib>0 and NL._BgLib or {"(none saved)"},
-            Default=#NL._BgLib>0 and NL._BgLib[1] or "(none saved)",
-            Callback=function(url) if url~="(none saved)" then NL:SetColor("BgImageUrl",url) end end})
-        BgSec:AddButton({Name="Clear Background",Callback=function()
-            NL:SetColor("BgImageUrl","")
-            NL:Notify({Title="Cleared",Message="Background removed.",Type="info",Duration=3})
-        end})
-        BgSec:AddButton({Name="Remove from Library",Desc="Deletes current URL from saved list",
-            Callback=function()
-                local url=NL.Theme.BgImageUrl
-                for i,v in ipairs(NL._BgLib) do
-                    if v==url then table.remove(NL._BgLib,i); Save(WC.ConfigName)
-                        NL:Notify({Title="Removed",Message="URL removed from library.",Type="warning",Duration=3}); return
+                    if not table.find(Nexus._BgLib,url) then
+                        table.insert(Nexus._BgLib,url)
+                        if BgDropRef then BgDropRef:Refresh(#Nexus._BgLib>0 and Nexus._BgLib or {"(empty)"},true) end
                     end
+                    SaveCfg(WC.ConfigName)
                 end
-                NL:Notify({Title="Not Found",Message="URL not in library.",Type="error",Duration=3})
             end})
+        BgSec:AddSlider({Name="Opacity",Min=0,Max=100,Increment=1,
+            Default=math.floor((1-Nexus.Theme.BgTrans)*100),Suffix="%",
+            Callback=function(v) Nexus:Set("BgTrans",1-(v/100)) end})
+        BgDropRef=BgSec:AddDropdown({Name="Saved Backgrounds",
+            Options=#Nexus._BgLib>0 and Nexus._BgLib or {"(empty)"},
+            Default=#Nexus._BgLib>0 and Nexus._BgLib[1] or "(empty)",
+            Callback=function(url) if url~="(empty)" then Nexus:Set("BgUrl",url) end end})
+        BgSec:AddButton({Name="Clear Background",Callback=function()
+            Nexus:Set("BgUrl","")
+            Nexus:Notify({Title="Background Cleared",Message="Window background removed.",Type="info",Duration=3})
+        end})
+        BgSec:AddButton({Name="Remove from Library",Desc="Removes the current URL from saved list",Callback=function()
+            local url=Nexus.Theme.BgUrl
+            for i,v in ipairs(Nexus._BgLib) do
+                if v==url then
+                    table.remove(Nexus._BgLib,i)
+                    if BgDropRef then BgDropRef:Refresh(#Nexus._BgLib>0 and Nexus._BgLib or {"(empty)"},true) end
+                    SaveCfg(WC.ConfigName)
+                    Nexus:Notify({Title="Removed",Message="URL removed from library.",Type="warning",Duration=3}); return
+                end
+            end
+            Nexus:Notify({Title="Not Found",Message="Current URL is not in library.",Type="error",Duration=3})
+        end})
 
         -- PRESETS
-        local Pre=ST:AddSection({Name="Theme Presets"})
+        local PreSec=ST:AddSection({Name="Theme Presets"})
         local Presets={
-            {Name="Neon Teal",D={WinBg=C3(10,10,15),TopbarBg=C3(8,8,13),SidebarBg=C3(9,9,14),CardBg=C3(18,18,28),Border=C3(35,37,58),Accent=C3(0,210,175),TextH1=C3(240,242,255),Text=C3(170,173,200)}},
-            {Name="Crimson",D={WinBg=C3(12,6,6),TopbarBg=C3(9,4,4),SidebarBg=C3(10,5,5),CardBg=C3(22,10,10),Border=C3(60,22,22),Accent=C3(220,55,55),TextH1=C3(255,235,235),Text=C3(185,155,155)}},
-            {Name="Electric Blue",D={WinBg=C3(6,8,18),TopbarBg=C3(4,6,14),SidebarBg=C3(5,7,16),CardBg=C3(10,14,30),Border=C3(28,38,80),Accent=C3(70,140,255),TextH1=C3(230,235,255),Text=C3(155,165,215)}},
-            {Name="Golden Hour",D={WinBg=C3(16,11,5),TopbarBg=C3(11,7,3),SidebarBg=C3(12,8,4),CardBg=C3(26,18,8),Border=C3(65,45,16),Accent=C3(255,190,40),TextH1=C3(255,248,225),Text=C3(195,170,130)}},
-            {Name="Void Purple",D={WinBg=C3(9,6,16),TopbarBg=C3(7,4,12),SidebarBg=C3(8,5,14),CardBg=C3(16,10,28),Border=C3(45,28,75),Accent=C3(165,90,255),TextH1=C3(240,232,255),Text=C3(170,150,215)}},
-            {Name="Forest",D={WinBg=C3(6,12,8),TopbarBg=C3(4,9,5),SidebarBg=C3(5,10,6),CardBg=C3(10,20,12),Border=C3(24,50,28),Accent=C3(60,200,100),TextH1=C3(220,255,228),Text=C3(140,185,150)}},
-            {Name="Cyber Pink",D={WinBg=C3(14,6,12),TopbarBg=C3(10,4,9),SidebarBg=C3(12,5,10),CardBg=C3(22,10,20),Border=C3(60,22,55),Accent=C3(255,60,200),TextH1=C3(255,228,250),Text=C3(195,148,190)}},
-            {Name="Arctic",D={WinBg=C3(238,240,250),TopbarBg=C3(220,224,240),SidebarBg=C3(228,232,245),CardBg=C3(248,250,255),Border=C3(195,200,225),Accent=C3(50,120,255),TextH1=C3(30,32,52),Text=C3(90,95,135),TrackOff=C3(180,185,215)}},
+            {N="Neon Teal",  D={WinBg=C3(10,10,15),TopbarBg=C3(8,8,13),SidebarBg=C3(9,9,14),CardBg=C3(18,18,28),Border=C3(35,37,58),Accent=C3(0,210,175),TextH1=C3(240,242,255),Text=C3(170,173,200)}},
+            {N="Crimson",    D={WinBg=C3(12,6,6),TopbarBg=C3(9,4,4),SidebarBg=C3(10,5,5),CardBg=C3(22,10,10),Border=C3(60,22,22),Accent=C3(220,55,55),TextH1=C3(255,235,235),Text=C3(185,155,155)}},
+            {N="Blue Surge", D={WinBg=C3(6,8,18),TopbarBg=C3(4,6,14),SidebarBg=C3(5,7,16),CardBg=C3(10,14,30),Border=C3(28,38,80),Accent=C3(70,140,255),TextH1=C3(230,235,255),Text=C3(155,165,215)}},
+            {N="Golden Hour",D={WinBg=C3(16,11,5),TopbarBg=C3(11,7,3),SidebarBg=C3(12,8,4),CardBg=C3(26,18,8),Border=C3(65,45,16),Accent=C3(255,190,40),TextH1=C3(255,248,225),Text=C3(195,170,130)}},
+            {N="Void Purple",D={WinBg=C3(9,6,16),TopbarBg=C3(7,4,12),SidebarBg=C3(8,5,14),CardBg=C3(16,10,28),Border=C3(45,28,75),Accent=C3(165,90,255),TextH1=C3(240,232,255),Text=C3(170,150,215)}},
+            {N="Forest",     D={WinBg=C3(6,12,8),TopbarBg=C3(4,9,5),SidebarBg=C3(5,10,6),CardBg=C3(10,20,12),Border=C3(24,50,28),Accent=C3(60,200,100),TextH1=C3(220,255,228),Text=C3(140,185,150)}},
+            {N="Cyber Pink", D={WinBg=C3(14,6,12),TopbarBg=C3(10,4,9),SidebarBg=C3(12,5,10),CardBg=C3(22,10,20),Border=C3(60,22,55),Accent=C3(255,60,200),TextH1=C3(255,228,250),Text=C3(195,148,190)}},
+            {N="Arctic",     D={WinBg=C3(238,240,250),TopbarBg=C3(220,224,240),SidebarBg=C3(228,232,245),CardBg=C3(248,250,255),Border=C3(195,200,225),Accent=C3(50,120,255),TextH1=C3(30,32,52),Text=C3(90,95,135),TrackOff=C3(180,185,215)}},
+            {N="Lava",       D={WinBg=C3(15,8,5),TopbarBg=C3(11,5,3),SidebarBg=C3(12,6,4),CardBg=C3(28,14,8),Border=C3(70,30,15),Accent=C3(255,120,30),TextH1=C3(255,240,220),Text=C3(200,165,130)}},
+            {N="Ocean",      D={WinBg=C3(4,10,18),TopbarBg=C3(3,7,14),SidebarBg=C3(4,9,16),CardBg=C3(6,16,30),Border=C3(15,40,70),Accent=C3(30,180,255),TextH1=C3(215,240,255),Text=C3(130,175,220)}},
         }
         for _,preset in ipairs(Presets) do
-            Pre:AddButton({Name=preset.Name,Callback=function()
-                NL:SetTheme(preset.D)
-                local a=preset.D.Accent or NL.Theme.Accent
-                NL:SetColor("AccentBright",Lighten(a,0.15)); NL:SetColor("AccentDim",Darken(a,0.25))
-                NL:SetColor("AccentAlpha",Darken(a,0.68)); NL:SetColor("TrackOn",Darken(a,0.12))
-                NL:SetColor("ScrollBar",a)
-                local bg=preset.D.CardBg or NL.Theme.CardBg
-                NL:SetColor("CardHover",Lighten(bg,0.06)); NL:SetColor("CardActive",Lighten(bg,0.03))
-                NL:SetColor("InputBg",Darken(bg,0.04))
-                local w=preset.D.WinBg or NL.Theme.WinBg
-                NL:SetColor("WinBgAlt",Lighten(w,0.04))
-                NL:Notify({Title="Preset: "..preset.Name,Message="Theme applied.",Type="success",Duration=3})
+            PreSec:AddButton({Name=preset.N,Callback=function()
+                Nexus:SetTheme(preset.D)
+                local a=preset.D.Accent or Nexus.Theme.Accent
+                Nexus:Set("AccentBright",Lighten(a,0.15)); Nexus:Set("AccentDim",Darken(a,0.25))
+                Nexus:Set("AccentAlpha",Darken(a,0.68)); Nexus:Set("TrackOn",Darken(a,0.12)); Nexus:Set("ScrollBar",a)
+                local bg=preset.D.CardBg or Nexus.Theme.CardBg
+                Nexus:Set("CardHov",Lighten(bg,0.07)); Nexus:Set("CardAct",Lighten(bg,0.03)); Nexus:Set("InputBg",Darken(bg,0.05))
+                local w=preset.D.WinBg or Nexus.Theme.WinBg; Nexus:Set("WinBgAlt",Lighten(w,0.05))
+                local br=preset.D.Border or Nexus.Theme.Border; Nexus:Set("BorderBright",Lighten(br,0.15))
+                Nexus:Notify({Title="Preset: "..preset.N,Message="Theme applied successfully.",Type="success",Duration=3})
             end})
         end
 
         -- CONFIG
-        local Cfg=ST:AddSection({Name="Config"})
-        Cfg:AddButton({Name="💾  Save Config",Desc="Saves all flags and theme to disk",Callback=function()
-            _sLast=0; DoSave(WC.ConfigName)
-            NL:Notify({Title="Saved",Message=NL.SaveFolder.."/"..WC.ConfigName..".json",Type="success",Duration=4})
+        local CfgSec=ST:AddSection({Name="Config"})
+        CfgSec:AddButton({Name="💾  Save Config",Desc="Saves all flags and current theme",Callback=function()
+            _sl=0; DoSave(WC.ConfigName)
+            Nexus:Notify({Title="Saved",Message=Nexus.SaveDir.."/"..WC.ConfigName..".json",Type="success",Duration=4})
         end})
-        Cfg:AddButton({Name="🔄  Reset Theme",Desc="Restore all default colors",Callback=function()
-            for k,v in pairs(DT) do NL.Theme[k]=v end; ApplyTheme()
-            NL:Notify({Title="Reset",Message="Default theme restored.",Type="info",Duration=3})
+        CfgSec:AddButton({Name="🔄  Reset Theme",Desc="Restore all default colors",Callback=function()
+            for k,v in pairs(DT) do Nexus.Theme[k]=v end; ApplyTheme()
+            Nexus:Notify({Title="Reset",Message="Default theme restored.",Type="info",Duration=3})
         end})
-        Cfg:AddButton({Name="🗑  Delete Config File",Callback=function()
-            local path=NL.SaveFolder.."/"..WC.ConfigName..".json"
+        CfgSec:AddButton({Name="🗑  Delete Config File",Callback=function()
+            local path=Nexus.SaveDir.."/"..WC.ConfigName..".json"
             if delfile and isfile and isfile(path) then
                 pcall(delfile,path)
-                NL:Notify({Title="Deleted",Message="Config file removed.",Type="warning",Duration=3})
+                Nexus:Notify({Title="Deleted",Message="Config file removed.",Type="warning",Duration=3})
             else
-                NL:Notify({Title="Not Found",Message="No config file found.",Type="error",Duration=3})
+                Nexus:Notify({Title="Not Found",Message="No config file on disk.",Type="error",Duration=3})
             end
         end})
     end -- settings tab
 
-    -- Load saved config after all tabs are ready
+    -- Load saved config after tabs ready
     if WC.SaveConfig then
-        task.defer(function() task.wait(0.35); Load(WC.ConfigName) end)
+        task.defer(function() task.wait(0.4); LoadCfg(WC.ConfigName) end)
     end
 
     return TF
 end -- MakeWindow
 
--- ── INIT ─────────────────────────────────────────────────────────────
-function NL:Init() end -- forward compat
+function Nexus:Init() end -- forward compat
 
-return NL
+return Nexus
