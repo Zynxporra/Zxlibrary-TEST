@@ -86,11 +86,17 @@ for _,g in ipairs(PGui2:GetChildren()) do
 	if g.Name=="NexusLib" and g~=Root then g:Destroy() end
 end
 
--- Modal para desbloquear cursor
+-- Modal em ScreenGui SEPARADO para não bloquear InputBegan do Root
+-- O Modal=true captura input se estiver no mesmo ScreenGui; separar resolve.
+local ModalGui = New("ScreenGui",{
+	Name="__NModalGui", ResetOnSpawn=false,
+	DisplayOrder=5, IgnoreGuiInset=true,
+	Parent=PGui2,
+})
 local Modal = New("TextButton",{
 	Name="__NModal", Size=UDim2.new(0,0,0,0),
 	BackgroundTransparency=1, Text="", Modal=true,
-	Parent=Root, Visible=true, Active=true,
+	Parent=ModalGui, Visible=true, Active=true,
 })
 
 -- ══════════════════════════════════════════════════════════════
@@ -156,6 +162,7 @@ end
 task.spawn(function()
 	while Alive() do task.wait(0.5) end
 	for _,c in pairs(NL.Connections) do pcall(function() c:Disconnect() end) end
+	pcall(function() ModalGui:Destroy() end)
 	_G.__NexusActive=nil
 end)
 
@@ -251,51 +258,133 @@ local function LoadCfg(name)
 end
 
 -- ══════════════════════════════════════════════════════════════
--- NOTIFICATIONS
+-- NOTIFICATIONS — sistema com posição e animação configuráveis
+-- Posições: "TopRight" | "TopLeft" | "BottomRight" | "BottomLeft"
 -- ══════════════════════════════════════════════════════════════
-local NH=New("Frame",{Parent=Root,Size=UDim2.new(0,300,1,-20),
-	Position=UDim2.new(1,-310,0,10),BackgroundTransparency=1,AnchorPoint=Vector2.new(1,0)},{
-	New("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,
-		VerticalAlignment=Enum.VerticalAlignment.Bottom,
-		HorizontalAlignment=Enum.HorizontalAlignment.Center,Padding=UDim.new(0,6)}),
-})
+
+-- Posição padrão (pode ser alterada por NL:SetNotifyPosition)
+local _NPos = "BottomRight"
+local _NH   = nil  -- holder criado dinamicamente
+
+local function _BuildNHolder(pos)
+	if _NH then _NH:Destroy() end
+	-- Determinar canto
+	local isRight  = pos == "TopRight"  or pos == "BottomRight"
+	local isBottom = pos == "BottomLeft" or pos == "BottomRight"
+	local PAD = 14
+	local W   = 310
+	-- Posição do holder no canto correto
+	local hX  = isRight  and UDim2.new(1, -(W + PAD), 0, PAD) or UDim2.new(0, PAD, 0, PAD)
+	local hY  = isBottom and UDim2.new(0, PAD, 1, -(1-0)*1, 0) or nil
+	-- AnchorPoint para cada canto
+	local ax  = isRight  and 0 or 0
+	local ay  = isBottom and 1 or 0
+	if isRight and isBottom then
+		hX = UDim2.new(1, -(W+PAD), 1, -PAD)
+	elseif isRight and not isBottom then
+		hX = UDim2.new(1, -(W+PAD), 0, PAD)
+	elseif not isRight and isBottom then
+		hX = UDim2.new(0, PAD, 1, -PAD)
+	else
+		hX = UDim2.new(0, PAD, 0, PAD)
+	end
+	_NH = New("Frame",{Parent=Root,
+		Size=UDim2.new(0,W,1,-(PAD*2)),
+		Position=hX,
+		AnchorPoint=Vector2.new(0,ay),
+		BackgroundTransparency=1,
+	},{
+		New("UIListLayout",{
+			SortOrder=Enum.SortOrder.LayoutOrder,
+			VerticalAlignment=isBottom and Enum.VerticalAlignment.Bottom or Enum.VerticalAlignment.Top,
+			HorizontalAlignment=Enum.HorizontalAlignment.Center,
+			Padding=UDim.new(0,6),
+		}),
+	})
+	return _NH
+end
+
+_BuildNHolder(_NPos)
+
+function NL:SetNotifyPosition(pos)
+	-- pos: "TopRight" | "TopLeft" | "BottomRight" | "BottomLeft"
+	_NPos = pos
+	_BuildNHolder(pos)
+end
 
 function NL:Notify(cfg)
-	cfg=cfg or {}; cfg.Title=cfg.Title or "Notice"; cfg.Message=cfg.Message or ""
+	cfg=cfg or {}; cfg.Title=cfg.Title or "Aviso"; cfg.Message=cfg.Message or ""
 	cfg.Duration=cfg.Duration or 5; cfg.Icon=cfg.Icon or "rbxassetid://16913919445"
 	Sound("rbxassetid://9118776541",0.35)
 	task.spawn(function()
 		local T=NL.Theme
-		local wrap=New("Frame",{Parent=NH,Size=UDim2.new(1,0,0,0),BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y})
-		local card=New("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
-			BackgroundColor3=T.BgCard,BorderSizePixel=0,Position=UDim2.new(1,15,0,0),ClipsDescendants=false},{
-			New("UICorner",{CornerRadius=UDim.new(0,8)}),
-			New("UIStroke",{Color=T.Border,Thickness=1}),
-			New("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),PaddingTop=UDim.new(0,11),PaddingBottom=UDim.new(0,11)}),
-			-- Barra lateral colorida
-			New("Frame",{Size=UDim2.new(0,3,1,-18),Position=UDim2.new(0,-14,0,9),
-				BackgroundColor3=T.Accent,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})}),
+		local NH=_NH  -- capturar referência local
+		if not NH or not NH.Parent then NH=_BuildNHolder(_NPos) end
+		local isRight  = _NPos == "TopRight"  or _NPos == "BottomRight"
+		local isBottom = _NPos == "BottomLeft" or _NPos == "BottomRight"
+		-- Card começa fora da tela (lado correto) e desliza para dentro
+		-- startX: fora pela direita se isRight, fora pela esquerda se não
+		local startPos  = isRight  and UDim2.new(1,20,0,0)  or UDim2.new(-1,-20,0,0)
+		local centerPos = UDim2.new(0,0,0,0)
+		local exitPos   = isRight  and UDim2.new(1,20,0,0)  or UDim2.new(-1,-20,0,0)
+		local wrap=New("Frame",{
+			Parent=NH,Size=UDim2.new(1,0,0,0),
+			BackgroundTransparency=1,AutomaticSize=Enum.AutomaticSize.Y,
+			ClipsDescendants=true,
 		})
-		-- Gradiente sutil no card
-		New("UIGradient",{Parent=card,Color=ColorSequence.new{
-			ColorSequenceKeypoint.new(0,Color3.fromRGB(30,30,46)),
-			ColorSequenceKeypoint.new(1,Color3.fromRGB(18,18,28))},Rotation=135})
-		New("ImageLabel",{Parent=card,Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,
-			Image=cfg.Icon,ImageColor3=T.Accent})
+		local card=New("Frame",{Parent=wrap,
+			Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
+			BackgroundColor3=T.BgCard,BorderSizePixel=0,
+			Position=startPos,ClipsDescendants=false,
+		},{
+			New("UICorner",{CornerRadius=UDim.new(0,9)}),
+			New("UIStroke",{Color=T.Border,Thickness=1}),
+			New("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),
+				PaddingTop=UDim.new(0,12),PaddingBottom=UDim.new(0,12)}),
+			-- Barra lateral (muda de lado com a posição)
+			New("Frame",{
+				Size=UDim2.new(0,3,1,-20),
+				Position=isRight and UDim2.new(0,-14,0,10) or UDim2.new(1,11,0,10),
+				BackgroundColor3=T.Accent,BorderSizePixel=0,
+			},{New("UICorner",{CornerRadius=UDim.new(1,0)})}),
+		})
+		-- Gradiente no card
+		New("UIGradient",{Parent=card,Rotation=isRight and 135 or 225,
+			Color=ColorSequence.new{
+				ColorSequenceKeypoint.new(0,Color3.fromRGB(28,28,44)),
+				ColorSequenceKeypoint.new(1,Color3.fromRGB(16,16,26)),
+			}})
+		-- Ícone
+		New("ImageLabel",{Parent=card,Size=UDim2.new(0,18,0,18),
+			BackgroundTransparency=1,Image=cfg.Icon,ImageColor3=T.Accent})
+		-- Título
 		New("TextLabel",{Parent=card,Size=UDim2.new(1,-26,0,18),Position=UDim2.new(0,26,0,0),
 			BackgroundTransparency=1,Text=cfg.Title,Font=Enum.Font.GothamBlack,TextSize=14,
 			TextColor3=T.TxtPri,TextXAlignment=Enum.TextXAlignment.Left})
+		-- Mensagem
 		New("TextLabel",{Parent=card,Size=UDim2.new(1,0,0,0),Position=UDim2.new(0,0,0,24),
 			BackgroundTransparency=1,Text=cfg.Message,Font=Enum.Font.GothamMedium,TextSize=12,
-			TextColor3=T.TxtSec,TextXAlignment=Enum.TextXAlignment.Left,TextWrapped=true,
-			AutomaticSize=Enum.AutomaticSize.Y})
-		local pb=New("Frame",{Parent=card,Size=UDim2.new(1,0,0,2),Position=UDim2.new(0,0,1,7),
-			BackgroundColor3=T.AccentDim,BorderSizePixel=0},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
-		Tween(card,TW.Back,{Position=UDim2.new(0,0,0,0)})
-		Tween(pb,TweenInfo.new(cfg.Duration,Enum.EasingStyle.Linear),{Size=UDim2.new(0,0,0,2)})
-		task.wait(cfg.Duration-0.5)
-		Tween(card,TW.Mid,{BackgroundTransparency=1}); task.wait(0.3)
-		Tween(card,TW.Mid,{Position=UDim2.new(1,15,0,0)}); task.wait(0.4)
+			TextColor3=T.TxtSec,TextXAlignment=Enum.TextXAlignment.Left,
+			TextWrapped=true,AutomaticSize=Enum.AutomaticSize.Y})
+		-- Barra de progresso
+		local pb=New("Frame",{Parent=card,Size=UDim2.new(1,0,0,2),
+			Position=UDim2.new(0,0,1,8),
+			BackgroundColor3=T.AccentDim,BorderSizePixel=0,
+		},{New("UICorner",{CornerRadius=UDim.new(1,0)})})
+		-- Animação de entrada: deslizar do canto para o centro
+		Tween(card, TweenInfo.new(0.38,Enum.EasingStyle.Quint,Enum.EasingDirection.Out), {Position=centerPos})
+		Tween(pb, TweenInfo.new(cfg.Duration,Enum.EasingStyle.Linear), {Size=UDim2.new(0,0,0,2)})
+		task.wait(cfg.Duration - 0.5)
+		-- Fade out
+		Tween(card, TW.Mid, {BackgroundTransparency=1})
+		for _,ch in ipairs(card:GetDescendants()) do
+			if ch:IsA("TextLabel") then Tween(ch,TW.Mid,{TextTransparency=1}) end
+			if ch:IsA("ImageLabel") then Tween(ch,TW.Mid,{ImageTransparency=1}) end
+		end
+		task.wait(0.25)
+		-- Deslizar para fora
+		Tween(card, TweenInfo.new(0.3,Enum.EasingStyle.Quint,Enum.EasingDirection.In), {Position=exitPos})
+		task.wait(0.35)
 		wrap:Destroy()
 	end)
 end
@@ -1560,6 +1649,7 @@ function NL:MakeWindow(wCfg)
 			ApplyTheme()
 			NL:Notify({Title="Tema Resetado",Message="Tema padrão restaurado.",Duration=3})
 		end})
+		Cfg:AddDropdown({Name="Posição das Notificações",Options={"BottomRight","BottomLeft","TopRight","TopLeft"},Default="BottomRight",Callback=function(v) NL:SetNotifyPosition(v) end})
 		Cfg:AddBind({Name="Tecla Toggle",Default=Enum.KeyCode[wCfg.ToggleKey] or Enum.KeyCode.RightShift,
 			Callback=function(key) wCfg.ToggleKey=key; NL:Notify({Title="Tecla Alterada",Message="Nova tecla: "..key,Duration=3}) end,
 			Flag="ToggleKey",Save=true})
