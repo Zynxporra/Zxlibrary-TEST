@@ -611,31 +611,21 @@ function NL:MakeWindow(wCfg)
 
 	MakeDraggable(TB,Win)
 
-	-- ── SIDEBAR (ZIndex=6) ──────────────────────────────────────
+	-- ── SIDEBAR ──────────────────────────────────────────────────
+	-- BackgroundTransparency=1: a cor vem do Win (BgWindow) atrás.
+	-- Assim a imagem de fundo aparece uniformemente em toda a janela.
 	local sw=T.SidebarW
 	local Sidebar=New("Frame",{Parent=Win,
 		Position=UDim2.new(0,0,0,T.TopbarH+1),
 		Size=UDim2.new(0,sw,1,-(T.TopbarH+1)),
-		BackgroundColor3=T.BgSidebar,BorderSizePixel=0,ClipsDescendants=true,ZIndex=6,
-	},{
-		New("UICorner",{CornerRadius=UDim.new(0,12)}),
-		New("Frame",{Size=UDim2.new(0.6,0,1,0),Position=UDim2.new(0.4,0,0,0),
-			BackgroundColor3=T.BgSidebar,BorderSizePixel=0,Name="SFill"}),
-		New("Frame",{Position=UDim2.new(1,-1,0,0),Size=UDim2.new(0,1,1,0),
-			BackgroundColor3=T.Border,BorderSizePixel=0}),
+		BackgroundTransparency=1,BorderSizePixel=0,ClipsDescendants=true,ZIndex=6,
 	})
-	Bind(Sidebar,"BackgroundColor3","BgSidebar")
-	Bind(Sidebar:FindFirstChild("SFill"),"BackgroundColor3","BgSidebar")
-
-	-- Gradiente sutil na sidebar
-	New("UIGradient",{Parent=Sidebar,
-		Color=ColorSequence.new{
-			ColorSequenceKeypoint.new(0,Color3.fromRGB(255,255,255)),
-			ColorSequenceKeypoint.new(1,Color3.fromRGB(240,240,255)),
-		},Transparency=NumberSequence.new{
-			NumberSequenceKeypoint.new(0,0),
-			NumberSequenceKeypoint.new(1,0.05),
-		},Rotation=180})
+	-- Borda direita da sidebar (separador visual)
+	local SidebarBorder=New("Frame",{Parent=Sidebar,
+		Position=UDim2.new(1,-1,0,0),Size=UDim2.new(0,1,1,0),
+		BackgroundColor3=T.Border,BorderSizePixel=0,ZIndex=7,
+	})
+	Bind(SidebarBorder,"BackgroundColor3","Border")
 
 	-- Avatar + nome na sidebar
 	local AvatarF=New("Frame",{Parent=Sidebar,Position=UDim2.new(0,0,1,-70),
@@ -685,13 +675,13 @@ function NL:MakeWindow(wCfg)
 		end
 	end)
 
-	-- ── CONTEÚDO (mesma cor que a janela, ZIndex=5) ─────────────
+	-- ── CONTEÚDO (transparente — cor vem do Win atrás) ───────────
+	-- Assim a imagem de fundo aparece em toda a janela sem bloqueio.
 	local ContentArea=New("Frame",{Parent=Win,
 		Position=UDim2.new(0,sw,0,T.TopbarH+1),
 		Size=UDim2.new(1,-sw,1,-(T.TopbarH+1)),
-		BackgroundColor3=T.BgContent,BorderSizePixel=0,ClipsDescendants=true,ZIndex=5,
+		BackgroundTransparency=1,BorderSizePixel=0,ClipsDescendants=true,ZIndex=5,
 	})
-	Bind(ContentArea,"BackgroundColor3","BgContent")
 
 	-- ── RESIZE HANDLE ──────────────────────────────────────────
 	local RszBtn=New("TextButton",{Parent=Win,Position=UDim2.new(1,-20,1,-20),
@@ -1801,11 +1791,11 @@ function NL:MakeWindow(wCfg)
 
 		-- APARÊNCIA
 		local App=ST:AddSection({Name="APARÊNCIA"})
-		App:AddColorpicker({Name="Fundo (Janela + Sidebar)",Default=NL.Theme.BgWindow,Callback=function(c)
-			-- Ambas usam a mesma cor para que a imagem de fundo fique uniforme
-			NL:SetColor("BgWindow",c); NL:SetColor("BgContent",c)
-			NL:SetColor("GradA",c); NL:SetColor("BgTopbar",c)
-			NL:SetColor("BgSidebar",c)
+		App:AddColorpicker({Name="Fundo da Janela",Default=NL.Theme.BgWindow,Callback=function(c)
+			-- BgWindow define a cor base que aparece onde não há imagem
+			NL:SetColor("BgWindow",c)
+			NL:SetColor("GradA",c)
+			NL:SetColor("BgTopbar",c)
 		end})
 		App:AddColorpicker({Name="Cards / Elementos",Default=NL.Theme.BgCard,Callback=function(c)
 			NL:SetColor("BgCard",c)
@@ -1884,11 +1874,6 @@ function NL:MakeWindow(wCfg)
 				wCfg.BgImage=id
 				BgImg.Image="rbxassetid://"..id
 				BgDim.BackgroundTransparency=0.5
-				-- Sincronizar sidebar ao aplicar imagem
-				Sidebar.BackgroundTransparency=0.18
-				if Sidebar:FindFirstChild("SFill") then
-					Sidebar.SFill.BackgroundTransparency=0.18
-				end
 			end,
 		})
 		Cfg:AddTextbox({Name="ID Imagem de Fundo",Default=wCfg.BgImage,Placeholder="123456789",
