@@ -430,10 +430,11 @@ local function MkCard(par, h, rx)
 		Size=UDim2.new(1,0,0,h or 44),
 	},{
 		N("UICorner",{CornerRadius=UDim.new(0,rx)}),
-		N("UIStroke",{Color=ZNX.Theme.Border, Thickness=1}),
+		-- Stroke levemente visível, fica mais nítido no hover
+		N("UIStroke",{Color=ZNX.Theme.Border, Thickness=1, Transparency=0.3}),
 	})
 	B(f,"BackgroundColor3","Card")
-	B(f:FindFirstChildOfClass("UIStroke"),"Color","Border")
+	B(f:FindFirstChildOfClass("UIStroke"),"Color","P")
 	return f
 end
 
@@ -583,6 +584,24 @@ function ZNX:MakeWindow(wCfg)
 		if s then s.Color = ZNX.Theme.P end
 	end)
 
+	-- Borda interna decorativa (efeito glass premium)
+	local InnerBorder = N("Frame",{
+		Parent=Win, ZIndex=3,
+		Position=UDim2.new(0,1,0,1),
+		Size=UDim2.new(1,-2,1,-2),
+		BackgroundTransparency=1,
+		BorderSizePixel=0,
+	},{
+		N("UICorner",{CornerRadius=UDim.new(0,11)}),
+		N("UIStroke",{Color=ZNX.Theme.P, Thickness=1, Transparency=0.88}),
+	})
+	table.insert(ZNX.Watch, function()
+		if InnerBorder and InnerBorder.Parent then
+			local s=InnerBorder:FindFirstChildOfClass("UIStroke")
+			if s then s.Color=ZNX.Theme.P end
+		end
+	end)
+
 	-- Imagem de fundo (ZIndex=1 — atrás de tudo)
 	local BgImg = N("ImageLabel",{
 		Parent=Win, ZIndex=1,
@@ -614,7 +633,7 @@ function ZNX:MakeWindow(wCfg)
 	local TBLine = N("Frame",{
 		Parent=Win, ZIndex=14,
 		Position=UDim2.new(0,0,0,TH),
-		Size=UDim2.new(1,0,0,2),
+		Size=UDim2.new(1,0,0,3),  -- 3px para mais impacto visual
 		BackgroundColor3=T.P,
 		BorderSizePixel=0,
 	})
@@ -898,13 +917,29 @@ function ZNX:MakeWindow(wCfg)
 		BorderSizePixel=0,
 	})
 	B(BotBar,"BackgroundColor3","Abyss")
-	N("Frame",{
+	-- Linha separadora da bottombar com gradiente roxo→ciano
+	local BotSep = N("Frame",{
 		Parent=Win, ZIndex=12,
 		Position=UDim2.new(0,0,1,-BotH-1),
 		Size=UDim2.new(1,0,0,1),
-		BackgroundColor3=T.Border,
+		BackgroundColor3=T.P,
 		BorderSizePixel=0,
 	})
+	N("UIGradient",{Parent=BotSep,Color=ColorSequence.new{
+		ColorSequenceKeypoint.new(0,T.P),
+		ColorSequenceKeypoint.new(0.6,T.C),
+		ColorSequenceKeypoint.new(1,T.P),
+	},Transparency=NumberSequence.new{
+		NumberSequenceKeypoint.new(0,0.5),
+		NumberSequenceKeypoint.new(0.5,0),
+		NumberSequenceKeypoint.new(1,0.5),
+	}})
+	table.insert(ZNX.Watch,function()
+		if BotSep and BotSep.Parent then
+			local g=BotSep:FindFirstChildOfClass("UIGradient")
+			if g then g.Color=ColorSequence.new{ColorSequenceKeypoint.new(0,ZNX.Theme.P),ColorSequenceKeypoint.new(0.6,ZNX.Theme.C),ColorSequenceKeypoint.new(1,ZNX.Theme.P)} end
+		end
+	end)
 
 	-- Avatar do jogador local
 	N("ImageLabel",{
@@ -1065,7 +1100,7 @@ function ZNX:MakeWindow(wCfg)
 				})
 			end
 
-			-- Título grande
+			-- Título com TextSize crescendo
 			local Logo = N("TextLabel",{
 				Parent=Bg, ZIndex=202,
 				Position=UDim2.new(0.5,0,0.5,-36),
@@ -1074,7 +1109,7 @@ function ZNX:MakeWindow(wCfg)
 				BackgroundTransparency=1,
 				Text=wCfg.IntroText:upper(),
 				Font=Enum.Font.GothamBlack,
-				TextSize=48,
+				TextSize=32,
 				TextColor3=ZNX.Theme.TxtA,
 				TextXAlignment=Enum.TextXAlignment.Center,
 				TextTransparency=1,
@@ -1086,7 +1121,7 @@ function ZNX:MakeWindow(wCfg)
 				Size=UDim2.new(0,500,0,22),
 				AnchorPoint=Vector2.new(0.5,0.5),
 				BackgroundTransparency=1,
-				Text="Premium Interface  ·  v4.0",
+				Text="Phantom Neon  ·  v4.0",
 				Font=Enum.Font.GothamMedium,
 				TextSize=14,
 				TextColor3=ZNX.Theme.TxtC,
@@ -1116,12 +1151,12 @@ function ZNX:MakeWindow(wCfg)
 				},
 			})
 
-			-- Animar
-			Tw(Logo, TweenInfo.new(0.5,Enum.EasingStyle.Quint,Enum.EasingDirection.Out), {TextTransparency=0})
-			Tw(Sub,  TweenInfo.new(0.6,Enum.EasingStyle.Quint,Enum.EasingDirection.Out), {TextTransparency=0})
+			-- Animar: logo aparece e cresce
+			Tw(Logo, TweenInfo.new(0.4,Enum.EasingStyle.Quint,Enum.EasingDirection.Out), {TextTransparency=0,TextSize=48})
+			Tw(Sub,  TweenInfo.new(0.55,Enum.EasingStyle.Quint,Enum.EasingDirection.Out), {TextTransparency=0})
 			task.wait(0.3)
-			Tw(Line, TweenInfo.new(1.3,Enum.EasingStyle.Quint,Enum.EasingDirection.InOut), {Size=UDim2.new(1,0,1,0)})
-			task.wait(1.5)
+			Tw(Line, TweenInfo.new(1.2,Enum.EasingStyle.Quint,Enum.EasingDirection.InOut), {Size=UDim2.new(1,0,1,0)})
+			task.wait(1.45)
 			-- Fade out
 			Tw(Logo, TweenInfo.new(0.28,Enum.EasingStyle.Quad), {TextTransparency=1})
 			Tw(Sub,  TweenInfo.new(0.28,Enum.EasingStyle.Quad), {TextTransparency=1})
@@ -1183,7 +1218,7 @@ function ZNX:MakeWindow(wCfg)
 			TextXAlignment=Enum.TextXAlignment.Left,
 		})
 
-		-- Underline ativo (3px, roxo)
+		-- Underline ativo (3px, gradiente roxo→ciano)
 		local TUnder = N("Frame",{
 			Parent=TBtn, ZIndex=14,
 			Position=UDim2.new(0,0,1,-3),
@@ -1192,6 +1227,16 @@ function ZNX:MakeWindow(wCfg)
 			BackgroundTransparency=1,
 			BorderSizePixel=0,
 		})
+		N("UIGradient",{Parent=TUnder,Color=ColorSequence.new{
+			ColorSequenceKeypoint.new(0,ZNX.Theme.P),
+			ColorSequenceKeypoint.new(1,ZNX.Theme.C),
+		}})
+		table.insert(ZNX.Watch,function()
+			if TUnder and TUnder.Parent then
+				local g=TUnder:FindFirstChildOfClass("UIGradient")
+				if g then g.Color=ColorSequence.new{ColorSequenceKeypoint.new(0,ZNX.Theme.P),ColorSequenceKeypoint.new(1,ZNX.Theme.C)} end
+			end
+		end)
 		B(TUnder,"BackgroundColor3","P")
 
 		-- Separador vertical
@@ -1214,14 +1259,14 @@ function ZNX:MakeWindow(wCfg)
 		})
 		N("UIPadding",{
 			Parent=CS,
-			PaddingLeft=UDim.new(0,16), PaddingRight=UDim.new(0,16),
-			PaddingTop=UDim.new(0,16),  PaddingBottom=UDim.new(0,20),
+			PaddingLeft=UDim.new(0,18), PaddingRight=UDim.new(0,18),
+			PaddingTop=UDim.new(0,18),  PaddingBottom=UDim.new(0,24),
 		})
 		C(CSList:GetPropertyChangedSignal("AbsoluteContentSize"), function()
 			CS.CanvasSize = UDim2.new(0,0,0,CSList.AbsoluteContentSize.Y+40)
 		end)
 
-		AllTabs[tCfg.Name] = {Btn=TBtn, Content=CS}
+		AllTabs[tCfg.Name] = {Btn=TBtn, Content=CS, UnderLine=TUnder}
 
 		local function Activate()
 			for _,td in pairs(AllTabs) do
@@ -1240,7 +1285,11 @@ function ZNX:MakeWindow(wCfg)
 				local ico = TBtn:FindFirstChild("Ico")
 				if ico then Tw(ico,TI.Fast,{ImageColor3=ZNX.Theme.P}) end
 			end
-			CS.Visible=true; ActiveTab=tCfg.Name
+			-- Animação de entrada do conteúdo: slide do lado esquerdo
+			CS.Position=UDim2.new(-0.04,0,0,0)
+			CS.Visible=true
+			Tw(CS, TI.Mid, {Position=UDim2.new(0,0,0,0)})
+			ActiveTab=tCfg.Name
 		end
 
 		C(TBtn.MouseButton1Up, Activate)
@@ -1391,17 +1440,25 @@ function ZNX:MakeWindow(wCfg)
 					Tw(AccBar,TI.Fast,{Size=UDim2.new(0,3,0.8,0)})
 					Tw(AccBot,TI.Fast,{Size=UDim2.new(1,0,0,2)})
 					Tw(lbl,TI.Fast,{TextColor3=ZNX.Theme.TxtA})
+					-- Borda glow ao hover
+					local s=c:FindFirstChildOfClass("UIStroke")
+					if s then Tw(s,TI.Fast,{Transparency=0.55}) end
 				end)
 				C(btn.MouseLeave,function()
 					Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.Card})
 					Tw(AccBar,TI.Fast,{Size=UDim2.new(0,0,0.8,0)})
 					Tw(AccBot,TI.Fast,{Size=UDim2.new(0,0,0,2)})
+					local s=c:FindFirstChildOfClass("UIStroke")
+					if s then Tw(s,TI.Fast,{Transparency=1}) end
 				end)
 				C(btn.MouseButton1Down,function()
 					Tw(c,TI.Snap,{BackgroundColor3=ZNX.Theme.CardSel})
+					Tw(c,TI.Snap,{Size=UDim2.new(0.98,0,0,44)})
+					c.Position=UDim2.new(0.01,0,0,0)
 				end)
 				C(btn.MouseButton1Up,function()
-					Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.CardHov})
+					Tw(c,TI.Back,{BackgroundColor3=ZNX.Theme.CardHov,Size=UDim2.new(1,0,0,44)})
+					c.Position=UDim2.new(0,0,0,0)
 					task.spawn(bCfg.Callback)
 				end)
 				reg(c,bCfg.Name)
@@ -1467,13 +1524,35 @@ function ZNX:MakeWindow(wCfg)
 				function Tog:Set(v)
 					Tog.Value = v
 					if v then
-						Tw(Dot,TI.Mid,{BackgroundColor3=ZNX.Theme.P})
+						Tw(Dot,TI.Fast,{BackgroundColor3=ZNX.Theme.P})
 						Tw(Track,TI.Mid,{BackgroundColor3=ZNX.Theme.PDim})
-						Tw(Thumb,TI.Mid,{BackgroundColor3=ZNX.Theme.PBright,Position=UDim2.new(1,-26,0.5,-12)})
+						-- Overshoot: thumb vai além e volta (efeito spring manual)
+						Tw(Thumb,TweenInfo.new(0.18,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+							{BackgroundColor3=ZNX.Theme.PBright,Position=UDim2.new(1,-22,0.5,-12)})
+						task.delay(0.18,function()
+							if Tog.Value and Thumb and Thumb.Parent then
+								Tw(Thumb,TweenInfo.new(0.12,Enum.EasingStyle.Quint,Enum.EasingDirection.InOut),
+									{Position=UDim2.new(1,-26,0.5,-12)})
+							end
+						end)
+						-- Pulso no track
+						Tw(Track,TweenInfo.new(0.1,Enum.EasingStyle.Linear),{BackgroundColor3=ZNX.Theme.P})
+						task.delay(0.1,function()
+							if Tog.Value and Track and Track.Parent then
+								Tw(Track,TI.Mid,{BackgroundColor3=ZNX.Theme.PDim})
+							end
+						end)
 					else
-						Tw(Dot,TI.Mid,{BackgroundColor3=ZNX.Theme.TxtC})
+						Tw(Dot,TI.Fast,{BackgroundColor3=ZNX.Theme.TxtC})
 						Tw(Track,TI.Mid,{BackgroundColor3=ZNX.Theme.Input})
-						Tw(Thumb,TI.Mid,{BackgroundColor3=ZNX.Theme.TxtC,Position=UDim2.new(0,2,0.5,-12)})
+						Tw(Thumb,TweenInfo.new(0.16,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+							{BackgroundColor3=ZNX.Theme.TxtC,Position=UDim2.new(0,6,0.5,-12)})
+						task.delay(0.16,function()
+							if not Tog.Value and Thumb and Thumb.Parent then
+								Tw(Thumb,TweenInfo.new(0.10,Enum.EasingStyle.Quint,Enum.EasingDirection.InOut),
+									{Position=UDim2.new(0,2,0.5,-12)})
+							end
+						end)
 					end
 					tCfg2.Callback(Tog.Value)
 				end
@@ -1482,8 +1561,14 @@ function ZNX:MakeWindow(wCfg)
 					Snd("rbxassetid://6698737249",.18)
 					Tog:Set(not Tog.Value); SaveCfg(wCfg.ConfigName)
 				end)
-				C(Btn.MouseEnter,function() Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.CardHov}) end)
-				C(Btn.MouseLeave,function() Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.Card}) end)
+				C(Btn.MouseEnter,function()
+					Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.CardHov})
+					local s=c:FindFirstChildOfClass("UIStroke"); if s then Tw(s,TI.Fast,{Transparency=0.55}) end
+				end)
+				C(Btn.MouseLeave,function()
+					Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.Card})
+					local s=c:FindFirstChildOfClass("UIStroke"); if s then Tw(s,TI.Fast,{Transparency=1}) end
+				end)
 				task.spawn(function() Tog:Set(Tog.Value) end)
 				reg(c,tCfg2.Name)
 				if tCfg2.Flag then ZNX.Flags[tCfg2.Flag]=Tog end
@@ -1555,8 +1640,16 @@ function ZNX:MakeWindow(wCfg)
 
 				-- hBtn atrás do track (ZIndex=1)
 				local hBtn=N("TextButton",{Parent=c,ZIndex=1,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
-				C(hBtn.MouseEnter,function() Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.CardHov}) end)
-				C(hBtn.MouseLeave,function() if not drag then Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.Card}) end end)
+				C(hBtn.MouseEnter,function()
+					Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.CardHov})
+					local s=c:FindFirstChildOfClass("UIStroke"); if s then Tw(s,TI.Fast,{Transparency=0.55}) end
+				end)
+				C(hBtn.MouseLeave,function()
+					if not drag then
+						Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.Card})
+						local s=c:FindFirstChildOfClass("UIStroke"); if s then Tw(s,TI.Fast,{Transparency=1}) end
+					end
+				end)
 
 				function Sl:Set(v)
 					Sl.Value = Clamp(Rnd(v,sCfg.Increment), sCfg.Min, sCfg.Max)
@@ -2093,6 +2186,7 @@ function ZNX:MakeWindow(wCfg)
 				cpCfg.Default=cpCfg.Default or Color3.fromRGB(138,60,255)
 				cpCfg.Callback=cpCfg.Callback or function()end
 				cpCfg.Flag=cpCfg.Flag or nil; cpCfg.Save=cpCfg.Save or false
+				cpCfg.ThemeKey=cpCfg.ThemeKey or nil  -- se definido, sincroniza com o tema
 
 				local CP={Value=cpCfg.Default,Toggled=false,Type="Colorpicker",Save=cpCfg.Save}
 				local H,S,V=Color3.toHSV(cpCfg.Default)
@@ -2145,7 +2239,25 @@ function ZNX:MakeWindow(wCfg)
 					svb.BackgroundColor3=Color3.fromHSV(H,1,1); svp.Position=UDim2.new(S,0,1-V,0)
 					hp2.Position=UDim2.new(0.5,0,1-H,0); cpCfg.Callback(c2)
 				end
-				CP:Set(cpCfg.Default); reg(outer,cpCfg.Name)
+				CP:Set(cpCfg.Default)
+				-- Sincroniza com o tema: quando ApplyTheme roda, atualiza o preview
+				if cpCfg.ThemeKey then
+					table.insert(ZNX.Watch,function()
+						if ZNX.Theme[cpCfg.ThemeKey] and outer and outer.Parent then
+							local newCol=ZNX.Theme[cpCfg.ThemeKey]
+							if newCol ~= CP.Value then
+								CP.Value=newCol
+								local nh,ns,nv=Color3.toHSV(newCol)
+								H,S,V=nh,ns,nv
+								prev.BackgroundColor3=newCol
+								svb.BackgroundColor3=Color3.fromHSV(H,1,1)
+								svp.Position=UDim2.new(S,0,1-V,0)
+								hp2.Position=UDim2.new(0.5,0,1-H,0)
+							end
+						end
+					end)
+				end
+				reg(outer,cpCfg.Name)
 				if cpCfg.Flag then ZNX.Flags[cpCfg.Flag]=CP end
 				return CP
 			end
@@ -2160,19 +2272,19 @@ function ZNX:MakeWindow(wCfg)
 				local wrap=N("Frame",{Parent=par,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1})
 				N("UIListLayout",{Parent=wrap,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,8)})
 
-				-- Header da seção
-				local hrow=N("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,24),BackgroundTransparency=1})
+				-- Header da seção — fundo com tint sutil do accent
+				local hrow=N("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,28),BackgroundTransparency=1})
 
-				-- Ponto roxo
-				N("Frame",{Parent=hrow,Position=UDim2.new(0,0,0.5,-4),Size=UDim2.new(0,8,0,8),BackgroundColor3=ZNX.Theme.P,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(1,0)})})
+				-- Barra esquerda accent (3px)
+				N("Frame",{Parent=hrow,Position=UDim2.new(0,0,0.1,0),Size=UDim2.new(0,3,0.8,0),BackgroundColor3=ZNX.Theme.P,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(1,0)})})
 
-				-- Linha divisória
-				N("Frame",{Parent=hrow,Position=UDim2.new(0,14,0.5,0),Size=UDim2.new(0.44,0,0,1),BackgroundColor3=ZNX.Theme.Border,BorderSizePixel=0,BackgroundTransparency=0.4})
+				-- Linha divisória extendida
+				N("Frame",{Parent=hrow,Position=UDim2.new(0,10,0.5,0),Size=UDim2.new(1,-10,0,1),BackgroundColor3=ZNX.Theme.P,BackgroundTransparency=0.82,BorderSizePixel=0})
 
-				local slbl=N("TextLabel",{Parent=hrow,Position=UDim2.new(0,16,0,0),Size=UDim2.new(1,-16,1,0),
+				local slbl=N("TextLabel",{Parent=hrow,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-14,1,0),
 					BackgroundTransparency=1,Text=sCfg.Name:upper(),Font=Enum.Font.GothamBlack,TextSize=10,
-					TextColor3=ZNX.Theme.TxtC,TextXAlignment=Enum.TextXAlignment.Left})
-				B(slbl,"TextColor3","TxtC")
+					TextColor3=ZNX.Theme.P,TextXAlignment=Enum.TextXAlignment.Left})
+				B(slbl,"TextColor3","P")
 
 				-- Holder dos elementos filhos — também com UIListLayout
 				local holder=N("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1})
@@ -2328,9 +2440,9 @@ function ZNX:MakeWindow(wCfg)
 
 		-- Aparência
 		local App = ST:AddSection({Name="Aparencia"})
-		App:AddColorpicker({Name="Fundo (Void)",Default=ZNX.Theme.Void,Callback=function(c) ZNX:SetColor("Void",c) end})
-		App:AddColorpicker({Name="Topbar / Bottombar",Default=ZNX.Theme.Abyss,Callback=function(c) ZNX:SetColor("Abyss",c) end})
-		App:AddColorpicker({Name="Cards e Elementos",Default=ZNX.Theme.Card,Callback=function(c)
+		App:AddColorpicker({Name="Fundo (Void)",Default=ZNX.Theme.Void,ThemeKey="Void",Callback=function(c) ZNX:SetColor("Void",c) end})
+		App:AddColorpicker({Name="Topbar / Bottombar",Default=ZNX.Theme.Abyss,ThemeKey="Abyss",Callback=function(c) ZNX:SetColor("Abyss",c) end})
+		App:AddColorpicker({Name="Cards e Elementos",Default=ZNX.Theme.Card,ThemeKey="Card",Callback=function(c)
 			ZNX:SetColor("Card",c)
 			ZNX:SetColor("CardHov",Color3.fromRGB(Clamp(c.R*255+7,0,255),Clamp(c.G*255+7,0,255),Clamp(c.B*255+7,0,255)))
 			ZNX:SetColor("CardSel",Color3.fromRGB(Clamp(c.R*255+12,0,255),Clamp(c.G*255+6,0,255),Clamp(c.B*255+24,0,255)))
@@ -2345,7 +2457,7 @@ function ZNX:MakeWindow(wCfg)
 
 		-- Accent
 		local Acc = ST:AddSection({Name="Cores de Destaque"})
-		Acc:AddColorpicker({Name="Accent Primario (Roxo)",Default=ZNX.Theme.P,Callback=function(c)
+		Acc:AddColorpicker({Name="Accent Primario (Roxo)",Default=ZNX.Theme.P,ThemeKey="P",Callback=function(c)
 			ZNX:SetColor("P",c)
 			ZNX:SetColor("PDim",Color3.fromRGB(math.floor(c.R*255*.42),math.floor(c.G*255*.42),math.floor(c.B*255*.42)))
 			ZNX:SetColor("PBright",Color3.fromRGB(Clamp(c.R*255+50,0,255),Clamp(c.G*255+50,0,255),Clamp(c.B*255+50,0,255)))
@@ -2355,7 +2467,7 @@ function ZNX:MakeWindow(wCfg)
 			local crd=ZNX.Theme.Card
 			ZNX:SetColor("CardSel",Color3.fromRGB(Clamp(crd.R*255+math.floor(c.R*255*.12),0,255),Clamp(crd.G*255+math.floor(c.G*255*.06),0,255),Clamp(crd.B*255+math.floor(c.B*255*.22),0,255)))
 		end})
-		Acc:AddColorpicker({Name="Accent Secundario (Ciano)",Default=ZNX.Theme.C,Callback=function(c)
+		Acc:AddColorpicker({Name="Accent Secundario (Ciano)",Default=ZNX.Theme.C,ThemeKey="C",Callback=function(c)
 			ZNX:SetColor("C",c)
 			ZNX:SetColor("CDim",Color3.fromRGB(math.floor(c.R*255*.38),math.floor(c.G*255*.38),math.floor(c.B*255*.38)))
 			ZNX:SetColor("CBright",Color3.fromRGB(Clamp(c.R*255+55,0,255),Clamp(c.G*255+55,0,255),Clamp(c.B*255+55,0,255)))
@@ -2363,9 +2475,9 @@ function ZNX:MakeWindow(wCfg)
 
 		-- Bordas e texto
 		local BT = ST:AddSection({Name="Bordas e Texto"})
-		BT:AddColorpicker({Name="Bordas",Default=ZNX.Theme.Border,Callback=function(c) ZNX:SetColor("Border",c) end})
-		BT:AddColorpicker({Name="Texto Principal",Default=ZNX.Theme.TxtA,Callback=function(c) ZNX:SetColor("TxtA",c) end})
-		BT:AddColorpicker({Name="Texto Secundario",Default=ZNX.Theme.TxtB,Callback=function(c) ZNX:SetColor("TxtB",c) end})
+		BT:AddColorpicker({Name="Bordas",Default=ZNX.Theme.Border,ThemeKey="Border",Callback=function(c) ZNX:SetColor("Border",c) end})
+		BT:AddColorpicker({Name="Texto Principal",Default=ZNX.Theme.TxtA,ThemeKey="TxtA",Callback=function(c) ZNX:SetColor("TxtA",c) end})
+		BT:AddColorpicker({Name="Texto Secundario",Default=ZNX.Theme.TxtB,ThemeKey="TxtB",Callback=function(c) ZNX:SetColor("TxtB",c) end})
 
 		-- Presets
 		local PS = ST:AddSection({Name="Presets de Tema"})
