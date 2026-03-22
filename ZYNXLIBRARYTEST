@@ -268,16 +268,25 @@ function ZNX:Notify(cfg)
 	cfg.Type     = cfg.Type     or "info"  -- info | success | danger | warn
 	Snd("rbxassetid://9118776541", 0.2)
 	task.spawn(function()
-		local T = ZNX.Theme
+		-- Captura snapshot do tema NO MOMENTO da notificação (não do spawn)
+		local void  = ZNX.Theme.Void
+		local txtA  = ZNX.Theme.TxtA
+		local txtB  = ZNX.Theme.TxtB
+		local pDim  = ZNX.Theme.PDim
+
+		-- Cor do accent por tipo — sempre cores fixas independente do tema
+		local acol
+		if     cfg.Type=="success" then acol=Color3.fromRGB( 40,210, 90)
+		elseif cfg.Type=="danger"  then acol=Color3.fromRGB(220, 50, 60)
+		elseif cfg.Type=="warn"    then acol=Color3.fromRGB(255,185, 30)
+		else                            acol=ZNX.Theme.P end
+
+		-- Fundo sempre escuro independente do tema (usar cor absoluta)
+		local bgCol = Color3.fromRGB(10,10,16)
+
 		local NH = _NH or BuildNH(_NPos)
 		local isR = _NPos=="TopRight" or _NPos=="BottomRight"
 		local offX = isR and UDim2.new(1,18,0,0) or UDim2.new(-1,-18,0,0)
-
-		-- Cor por tipo
-		local acol = T.P
-		if cfg.Type=="success" then acol=T.Success
-		elseif cfg.Type=="danger"  then acol=T.Danger
-		elseif cfg.Type=="warn"    then acol=T.Warn end
 
 		local wrap = N("Frame",{
 			Parent=NH, Size=UDim2.new(1,0,0,0),
@@ -286,40 +295,48 @@ function ZNX:Notify(cfg)
 			ClipsDescendants=true,
 		})
 
-		-- Card da notificação
+		-- Card da notificação — SEM UIPadding para não deslocar a sidebar
 		local card = N("Frame",{
 			Parent=wrap, Size=UDim2.new(1,0,0,0),
 			AutomaticSize=Enum.AutomaticSize.Y,
-			BackgroundColor3=T.Abyss,
+			BackgroundColor3=bgCol,
 			BorderSizePixel=0,
 			Position=offX,
 		},{
 			N("UICorner",{CornerRadius=UDim.new(0,10)}),
-			N("UIStroke",{Color=acol, Thickness=1, Transparency=0.45}),
-			N("UIPadding",{
-				PaddingLeft=UDim.new(0,14), PaddingRight=UDim.new(0,14),
-				PaddingTop=UDim.new(0,11),  PaddingBottom=UDim.new(0,11),
-			}),
+			N("UIStroke",{Color=acol, Thickness=1, Transparency=0.4}),
 		})
 
-		-- Barra lateral colorida
-		local sideBar = N("Frame",{
+		-- Barra lateral colorida — posicionada dentro do card sem padding
+		N("Frame",{
 			Parent=card,
-			Size=UDim2.new(0,3,1,-22),
-			Position=UDim2.new(0,-14,0,11),
+			Size=UDim2.new(0,3,1,-20),
+			Position=UDim2.new(0,0,0,10),
 			BackgroundColor3=acol,
 			BorderSizePixel=0,
 		},{N("UICorner",{CornerRadius=UDim.new(1,0)})})
 
-		-- Conteúdo em UIListLayout
+		-- Container interno com padding (filho do card, não o card em si)
+		local inner = N("Frame",{
+			Parent=card,
+			Size=UDim2.new(1,-14,0,0),
+			Position=UDim2.new(0,14,0,0),
+			AutomaticSize=Enum.AutomaticSize.Y,
+			BackgroundTransparency=1,
+			BorderSizePixel=0,
+		})
+		N("UIPadding",{
+			Parent=inner,
+			PaddingLeft=UDim.new(0,4), PaddingRight=UDim.new(0,10),
+			PaddingTop=UDim.new(0,11), PaddingBottom=UDim.new(0,11),
+		})
 		N("UIListLayout",{
-			Parent=card, SortOrder=Enum.SortOrder.LayoutOrder,
+			Parent=inner, SortOrder=Enum.SortOrder.LayoutOrder,
 			Padding=UDim.new(0,4),
 		})
 
 		-- Linha do título
-		local titleRow = N("Frame",{Parent=card,Size=UDim2.new(1,0,0,18),BackgroundTransparency=1})
-		-- Ponto colorido
+		local titleRow = N("Frame",{Parent=inner,Size=UDim2.new(1,0,0,18),BackgroundTransparency=1})
 		N("Frame",{
 			Parent=titleRow,
 			Position=UDim2.new(0,0,0.5,-4),
@@ -335,31 +352,32 @@ function ZNX:Notify(cfg)
 			Text=cfg.Title,
 			Font=Enum.Font.GothamBlack,
 			TextSize=13,
-			TextColor3=T.TxtA,
+			TextColor3=Color3.fromRGB(238,238,252), -- branco fixo, não depende do tema
 			TextXAlignment=Enum.TextXAlignment.Left,
 		})
 
 		-- Mensagem (opcional)
 		if cfg.Message ~= "" then
 			N("TextLabel",{
-				Parent=card,
+				Parent=inner,
 				Size=UDim2.new(1,0,0,0),
 				AutomaticSize=Enum.AutomaticSize.Y,
 				BackgroundTransparency=1,
 				Text=cfg.Message,
 				Font=Enum.Font.GothamMedium,
 				TextSize=12,
-				TextColor3=T.TxtB,
+				TextColor3=Color3.fromRGB(130,130,168), -- cinza azulado fixo
 				TextXAlignment=Enum.TextXAlignment.Left,
 				TextWrapped=true,
 			})
 		end
 
-		-- Barra de progresso
+		-- Barra de progresso (dentro do inner) — cor fixa, não depende do tema
 		local pb = N("Frame",{
-			Parent=card,
+			Parent=inner,
 			Size=UDim2.new(1,0,0,2),
-			BackgroundColor3=T.PDim,
+			BackgroundColor3=acol,
+			BackgroundTransparency=0.5,
 			BorderSizePixel=0,
 		},{N("UICorner",{CornerRadius=UDim.new(1,0)})})
 
