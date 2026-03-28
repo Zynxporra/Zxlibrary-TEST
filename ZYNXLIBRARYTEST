@@ -312,7 +312,7 @@ local function SaveCfg(name,silent)
     sDb=now
     local ok=SS2:Write(name,BuildData(name))
     if not silent then
-        ZNX:Notify({Title=ok and "Config salva" or "Erro ao salvar",Message=ok and ZNX.SaveDir.."/"..name..".json" or "Verifique permissoes do executor",Duration=3,Type=ok and "ok" or "err"})
+        ZNX:Notify({Title=ok and "Config saved" or "Save error",Message=ok and ZNX.SaveDir.."/"..name..".json" or "Check executor permissions",Duration=3,Type=ok and "ok" or "err"})
     end
     return ok
 end
@@ -337,7 +337,7 @@ local function LoadCfg(name,silent)
                 end)
             end
         end
-        if not silent then ZNX:Notify({Title="Config carregada",Message=name,Duration=3,Type="ok"}) end
+        if not silent then ZNX:Notify({Title="Config loaded",Message=name,Duration=3,Type="ok"}) end
     end)
     return true
 end
@@ -363,7 +363,7 @@ function ZNX:SetNotifyPosition(pos) ZNX.NPos=pos; BuildNH() end
 
 function ZNX:Notify(cfg)
     cfg=cfg or{}
-    cfg.Title=cfg.Title or "Aviso"; cfg.Message=cfg.Message or ""
+    cfg.Title=cfg.Title or "Notice"; cfg.Message=cfg.Message or ""
     cfg.Duration=cfg.Duration or 5; cfg.Type=cfg.Type or "info"
     local pal={
         ok    = {bg=Color3.fromRGB(14,42,24),  line=Color3.fromRGB(60,220,110),  tx=Color3.fromRGB(140,255,180)},
@@ -541,13 +541,10 @@ end
 
 function PKD:showNotification(sender, mbSize, args, remoteName)
     local summarized = {}
-    local stringSizes = {}
-    
     for _, v in ipairs(args) do
         local key
         if typeof(v) == "string" then
             key = "txt " .. self:shortenString(v)
-            stringSizes[key] = (stringSizes[key] or 0) + #v
         elseif typeof(v) == "Instance" then
             key = "inst " .. v.ClassName .. "(" .. v.Name .. ")"
         elseif typeof(v) == "table" then
@@ -1155,6 +1152,446 @@ function ZNX:MakeWindow(wCfg)
                     Tw(outer,TI.Mid,{Size=tog and UDim2.new(1,0,0,46+math.min(#DD.Options*34+10,MaxH*34+10)) or UDim2.new(1,0,0,46)})
                 end)
                 Refresh(); DD:Set(DD.Value); reg(outer,dCfg.Name); if dCfg.Flag then ZNX.Flags[dCfg.Flag]=DD end; return DD
+            end
+
+            -- PLAYERS DROPDOWN (com persistencia de selecao durante sessao)
+            function E:AddPlayersDropdown(dCfg)
+                dCfg = dCfg or {}
+                dCfg.Name = dCfg.Name or "Players"
+                dCfg.Callback = dCfg.Callback or function() end
+                dCfg.Flag = dCfg.Flag or nil
+                dCfg.MultipleSelection = dCfg.MultipleSelection or false
+                dCfg.Save = false
+
+                local DD = {
+                    Value = nil,
+                    Buttons = {},
+                    Type = "PlayersDropdown",
+                    Save = false,
+                    MultipleSelection = dCfg.MultipleSelection,
+                    SelectedPlayers = {},
+                    PendingReconnect = {},
+                }
+                
+                local MaxEl, Opts, tog = 3, 0, false
+                local outer, selL, arr, sep, sc, ol, hb = MkDropBase(par, dCfg.Name)
+                selL.Text = "Select"
+                
+                local function SelBg()
+                    local a = ZNX.Theme.A
+                    return Color3.fromRGB(math.floor(a.R * 255 * 0.14), math.floor(a.G * 255 * 0.14), math.floor(a.B * 255 * 0.14))
+                end
+                
+                local function IsInFolder(p)
+                    local ch = p.Character
+                    if not ch then return false end
+                    return ch.Parent and ch.Parent:IsA("Folder")
+                end
+                
+                local function UpdateSelectedText()
+                    local txt = ""
+                    local playersToShow = {}
+                    
+                    for i, playerName in ipairs(DD.SelectedPlayers) do
+                        if i <= 3 then
+                            table.insert(playersToShow, playerName)
+                        end
+                    end
+                    
+                    if #playersToShow > 0 then
+                        txt = table.concat(playersToShow, ", ")
+                        if #DD.SelectedPlayers > 3 then
+                            txt = txt .. " +" .. (#DD.SelectedPlayers - 3)
+                        end
+                    end
+                    
+                    selL.Text = #DD.SelectedPlayers > 0 and txt or "Select"
+                    dCfg.Callback(DD.SelectedPlayers)
+                end
+                
+                local function ApplySel(btn, sel)
+                    local sb = btn:FindFirstChild("SB")
+                    if sel then
+                        Tw(btn, TI.Mid, {BackgroundColor3 = SelBg()})
+                        if sb then Tw(sb, TI.Fast, {BackgroundTransparency = 0}) end
+                        for _, l in ipairs(btn:GetChildren()) do
+                            if l:IsA("TextLabel") and l.Font == Enum.Font.GothamBold then
+                                Tw(l, TI.Fast, {TextColor3 = ZNX.Theme.A})
+                            end
+                        end
+                    else
+                        Tw(btn, TI.Mid, {BackgroundColor3 = ZNX.Theme.Bg2})
+                        if sb then Tw(sb, TI.Fast, {BackgroundTransparency = 1}) end
+                        for _, l in ipairs(btn:GetChildren()) do
+                            if l:IsA("TextLabel") and l.Font == Enum.Font.GothamBold then
+                                Tw(l, TI.Fast, {TextColor3 = Color3.fromRGB(232, 235, 252)})
+                            end
+                        end
+                    end
+                end
+                
+                local function AddToSelection(playerName)
+                    local player = Players:FindFirstChild(playerName)
+                    if not player then
+                        if not DD.PendingReconnect[playerName] then
+                            DD.PendingReconnect[playerName] = true
+                        end
+                        return
+                    end
+                    
+                    if DD.MultipleSelection then
+                        if not table.find(DD.SelectedPlayers, playerName) then
+                            table.insert(DD.SelectedPlayers, playerName)
+                            UpdateSelectedText()
+                        end
+                    else
+                        for _, name in ipairs(DD.SelectedPlayers) do
+                            local oldBtn = DD.Buttons[name]
+                            if oldBtn and not oldBtn:GetAttribute("DC") then
+                                ApplySel(oldBtn, false)
+                            end
+                        end
+                        DD.SelectedPlayers = {playerName}
+                        UpdateSelectedText()
+                    end
+                    
+                    DD.PendingReconnect[playerName] = nil
+                end
+                
+                local function RemoveFromSelection(playerName)
+                    local idx = table.find(DD.SelectedPlayers, playerName)
+                    if idx then
+                        table.remove(DD.SelectedPlayers, idx)
+                        UpdateSelectedText()
+                    end
+                    DD.PendingReconnect[playerName] = nil
+                end
+                
+                local function OnPlayerLeft(playerName)
+                    local wasSelected = table.find(DD.SelectedPlayers, playerName) ~= nil
+                    
+                    if wasSelected then
+                        local idx = table.find(DD.SelectedPlayers, playerName)
+                        if idx then
+                            table.remove(DD.SelectedPlayers, idx)
+                            UpdateSelectedText()
+                        end
+                        DD.PendingReconnect[playerName] = true
+                        
+                        local btn = DD.Buttons[playerName]
+                        if btn and btn.Parent then
+                            Tw(btn, TI.Mid, {BackgroundColor3 = Color3.fromRGB(52, 9, 9)})
+                            local di = btn:FindFirstChild("DisIco")
+                            if di then di.Visible = true end
+                            for _, l in ipairs(btn:GetChildren()) do
+                                if l:IsA("TextLabel") then
+                                    Tw(l, TI.Fast, {TextColor3 = Color3.fromRGB(195, 85, 85)})
+                                end
+                            end
+                            if not btn:FindFirstChild("OfflineLbl") then
+                                N("TextLabel", {
+                                    Parent = btn,
+                                    Name = "OfflineLbl",
+                                    Position = UDim2.new(1, -80, 0.5, -9),
+                                    Size = UDim2.new(0, 58, 0, 18),
+                                    BackgroundTransparency = 1,
+                                    Text = "offline",
+                                    Font = Enum.Font.GothamBlack,
+                                    TextSize = 10,
+                                    TextColor3 = Color3.fromRGB(230, 55, 55),
+                                    TextXAlignment = Enum.TextXAlignment.Right
+                                })
+                            end
+                            btn:SetAttribute("DC", true)
+                        end
+                    else
+                        local btn = DD.Buttons[playerName]
+                        if btn and btn.Parent then
+                            btn:Destroy()
+                            DD.Buttons[playerName] = nil
+                            Opts = Opts - 1
+                        end
+                    end
+                end
+                
+                local function OnPlayerReconnect(playerName, p)
+                    if DD.PendingReconnect[playerName] then
+                        if DD.MultipleSelection then
+                            if not table.find(DD.SelectedPlayers, playerName) then
+                                table.insert(DD.SelectedPlayers, playerName)
+                                UpdateSelectedText()
+                            end
+                        else
+                            for _, name in ipairs(DD.SelectedPlayers) do
+                                local oldBtn = DD.Buttons[name]
+                                if oldBtn and not oldBtn:GetAttribute("DC") then
+                                    ApplySel(oldBtn, false)
+                                end
+                            end
+                            DD.SelectedPlayers = {playerName}
+                            UpdateSelectedText()
+                        end
+                        DD.PendingReconnect[playerName] = nil
+                        
+                        local btn = DD.Buttons[playerName]
+                        if btn then
+                            btn:SetAttribute("DC", false)
+                            local di = btn:FindFirstChild("DisIco")
+                            if di then di.Visible = false end
+                            local offLbl = btn:FindFirstChild("OfflineLbl")
+                            if offLbl then offLbl:Destroy() end
+                            ApplySel(btn, true)
+                        end
+                        
+                        ZNX:Notify({
+                            Title = "Player reconnected",
+                            Message = playerName .. " was reselected automatically",
+                            Duration = 2,
+                            Type = "info"
+                        })
+                    else
+                        if not DD.Buttons[playerName] then
+                            AddPlayerOption(p)
+                        end
+                    end
+                end
+                
+                local function AddPlayerOption(p)
+                    local pn = p.Name
+                    local pd = p.DisplayName
+                    local uid = p.UserId
+                    
+                    local existingBtn = DD.Buttons[pn]
+                    if existingBtn then
+                        if existingBtn:GetAttribute("DC") then
+                            OnPlayerReconnect(pn, p)
+                        end
+                        return
+                    end
+                    
+                    local isSelected = table.find(DD.SelectedPlayers, pn) ~= nil
+                    local inFolder = IsInFolder(p)
+                    
+                    if DD.PendingReconnect[pn] then
+                        isSelected = true
+                        table.insert(DD.SelectedPlayers, pn)
+                        DD.PendingReconnect[pn] = nil
+                        UpdateSelectedText()
+                    end
+                    
+                    local ob = N("TextButton", {
+                        Parent = sc,
+                        Size = UDim2.new(1, 0, 0, 54),
+                        BackgroundColor3 = isSelected and SelBg() or ZNX.Theme.Bg2,
+                        BorderSizePixel = 0,
+                        Text = "",
+                        AutoButtonColor = false
+                    }, {
+                        N("UICorner", {CornerRadius = UDim.new(0, 8)}),
+                        N("UIStroke", {Color = ZNX.Theme.Line, Thickness = 1}),
+                    })
+                    
+                    local sb = N("Frame", {
+                        Parent = ob,
+                        Name = "SB",
+                        Position = UDim2.new(0, 0, 0.1, 0),
+                        Size = UDim2.new(0, 3, 0.8, 0),
+                        BackgroundColor3 = ZNX.Theme.A,
+                        BackgroundTransparency = isSelected and 0 or 1,
+                        BorderSizePixel = 0
+                    }, {N("UICorner", {CornerRadius = UDim.new(1, 0)})})
+                    B(sb, "BackgroundColor3", "A")
+                    
+                    N("ImageLabel", {
+                        Parent = ob,
+                        Position = UDim2.new(0, 8, 0.5, -19),
+                        Size = UDim2.new(0, 38, 0, 38),
+                        BackgroundTransparency = 1,
+                        Image = "https://www.roblox.com/headshot-thumbnail/image?userId=" .. uid .. "&width=420&height=420&format=png"
+                    }, {
+                        N("UICorner", {CornerRadius = UDim.new(0, 5)}),
+                        N("UIStroke", {Color = ZNX.Theme.Line, Thickness = 1.5}),
+                    })
+                    
+                    N("ImageLabel", {
+                        Parent = ob,
+                        Name = "DisIco",
+                        Position = UDim2.new(1, -27, 0.5, -13),
+                        Size = UDim2.new(0, 24, 0, 24),
+                        BackgroundTransparency = 1,
+                        Image = "rbxassetid://7072725342",
+                        ImageColor3 = Color3.fromRGB(230, 55, 55),
+                        Visible = false
+                    })
+                    
+                    if inFolder then
+                        N("ImageLabel", {
+                            Parent = ob,
+                            Name = "FolderIco",
+                            Position = UDim2.new(1, -55, 0.5, -11),
+                            Size = UDim2.new(0, 20, 0, 20),
+                            BackgroundTransparency = 1,
+                            Image = "rbxassetid://6693712941",
+                            ImageColor3 = Color3.fromRGB(60, 165, 255),
+                        })
+                    end
+                    
+                    local nc = inFolder and Color3.fromRGB(60, 165, 255) or (isSelected and ZNX.Theme.A or Color3.fromRGB(232, 235, 252))
+                    N("TextLabel", {
+                        Parent = ob,
+                        Name = "NL",
+                        Position = UDim2.new(0, 54, 0, 9),
+                        Size = UDim2.new(1, -86, 0, 20),
+                        BackgroundTransparency = 1,
+                        Text = pd,
+                        Font = Enum.Font.GothamBold,
+                        TextSize = 13,
+                        TextColor3 = nc,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextTruncate = Enum.TextTruncate.AtEnd
+                    })
+                    
+                    N("TextLabel", {
+                        Parent = ob,
+                        Position = UDim2.new(0, 54, 0, 27),
+                        Size = UDim2.new(1, -86, 0, 16),
+                        BackgroundTransparency = 1,
+                        Text = "@" .. pn,
+                        Font = Enum.Font.GothamMedium,
+                        TextSize = 11,
+                        TextColor3 = ZNX.Theme.TxC,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextTruncate = Enum.TextTruncate.AtEnd
+                    })
+                    
+                    task.spawn(function()
+                        while ob and ob.Parent do
+                            task.wait(2)
+                            if not ob or not ob.Parent then break end
+                            local fi = ob:FindFirstChild("FolderIco")
+                            local nl2 = ob:FindFirstChild("NL")
+                            if fi then fi.Visible = IsInFolder(p) end
+                            if nl2 and not table.find(DD.SelectedPlayers, pn) and not ob:GetAttribute("DC") then
+                                nl2.TextColor3 = IsInFolder(p) and Color3.fromRGB(60, 165, 255) or Color3.fromRGB(232, 235, 252)
+                            end
+                        end
+                    end)
+                    
+                    C(ob.MouseButton1Up, function()
+                        if ob:GetAttribute("DC") then
+                            DD.PendingReconnect[pn] = nil
+                            RemoveFromSelection(pn)
+                            ob:Destroy()
+                            DD.Buttons[pn] = nil
+                            Opts = Opts - 1
+                            return
+                        end
+                        DD:Set(pn)
+                    end)
+                    
+                    C(ob.MouseEnter, function()
+                        if ob:GetAttribute("DC") then
+                            Tw(ob, TI.Fast, {BackgroundColor3 = Color3.fromRGB(80, 14, 14)})
+                            return
+                        end
+                        if table.find(DD.SelectedPlayers, pn) then return end
+                        Tw(ob, TI.Fast, {BackgroundColor3 = ZNX.Theme.Bg3})
+                    end)
+                    
+                    C(ob.MouseLeave, function()
+                        if ob:GetAttribute("DC") then
+                            Tw(ob, TI.Fast, {BackgroundColor3 = Color3.fromRGB(52, 9, 9)})
+                            return
+                        end
+                        Tw(ob, TI.Fast, {BackgroundColor3 = table.find(DD.SelectedPlayers, pn) and SelBg() or ZNX.Theme.Bg2})
+                    end)
+                    
+                    DD.Buttons[pn] = ob
+                    Opts = Opts + 1
+                end
+                
+                for _, p in pairs(Players:GetPlayers()) do
+                    if p ~= LP then
+                        AddPlayerOption(p)
+                    end
+                end
+                
+                C(Players.PlayerAdded, function(p)
+                    if p ~= LP then
+                        AddPlayerOption(p)
+                    end
+                end)
+                
+                C(Players.PlayerRemoving, function(p)
+                    task.delay(0.1, function()
+                        OnPlayerLeft(p.Name)
+                    end)
+                end)
+                
+                function DD:Refresh() end
+                
+                function DD:Set(val, once)
+                    local btn = DD.Buttons[val]
+                    if not btn then
+                        for _ = 0, 10 do
+                            task.wait(0.15)
+                            if DD.Buttons[val] then
+                                btn = DD.Buttons[val]
+                                break
+                            end
+                        end
+                    end
+                    
+                    if not btn then return end
+                    
+                    if btn:GetAttribute("DC") then
+                        ZNX:Notify({
+                            Title = "Player offline",
+                            Message = val .. " is offline",
+                            Duration = 2,
+                            Type = "warn"
+                        })
+                        return
+                    end
+                    
+                    local isSelected = table.find(DD.SelectedPlayers, val) ~= nil
+                    
+                    if DD.MultipleSelection then
+                        if not isSelected then
+                            AddToSelection(val)
+                            ApplySel(btn, true)
+                        elseif not once then
+                            RemoveFromSelection(val)
+                            ApplySel(btn, false)
+                        end
+                    else
+                        if not isSelected then
+                            for _, name in ipairs(DD.SelectedPlayers) do
+                                local oldBtn = DD.Buttons[name]
+                                if oldBtn and not oldBtn:GetAttribute("DC") then
+                                    ApplySel(oldBtn, false)
+                                end
+                            end
+                            AddToSelection(val)
+                            ApplySel(btn, true)
+                        end
+                    end
+                    
+                    DD.Value = val
+                end
+                
+                C(hb.MouseButton1Up, function()
+                    DD.Toggled = not DD.Toggled
+                    sep.Visible = DD.Toggled
+                    Tw(arr, TI.Fast, {Rotation = DD.Toggled and 180 or 0})
+                    Tw(outer, TI.Mid, {
+                        Size = UDim2.new(1, 0, 0, DD.Toggled and (Opts > MaxEl and 44 + MaxEl * 57 or 44 + Opts * 57) or 44)
+                    })
+                end)
+                
+                reg(outer, dCfg.Name)
+                if dCfg.Flag then ZNX.Flags[dCfg.Flag] = DD end
+                return DD
             end
 
             function E:AddTextbox(xCfg)
