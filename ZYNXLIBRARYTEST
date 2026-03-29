@@ -1,7 +1,7 @@
 --[[
   ╔══════════════════════════════════════════════════════════════════════════╗
-  ║  ZNXHUB  v5.4  ·  AURORA EDITION                                        ║
-  ║  Visual completamente redesenhado — bordas arredondadas, glassmorphism  ║
+  ║  ZNXHUB  v5.4  ·  AURORA EDITION - BORDAS SUPER ARREDONDADAS          ║
+  ║  Visual completamente redesenhado — bordas ultra arredondadas          ║
   ║  Gradientes suaves · Animações fluidas · Micro-interações refinadas     ║
   ╚══════════════════════════════════════════════════════════════════════════╝
 ]]
@@ -49,43 +49,35 @@ local function Lerp(a,b,t) return a + (b-a)*t end
 
 -- ══════════════════════════════════════════════════════
 -- PALETA AURORA REDESENHADA
--- Tons mais ricos, contrastes maiores, glassmorphism
 -- ══════════════════════════════════════════════════════
 local DT = {
-    -- Fundos em camadas (maior profundidade)
-    Bg0   = Color3.fromRGB(6,   4,  14),   -- base ultra-escura
-    Bg1   = Color3.fromRGB(10,  7,  22),   -- sidebar
-    Bg2   = Color3.fromRGB(15, 11,  30),   -- cards
-    Bg3   = Color3.fromRGB(20, 15,  38),   -- hover
-    Bg4   = Color3.fromRGB(26, 20,  48),   -- pressed
-    BgI   = Color3.fromRGB(9,   6,  18),   -- inputs
-    BgG   = Color3.fromRGB(18, 12,  36),   -- glass effect base
-    Line  = Color3.fromRGB(45,  30,  80),  -- bordas suaves
-    LineB = Color3.fromRGB(65,  45, 110),  -- bordas hover
-    -- Acento primário — roxo vibrante
+    Bg0   = Color3.fromRGB(6,   4,  14),
+    Bg1   = Color3.fromRGB(10,  7,  22),
+    Bg2   = Color3.fromRGB(15, 11,  30),
+    Bg3   = Color3.fromRGB(20, 15,  38),
+    Bg4   = Color3.fromRGB(26, 20,  48),
+    BgI   = Color3.fromRGB(9,   6,  18),
+    BgG   = Color3.fromRGB(18, 12,  36),
+    Line  = Color3.fromRGB(45,  30,  80),
+    LineB = Color3.fromRGB(65,  45, 110),
     A     = Color3.fromRGB(155,  72, 255),
     ADim  = Color3.fromRGB( 42,  16,  80),
     ABr   = Color3.fromRGB(205, 150, 255),
     ASel  = Color3.fromRGB( 28,  12,  58),
     AGlow = Color3.fromRGB(120,  50, 200),
-    -- Acento secundário — magenta
     A2    = Color3.fromRGB(225,  72, 255),
     A2Dim = Color3.fromRGB( 64,  14,  80),
-    -- Status
     Ok    = Color3.fromRGB( 68, 235, 130),
     Err   = Color3.fromRGB(245,  55,  80),
     Warn  = Color3.fromRGB(255, 195,  45),
     Info  = Color3.fromRGB( 85, 170, 255),
-    -- Texto em camadas
-    TxA   = Color3.fromRGB(248, 242, 255),  -- principal
-    TxB   = Color3.fromRGB(185, 165, 225),  -- secundário
-    TxC   = Color3.fromRGB(105,  85, 155),  -- muted
-    TxD   = Color3.fromRGB( 70,  55, 110),  -- mais fraco
-    -- Scroll
+    TxA   = Color3.fromRGB(248, 242, 255),
+    TxB   = Color3.fromRGB(185, 165, 225),
+    TxC   = Color3.fromRGB(105,  85, 155),
+    TxD   = Color3.fromRGB( 70,  55, 110),
     Scr   = Color3.fromRGB(155,  72, 255),
-    -- Dimensões
-    SW    = 215,   -- sidebar mais estreita e elegante
-    TH    = 46,    -- topbar
+    SW    = 215,
+    TH    = 46,
 }
 
 -- ══════════════════════════════════════════════════════
@@ -193,7 +185,7 @@ task.spawn(function()
     while Alive() do
         local dt = task.wait(0.033)
         if not ZNX.BgAnimEnabled then continue end
-        _aT = _aT + dt * 0.28  -- mais lento e suave
+        _aT = _aT + dt * 0.28
 
         local A   = ZNX.Theme.A   or Color3.fromRGB(155,72,255)
         local A2  = ZNX.Theme.A2  or Color3.fromRGB(225,72,255)
@@ -233,7 +225,7 @@ task.spawn(function()
 end)
 
 -- ══════════════════════════════════════════════════════
--- ORBES DE FUNDO — mais suaves e orgânicas
+-- ORBES DE FUNDO
 -- ══════════════════════════════════════════════════════
 local OrbContainer = nil
 local OrbList = {}
@@ -253,7 +245,6 @@ local function SpawnOrbs(container, count)
         local oy = math.random(-10,110) / 100
         local phase = math.random(0,628) / 100
         local speed = 0.06 + math.random(0,6)/100
-        -- Opacidade muito mais suave para efeito glassmorphism
         local baseAlpha = 0.82 + math.random(0,10)/100
 
         local orb = N("Frame",{
@@ -294,7 +285,6 @@ task.spawn(function()
             if o.frame and o.frame.Parent then
                 local dx=math.sin(t*o.speed+o.phase)*0.055
                 local dy=math.cos(t*o.speed*0.7+o.phase)*0.035
-                -- Pulso de opacidade suave
                 local pulse = math.sin(t*o.speed*1.3+o.phase*0.7)*0.04
                 o.frame.Position=UDim2.new(o.ox+dx,-o.sz/2, o.oy+dy,-o.sz/2)
                 o.frame.BackgroundTransparency=Cl(o.baseAlpha+pulse, 0.7, 0.95)
@@ -384,7 +374,7 @@ local function LoadCfg(name,silent)
 end
 
 -- ══════════════════════════════════════════════════════
--- NOTIFICAÇÕES — redesenhadas com visual aurora
+-- NOTIFICAÇÕES — redesenhadas com bordas ultra arredondadas
 -- ══════════════════════════════════════════════════════
 local _NH=nil
 local function BuildNH()
@@ -425,21 +415,21 @@ function ZNX:Notify(cfg)
 
         local wrap=N("Frame",{Parent=NH,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1})
 
-        -- Card principal com glassmorphism
+        -- Card principal com borda ultra arredondada (22px)
         local card=N("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
             BackgroundColor3=p.bg,BorderSizePixel=0,Position=offX},{
-            N("UICorner",{CornerRadius=UDim.new(0,14)}),
+            N("UICorner",{CornerRadius=UDim.new(0,22)}),  -- Borda mais arredondada
             N("UIStroke",{Color=p.line,Thickness=1.2,Transparency=0.4}),
         })
 
-        -- Linha lateral colorida (mais grossa e arredondada)
-        N("Frame",{Parent=card,Size=UDim2.new(0,4,1,-8),Position=UDim2.new(0,0,0,4),BackgroundColor3=p.line,BorderSizePixel=0},{
+        -- Linha lateral colorida com bordas arredondadas
+        N("Frame",{Parent=card,Size=UDim2.new(0,4,1,-12),Position=UDim2.new(0,0,0,6),BackgroundColor3=p.line,BorderSizePixel=0},{
             N("UICorner",{CornerRadius=UDim.new(0,4)}),
         })
 
-        -- Linha topo gradiente
+        -- Linha topo gradiente arredondada
         local topLine=N("Frame",{Parent=card,Size=UDim2.new(1,-4,0,2),Position=UDim2.new(0,4,0,0),BackgroundColor3=p.line,BorderSizePixel=0,BackgroundTransparency=0.5},{
-            N("UICorner",{CornerRadius=UDim.new(0,1)}),
+            N("UICorner",{CornerRadius=UDim.new(0,2)}),
         })
 
         -- Conteúdo interno
@@ -447,7 +437,7 @@ function ZNX:Notify(cfg)
         N("UIPadding",{Parent=inner,PaddingTop=UDim.new(0,13),PaddingBottom=UDim.new(0,13),PaddingRight=UDim.new(0,12)})
         N("UIListLayout",{Parent=inner,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,4)})
 
-        -- Header com ícone dot
+        -- Header com ícone dot (arredondado)
         local trow=N("Frame",{Parent=inner,Size=UDim2.new(1,0,0,18),BackgroundTransparency=1})
         N("Frame",{Parent=trow,Position=UDim2.new(0,0,0.5,-4),Size=UDim2.new(0,8,0,8),
             BackgroundColor3=p.line,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(1,0)})}
@@ -456,21 +446,19 @@ function ZNX:Notify(cfg)
             BackgroundTransparency=1,Text=cfg.Title,Font=Enum.Font.GothamBlack,TextSize=13,
             TextColor3=Color3.fromRGB(248,242,255),TextXAlignment=Enum.TextXAlignment.Left})
 
-        -- Mensagem
         if cfg.Message~="" then
             N("TextLabel",{Parent=inner,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,
                 BackgroundTransparency=1,Text=cfg.Message,Font=Enum.Font.Gotham,TextSize=11,
                 TextColor3=p.tx,TextXAlignment=Enum.TextXAlignment.Left,TextWrapped=true})
         end
 
-        -- Barra de progresso redesenhada
+        -- Barra de progresso com bordas arredondadas
         local pbg=N("Frame",{Parent=inner,Size=UDim2.new(1,0,0,3),BackgroundColor3=Color3.fromRGB(20,14,40),BorderSizePixel=0},{
             N("UICorner",{CornerRadius=UDim.new(1,0)}),
         })
         local pb=N("Frame",{Parent=pbg,Size=UDim2.new(1,0,1,0),BackgroundColor3=p.line,BorderSizePixel=0},{
             N("UICorner",{CornerRadius=UDim.new(1,0)}),
         })
-        -- Gradiente na barra de progresso
         N("UIGradient",{Parent=pb,
             Color=ColorSequence.new{
                 ColorSequenceKeypoint.new(0,p.tx),
@@ -478,13 +466,10 @@ function ZNX:Notify(cfg)
             }
         })
 
-        -- Animação de entrada com spring
         Tw(card,TweenInfo.new(.32,Enum.EasingStyle.Back,Enum.EasingDirection.Out),{Position=UDim2.new(0,0,0,0)})
         Tw(pb,TweenInfo.new(cfg.Duration,Enum.EasingStyle.Linear),{Size=UDim2.new(0,0,1,0)})
 
         task.wait(cfg.Duration-.4)
-
-        -- Saída suave
         Tw(card,TI.Mid,{BackgroundTransparency=0.12})
         for _,ch in ipairs(card:GetDescendants()) do
             if ch:IsA("TextLabel") then Tw(ch,TI.Mid,{TextTransparency=1}) end
@@ -496,7 +481,7 @@ function ZNX:Notify(cfg)
 end
 
 -- ══════════════════════════════════════════════════════
--- SHARED UI BUILDERS — redesenhados
+-- SHARED UI BUILDERS — com bordas ultra arredondadas
 -- ══════════════════════════════════════════════════════
 local function MkScroll(parent)
     local sf=N("ScrollingFrame",{Parent=parent,BackgroundTransparency=1,BorderSizePixel=0,
@@ -507,10 +492,10 @@ local function MkScroll(parent)
     B(sf,"ScrollBarImageColor3","Scr"); return sf
 end
 
--- Card redesenhado com bordas mais arredondadas e glassmorphism sutil
+-- Card com borda ultra arredondada (16px)
 local function MkCard(par,h)
     local f=N("Frame",{Parent=par,BackgroundColor3=ZNX.Theme.Bg2,BorderSizePixel=0,Size=UDim2.new(1,0,0,h or 46)},{
-        N("UICorner",{CornerRadius=UDim.new(0,12)}),
+        N("UICorner",{CornerRadius=UDim.new(0,16)}),  -- Borda mais arredondada
         N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5}),
     })
     B(f,"BackgroundColor3","Bg2")
@@ -521,10 +506,10 @@ local function MkCard(par,h)
     return f
 end
 
--- Dropdown redesenhado
+-- Dropdown com bordas ultra arredondadas
 local function MkDrop(par,lbl)
     local outer=N("Frame",{Parent=par,Size=UDim2.new(1,0,0,46),BackgroundColor3=ZNX.Theme.Bg2,BorderSizePixel=0,ClipsDescendants=true},{
-        N("UICorner",{CornerRadius=UDim.new(0,12)}),
+        N("UICorner",{CornerRadius=UDim.new(0,16)}),  -- Borda mais arredondada
         N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5}),
     })
     B(outer,"BackgroundColor3","Bg2")
@@ -654,7 +639,7 @@ function PacketDetector:stop()
 end
 
 -- ══════════════════════════════════════════════════════
--- MAKE WINDOW — completamente redesenhado
+-- MAKE WINDOW — completamente redesenhado com bordas ultra arredondadas
 -- ══════════════════════════════════════════════════════
 function ZNX:MakeWindow(wCfg)
     wCfg=wCfg or{}
@@ -677,13 +662,12 @@ function ZNX:MakeWindow(wCfg)
     local AllTabs={}; local AllElems={}; local firstTab=true
     local SW,TH=T.SW,T.TH
 
-    -- ─── JANELA PRINCIPAL ────────────────────────────────
-    -- Bordas mais arredondadas (16px), sombra interna via stroke
+    -- ─── JANELA PRINCIPAL com borda ultra arredondada (24px) ────────────────
     local Win=N("Frame",{Parent=Root,
         Size=UDim2.new(0,wCfg.Size.X,0,wCfg.Size.Y),
         Position=UDim2.new(.5,-wCfg.Size.X/2,.5,-wCfg.Size.Y/2),
         BackgroundColor3=T.Bg0,BorderSizePixel=0,Active=true,ClipsDescendants=true},{
-        N("UICorner",{CornerRadius=UDim.new(0,16)}),
+        N("UICorner",{CornerRadius=UDim.new(0,24)}),  -- Borda super arredondada
         N("UIStroke",{Color=T.A,Thickness=1.2,Transparency=0.68}),
     })
     B(Win,"BackgroundColor3","Bg0")
@@ -695,7 +679,7 @@ function ZNX:MakeWindow(wCfg)
     -- ─── CAMADA DE FUNDO ──────────────────────────────────
     local BgLayer=N("Frame",{Parent=Win,ZIndex=1,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,BorderSizePixel=0,ClipsDescendants=true})
 
-    -- Gradiente base — mais profundo e dramático
+    -- Gradiente base
     local BgGrad=N("Frame",{Parent=BgLayer,ZIndex=1,Size=UDim2.new(1,0,1,0),BorderSizePixel=0,BackgroundColor3=T.Bg0})
     B(BgGrad,"BackgroundColor3","Bg0")
     local BgGradObj=N("UIGradient",{Parent=BgGrad,
@@ -739,17 +723,19 @@ function ZNX:MakeWindow(wCfg)
     end
     ApplyBgMode()
 
-    -- ─── SIDEBAR ──────────────────────────────────────────
-    -- Sidebar com glassmorphism — separação visual clara
+    -- ─── SIDEBAR com borda ultra arredondada ────────────────────────────────
     local Sidebar=N("Frame",{Parent=Win,ZIndex=10,Position=UDim2.new(0,0,0,0),
         Size=UDim2.new(0,SW,1,0),BackgroundColor3=T.Bg1,BorderSizePixel=0})
     B(Sidebar,"BackgroundColor3","Bg1")
+    
+    -- Aplica borda arredondada na sidebar (apenas lado esquerdo)
+    N("UICorner",{Parent=Sidebar,CornerRadius=UDim.new(0,24)})
 
-    -- Efeito glass na sidebar — overlay muito sutil
+    -- Efeito glass na sidebar
     N("Frame",{Parent=Sidebar,ZIndex=10,Size=UDim2.new(1,0,1,0),
         BackgroundColor3=Color3.fromRGB(255,255,255),BackgroundTransparency=0.97,BorderSizePixel=0})
 
-    -- Borda direita da sidebar — linha elegante com gradiente
+    -- Borda direita da sidebar — linha elegante
     local SideEdge=N("Frame",{Parent=Sidebar,ZIndex=11,Position=UDim2.new(1,-1,0,0),
         Size=UDim2.new(0,1,1,0),BackgroundColor3=T.Line,BorderSizePixel=0,BackgroundTransparency=0.4})
     B(SideEdge,"BackgroundColor3","Line")
@@ -757,7 +743,7 @@ function ZNX:MakeWindow(wCfg)
     -- Header da sidebar
     local SideTop=N("Frame",{Parent=Sidebar,ZIndex=11,Size=UDim2.new(1,0,0,TH),BackgroundTransparency=1})
 
-    -- Logo / título com espaçamento melhor
+    -- Logo / título
     local lx=16
     if wCfg.Icon~="" then
         N("ImageLabel",{Parent=SideTop,ZIndex=12,Position=UDim2.new(0,13,0.5,-11),Size=UDim2.new(0,22,0,22),BackgroundTransparency=1,Image=wCfg.Icon})
@@ -768,13 +754,13 @@ function ZNX:MakeWindow(wCfg)
         TextColor3=T.TxA,TextXAlignment=Enum.TextXAlignment.Left})
     B(TitleL,"TextColor3","TxA")
 
-    -- Linha divisória com gradiente
+    -- Linha divisória
     local dividerLine=N("Frame",{Parent=Sidebar,ZIndex=11,Position=UDim2.new(0,0,0,TH),Size=UDim2.new(1,0,0,1),BackgroundColor3=T.Line,BorderSizePixel=0,BackgroundTransparency=0.55})
 
-    -- Search box redesenhado — mais arredondado
+    -- Search box com borda arredondada (12px)
     local SrchF=N("Frame",{Parent=Sidebar,ZIndex=11,Position=UDim2.new(0,10,0,TH+10),
         Size=UDim2.new(1,-20,0,32),BackgroundColor3=T.BgI,BorderSizePixel=0},{
-        N("UICorner",{CornerRadius=UDim.new(0,10)}),
+        N("UICorner",{CornerRadius=UDim.new(0,12)}),  -- Borda arredondada
         N("UIStroke",{Color=T.Line,Thickness=1,Transparency=0.45}),
     })
     B(SrchF,"BackgroundColor3","BgI")
@@ -794,12 +780,12 @@ function ZNX:MakeWindow(wCfg)
     N("UIPadding",{Parent=TabSc,PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8),PaddingTop=UDim.new(0,8),PaddingBottom=UDim.new(0,8)})
     C(TabList:GetPropertyChangedSignal("AbsoluteContentSize"),function() TabSc.CanvasSize=UDim2.new(0,0,0,TabList.AbsoluteContentSize.Y+16) end)
 
-    -- Footer da sidebar com user info redesenhado
+    -- Footer da sidebar
     N("Frame",{Parent=Sidebar,ZIndex=11,Position=UDim2.new(0,0,1,-80),Size=UDim2.new(1,0,0,1),BackgroundColor3=T.Line,BorderSizePixel=0,BackgroundTransparency=0.55})
     local AvF=N("Frame",{Parent=Sidebar,ZIndex=11,Position=UDim2.new(0,0,1,-79),Size=UDim2.new(1,0,0,79),BackgroundTransparency=1})
     N("UIPadding",{Parent=AvF,PaddingLeft=UDim.new(0,12),PaddingRight=UDim.new(0,8)})
 
-    -- Avatar com borda aurora animada
+    -- Avatar com borda arredondada
     local avFrame=N("Frame",{Parent=AvF,ZIndex=12,Position=UDim2.new(0,0,0.5,-21),Size=UDim2.new(0,42,0,42),BackgroundTransparency=1})
     N("ImageLabel",{Parent=avFrame,ZIndex=12,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,
         Image="https://www.roblox.com/headshot-thumbnail/image?userId="..LP.UserId.."&width=420&height=420&format=png"},{
@@ -815,7 +801,7 @@ function ZNX:MakeWindow(wCfg)
         BackgroundTransparency=1,Text="@"..LP.Name,Font=Enum.Font.GothamMedium,TextSize=10,
         TextColor3=T.TxC,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
 
-    -- ─── TOPBAR ───────────────────────────────────────────
+    -- ─── TOPBAR com bordas arredondadas ─────────────────────────────────────
     local TopBar=N("Frame",{Parent=Win,ZIndex=12,
         Position=UDim2.new(0,SW,0,0),Size=UDim2.new(1,-SW,0,TH),
         BackgroundColor3=T.Bg1,BorderSizePixel=0,BackgroundTransparency=0.35})
@@ -824,7 +810,7 @@ function ZNX:MakeWindow(wCfg)
     -- Linha divisória inferior do topbar
     N("Frame",{Parent=Win,ZIndex=13,Position=UDim2.new(0,SW,0,TH),Size=UDim2.new(1,-SW,0,1),BackgroundColor3=T.Line,BorderSizePixel=0,BackgroundTransparency=0.55})
 
-    -- Linha acento Aurora com gradiente animado
+    -- Linha acento Aurora
     local AccLine=N("Frame",{Parent=Win,ZIndex=14,Position=UDim2.new(0,SW,0,TH),Size=UDim2.new(1,-SW,0,2),BackgroundColor3=T.A,BorderSizePixel=0})
     B(AccLine,"BackgroundColor3","A")
     local AccGrad=N("UIGradient",{Parent=AccLine,Color=ColorSequence.new{ColorSequenceKeypoint.new(0,T.A),ColorSequenceKeypoint.new(1,T.A2)}})
@@ -835,7 +821,7 @@ function ZNX:MakeWindow(wCfg)
         end
     end)
 
-    -- Stats bar — FPS / ping / hora
+    -- Stats bar
     local StL=N("TextLabel",{Parent=TopBar,ZIndex=13,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-200,1,0),
         BackgroundTransparency=1,Text="-- fps  |  --ms  |  --:--",Font=Enum.Font.GothamMedium,TextSize=11,
         TextColor3=T.TxC,TextXAlignment=Enum.TextXAlignment.Left})
@@ -852,12 +838,12 @@ function ZNX:MakeWindow(wCfg)
         end
     end)
 
-    -- Botões de controle redesenhados — mais arredondados e compactos
+    -- Botões de controle com borda arredondada (10px)
     local BG=N("Frame",{Parent=TopBar,ZIndex=13,Position=UDim2.new(1,-82,0.5,-13),Size=UDim2.new(0,74,0,26),BackgroundTransparency=1})
     local function WBtn(ico,x,hcol)
         local b=N("TextButton",{Parent=BG,ZIndex=14,Position=UDim2.new(0,x,0,0),Size=UDim2.new(0,26,0,26),
             BackgroundColor3=T.Bg3,BorderSizePixel=0,Text="",AutoButtonColor=false},{
-            N("UICorner",{CornerRadius=UDim.new(0,8)}),
+            N("UICorner",{CornerRadius=UDim.new(0,10)}),  -- Borda arredondada
             N("UIStroke",{Color=T.Line,Thickness=1,Transparency=0.5}),
             N("ImageLabel",{Size=UDim2.new(0,11,0,11),Position=UDim2.new(0.5,-5.5,0.5,-5.5),BackgroundTransparency=1,Image=ico,ImageColor3=T.TxB,Name="Ico",ZIndex=15}),
         })
@@ -884,7 +870,6 @@ function ZNX:MakeWindow(wCfg)
 
     -- ─── HANDLE DE RESIZE ────────────────────────────────
     local Rsz=N("TextButton",{Parent=Win,ZIndex=22,Position=UDim2.new(1,-16,1,-16),Size=UDim2.new(0,16,0,16),BackgroundTransparency=1,Text="",AutoButtonColor=false})
-    -- Ícone de resize mais elegante
     for i=0,1 do for j=0,1 do
         N("Frame",{Parent=Rsz,Position=UDim2.new(0,3+i*6,0,3+j*6),Size=UDim2.new(0,2,0,2),
             BackgroundColor3=T.TxD,BorderSizePixel=0,BackgroundTransparency=0.3},{N("UICorner",{CornerRadius=UDim.new(1,0)})})
@@ -958,7 +943,6 @@ function ZNX:MakeWindow(wCfg)
                 ColorSequenceKeypoint.new(1,Color3.fromRGB(3,2,8)),
             },Rotation=135})
 
-            -- Grid de pontos de fundo
             for i=0,13 do for j=0,9 do
                 N("Frame",{Parent=Bg,ZIndex=201,
                     Position=UDim2.new(0,i*85+30,0,j*65+20),Size=UDim2.new(0,2,0,2),
@@ -967,7 +951,6 @@ function ZNX:MakeWindow(wCfg)
                 })
             end end
 
-            -- Orbes de intro
             for i=1,3 do
                 local sz=math.random(200,350)
                 local ox=math.random(10,90)/100
@@ -987,7 +970,6 @@ function ZNX:MakeWindow(wCfg)
             local Sub=N("TextLabel",{Parent=Bg,ZIndex=202,Position=UDim2.new(.5,0,.5,32),Size=UDim2.new(0,500,0,22),AnchorPoint=Vector2.new(.5,.5),BackgroundTransparency=1,
                 Text="Aurora Edition  ·  v5.4",Font=Enum.Font.GothamMedium,TextSize=12,TextColor3=ZNX.Theme.TxC,TextXAlignment=Enum.TextXAlignment.Center,TextTransparency=1})
 
-            -- Barra de progresso de intro
             local LnBg=N("Frame",{Parent=Bg,ZIndex=202,Position=UDim2.new(.5,-160,.5,62),Size=UDim2.new(0,320,0,2),
                 BackgroundColor3=Color3.fromRGB(14,10,28),BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(1,0)})})
             local Ln=N("Frame",{Parent=LnBg,ZIndex=203,Size=UDim2.new(0,0,1,0),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0},{
@@ -1018,16 +1000,16 @@ function ZNX:MakeWindow(wCfg)
     function TabFn:MakeTab(tCfg)
         tCfg=tCfg or{}; tCfg.Name=tCfg.Name or "Tab"; tCfg.Icon=tCfg.Icon or ""
 
-        -- Tab button redesenhado — mais arredondado e clean
+        -- Tab button com borda arredondada (12px)
         local TBtn=N("TextButton",{Parent=TabSc,ZIndex=12,
             Size=UDim2.new(1,0,0,38),
             BackgroundColor3=ZNX.Theme.Bg1,BackgroundTransparency=1,
             BorderSizePixel=0,Text="",AutoButtonColor=false},{
-            N("UICorner",{CornerRadius=UDim.new(0,10)}),
+            N("UICorner",{CornerRadius=UDim.new(0,12)}),  -- Borda arredondada
         })
         B(TBtn,"BackgroundColor3","Bg1")
 
-        -- Indicador lateral Aurora (mais elegante)
+        -- Indicador lateral
         local Ind=N("Frame",{Parent=TBtn,ZIndex=13,
             Position=UDim2.new(0,0,0.2,0),Size=UDim2.new(0,3,0.6,0),
             BackgroundColor3=ZNX.Theme.A,BackgroundTransparency=1,BorderSizePixel=0},{
@@ -1085,7 +1067,7 @@ function ZNX:MakeWindow(wCfg)
         if firstTab then firstTab=false; Activate() end
 
         -- ════════════════════════════════════════════════
-        -- BUILDER DE ELEMENTOS — redesenhados
+        -- BUILDER DE ELEMENTOS — com bordas arredondadas
         -- ════════════════════════════════════════════════
         local function BuildElem(par,secName)
             local E={}; secName=secName or ""
@@ -1102,7 +1084,6 @@ function ZNX:MakeWindow(wCfg)
                 local c=MkCard(par,0); c.AutomaticSize=Enum.AutomaticSize.Y; c.Size=UDim2.new(1,0,0,0)
                 N("UIPadding",{Parent=c,PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),PaddingTop=UDim.new(0,12),PaddingBottom=UDim.new(0,12)})
                 N("UIListLayout",{Parent=c,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,5)})
-                -- Linha acento topo do parágrafo
                 local tl=N("Frame",{Parent=c,Size=UDim2.new(1,0,0,2),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0},{
                     N("UIGradient",{Color=ColorSequence.new{ColorSequenceKeypoint.new(0,ZNX.Theme.A),ColorSequenceKeypoint.new(0.7,ZNX.Theme.A2),ColorSequenceKeypoint.new(1,ZNX.Theme.A)},Rotation=90}),
                     N("UICorner",{CornerRadius=UDim.new(0,1)}),
@@ -1119,7 +1100,7 @@ function ZNX:MakeWindow(wCfg)
                 if ok and res and res[1] then dn=res[1].DisplayName or "Unknown"; un=res[1].Username or "Unknown" end
                 local c=MkCard(par,72)
                 N("UIPadding",{Parent=c,PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10),PaddingTop=UDim.new(0,8),PaddingBottom=UDim.new(0,8)})
-                local av=N("ImageLabel",{Parent=c,Size=UDim2.new(0,56,0,56),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..uid.."&width=420&height=420&format=png"},{N("UICorner",{CornerRadius=UDim.new(0,8)}),N("UIStroke",{Color=ZNX.Theme.A,Thickness=1.5})})
+                local av=N("ImageLabel",{Parent=c,Size=UDim2.new(0,56,0,56),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..uid.."&width=420&height=420&format=png"},{N("UICorner",{CornerRadius=UDim.new(0,12)}),N("UIStroke",{Color=ZNX.Theme.A,Thickness=1.5})})
                 local dl=N("TextLabel",{Parent=c,Size=UDim2.new(1,-70,0,22),Position=UDim2.new(0,68,0,8),BackgroundTransparency=1,Text=dn,Font=Enum.Font.GothamBold,TextSize=14,TextColor3=ZNX.Theme.TxA,TextXAlignment=Enum.TextXAlignment.Left}); B(dl,"TextColor3","TxA")
                 local ul=N("TextLabel",{Parent=c,Size=UDim2.new(1,-70,0,16),Position=UDim2.new(0,68,0,30),BackgroundTransparency=1,Text="@"..un,Font=Enum.Font.GothamMedium,TextSize=11,TextColor3=ZNX.Theme.TxC,TextXAlignment=Enum.TextXAlignment.Left}); B(ul,"TextColor3","TxC")
                 reg(c,dn)
@@ -1128,14 +1109,13 @@ function ZNX:MakeWindow(wCfg)
                 return PP
             end
 
-            -- ── BUTTON redesenhado ────────────────────────
+            -- ── BUTTON com borda arredondada ────────────────────────
             function E:AddButton(bCfg)
                 bCfg=bCfg or{}; bCfg.Name=bCfg.Name or "Button"; bCfg.Callback=bCfg.Callback or function()end; bCfg.Icon=bCfg.Icon or ""
                 local c=MkCard(par,44)
 
-                -- Acento lateral que anima no hover
                 local AccL=N("Frame",{Parent=c,ZIndex=2,Position=UDim2.new(0,0,0.15,0),Size=UDim2.new(0,0,0.7,0),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0},{
-                    N("UICorner",{CornerRadius=UDim.new(0,3)}),
+                    N("UICorner",{CornerRadius=UDim.new(0,4)}),
                 })
                 B(AccL,"BackgroundColor3","A")
 
@@ -1143,13 +1123,12 @@ function ZNX:MakeWindow(wCfg)
                 if bCfg.Icon~="" then
                     N("ImageLabel",{Parent=c,Position=UDim2.new(1,-32,0.5,-9),Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,Image=bCfg.Icon,ImageColor3=ZNX.Theme.TxB})
                 end
-                -- Seta de navegação mais elegante
                 N("TextLabel",{Parent=c,Position=UDim2.new(1,-22,0,0),Size=UDim2.new(0,18,1,0),BackgroundTransparency=1,Text="›",Font=Enum.Font.GothamBlack,TextSize=16,TextColor3=ZNX.Theme.ADim,TextXAlignment=Enum.TextXAlignment.Center})
                 local btn=N("TextButton",{Parent=c,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
                 local s=c:FindFirstChildOfClass("UIStroke")
                 C(btn.MouseEnter,function()
                     Tw(c,TI.Fast,{BackgroundColor3=ZNX.Theme.Bg3})
-                    Tw(AccL,TI.Fast,{Size=UDim2.new(0,3,0.7,0)})
+                    Tw(AccL,TI.Fast,{Size=UDim2.new(0,4,0.7,0)})
                     if s then Tw(s,TI.Fast,{Color=ZNX.Theme.LineB,Transparency=0.2}) end
                 end)
                 C(btn.MouseLeave,function()
@@ -1166,26 +1145,23 @@ function ZNX:MakeWindow(wCfg)
                 reg(c,bCfg.Name); return{Set=function(_,t) lbl.Text=t end}
             end
 
-            -- ── TOGGLE redesenhado ───────────────────────
+            -- ── TOGGLE com borda arredondada ───────────────────────
             function E:AddToggle(tCfg2)
                 tCfg2=tCfg2 or{}; tCfg2.Name=tCfg2.Name or "Toggle"; tCfg2.Default=tCfg2.Default or false; tCfg2.Callback=tCfg2.Callback or function()end; tCfg2.Flag=tCfg2.Flag or nil; tCfg2.Save=tCfg2.Save or false
                 local Tog={Value=tCfg2.Default,Type="Toggle",Save=tCfg2.Save}
                 local c=MkCard(par,44)
 
-                -- Dot de status
                 local Dot=N("Frame",{Parent=c,Position=UDim2.new(0,13,0.5,-4.5),Size=UDim2.new(0,9,0,9),BackgroundColor3=ZNX.Theme.TxC,BorderSizePixel=0},{
                     N("UICorner",{CornerRadius=UDim.new(1,0)}),
                 })
                 local lbl=N("TextLabel",{Parent=c,Position=UDim2.new(0,30,0,0),Size=UDim2.new(1,-100,1,0),BackgroundTransparency=1,Text=tCfg2.Name,Font=Enum.Font.GothamBold,TextSize=13,TextColor3=ZNX.Theme.TxA,TextXAlignment=Enum.TextXAlignment.Left}); B(lbl,"TextColor3","TxA")
 
-                -- Track do toggle — mais arredondado
                 local Trk=N("Frame",{Parent=c,Position=UDim2.new(1,-60,0.5,-13),Size=UDim2.new(0,48,0,26),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0},{
                     N("UICorner",{CornerRadius=UDim.new(1,0)}),
                     N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.4}),
                 })
                 B(Trk,"BackgroundColor3","BgI")
 
-                -- Thumb do toggle
                 local Thm=N("Frame",{Parent=Trk,Position=UDim2.new(0,2,0.5,-11),Size=UDim2.new(0,22,0,22),BackgroundColor3=ZNX.Theme.TxC,BorderSizePixel=0},{
                     N("UICorner",{CornerRadius=UDim.new(1,0)}),
                 })
@@ -1233,7 +1209,7 @@ function ZNX:MakeWindow(wCfg)
                 reg(c,tCfg2.Name); if tCfg2.Flag then ZNX.Flags[tCfg2.Flag]=Tog end; return Tog
             end
 
-            -- ── SLIDER redesenhado ──────────────────────
+            -- ── SLIDER com borda arredondada ──────────────────────
             function E:AddSlider(sCfg)
                 sCfg=sCfg or{}; sCfg.Name=sCfg.Name or "Slider"; sCfg.Min=sCfg.Min or 0; sCfg.Max=sCfg.Max or 100; sCfg.Increment=sCfg.Increment or 1; sCfg.Default=Cl(sCfg.Default or sCfg.Min,sCfg.Min,sCfg.Max); sCfg.Suffix=sCfg.Suffix or ""; sCfg.Callback=sCfg.Callback or function()end; sCfg.Flag=sCfg.Flag or nil; sCfg.Save=sCfg.Save or false
                 local Sl={Value=sCfg.Default,Type="Slider",Save=sCfg.Save}; local drag=false
@@ -1244,7 +1220,6 @@ function ZNX:MakeWindow(wCfg)
                 local nl=N("TextLabel",{Parent=row,Size=UDim2.new(.62,0,1,0),BackgroundTransparency=1,Text=sCfg.Name,Font=Enum.Font.GothamBold,TextSize=13,TextColor3=ZNX.Theme.TxA,TextXAlignment=Enum.TextXAlignment.Left}); B(nl,"TextColor3","TxA")
                 local vl=N("TextLabel",{Parent=row,Position=UDim2.new(.62,0,0,0),Size=UDim2.new(.38,0,1,0),BackgroundTransparency=1,Text=tostring(sCfg.Default).." "..sCfg.Suffix,Font=Enum.Font.GothamBlack,TextSize=13,TextColor3=ZNX.Theme.A,TextXAlignment=Enum.TextXAlignment.Right}); B(vl,"TextColor3","A")
 
-                -- Track do slider — mais arredondado
                 local tBg=N("Frame",{Parent=c,Position=UDim2.new(0,0,0,34),Size=UDim2.new(1,0,0,8),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0,ZIndex=10},{
                     N("UICorner",{CornerRadius=UDim.new(1,0)}),
                 })
@@ -1262,7 +1237,6 @@ function ZNX:MakeWindow(wCfg)
                     end
                 end)
 
-                -- Thumb mais compacto e elegante
                 local thumb=N("Frame",{Parent=tBg,Position=UDim2.new(0,-9,0.5,-9),Size=UDim2.new(0,18,0,18),BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0,ZIndex=12},{
                     N("UICorner",{CornerRadius=UDim.new(1,0)}),
                     N("UIStroke",{Color=ZNX.Theme.A,Thickness=2}),
@@ -1295,7 +1269,7 @@ function ZNX:MakeWindow(wCfg)
                 Sl:Set(Sl.Value); reg(c,sCfg.Name); if sCfg.Flag then ZNX.Flags[sCfg.Flag]=Sl end; return Sl
             end
 
-            -- ── DROPDOWN redesenhado ────────────────────
+            -- ── DROPDOWN com borda arredondada ────────────────────
             function E:AddDropdown(dCfg)
                 dCfg=dCfg or{}; dCfg.Name=dCfg.Name or "Dropdown"; dCfg.Options=dCfg.Options or{}; dCfg.Default=dCfg.Default or""; dCfg.Callback=dCfg.Callback or function()end; dCfg.Flag=dCfg.Flag or nil; dCfg.Save=dCfg.Save or false
                 local DD={Value=dCfg.Default,Options=dCfg.Options,Buttons={},Type="Dropdown",Save=dCfg.Save}
@@ -1307,7 +1281,7 @@ function ZNX:MakeWindow(wCfg)
                     for _,opt in ipairs(DD.Options) do
                         local isSel=opt==DD.Value
                         local ob=N("TextButton",{Parent=sc,Size=UDim2.new(1,0,0,32),BackgroundColor3=isSel and ZNX.Theme.ASel or ZNX.Theme.Bg3,BorderSizePixel=0,Text="",AutoButtonColor=false},{
-                            N("UICorner",{CornerRadius=UDim.new(0,8)}),
+                            N("UICorner",{CornerRadius=UDim.new(0,10)}),  -- Borda arredondada
                         })
                         if isSel then
                             N("Frame",{Parent=ob,Position=UDim2.new(0,8,0.5,-4),Size=UDim2.new(0,8,0,8),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(1,0)})})
@@ -1337,8 +1311,8 @@ function ZNX:MakeWindow(wCfg)
                 local function AddOpts(opts)
                     for _,opt in pairs(opts) do
                         local isSel=table.find(selArr,opt)~=nil
-                        local ob=N("TextButton",{Parent=sc,Size=UDim2.new(1,0,0,32),BackgroundColor3=isSel and ZNX.Theme.ASel or ZNX.Theme.Bg3,BorderSizePixel=0,Text="",AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,8)})})
-                        local chk=N("Frame",{Parent=ob,Position=UDim2.new(0,8,0.5,-8),Size=UDim2.new(0,16,0,16),BackgroundColor3=isSel and ZNX.Theme.ADim or ZNX.Theme.BgI,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,5)}),N("UIStroke",{Color=isSel and ZNX.Theme.A or ZNX.Theme.Line,Thickness=1})})
+                        local ob=N("TextButton",{Parent=sc,Size=UDim2.new(1,0,0,32),BackgroundColor3=isSel and ZNX.Theme.ASel or ZNX.Theme.Bg3,BorderSizePixel=0,Text="",AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,10)})})
+                        local chk=N("Frame",{Parent=ob,Position=UDim2.new(0,8,0.5,-8),Size=UDim2.new(0,16,0,16),BackgroundColor3=isSel and ZNX.Theme.ADim or ZNX.Theme.BgI,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,6)}),N("UIStroke",{Color=isSel and ZNX.Theme.A or ZNX.Theme.Line,Thickness=1})})
                         if isSel then N("TextLabel",{Parent=chk,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="✓",Font=Enum.Font.GothamBlack,TextSize=10,TextColor3=ZNX.Theme.A,TextXAlignment=Enum.TextXAlignment.Center}) end
                         N("TextLabel",{Parent=ob,Position=UDim2.new(0,30,0,0),Size=UDim2.new(1,-34,1,0),BackgroundTransparency=1,Text=tostring(opt),Font=Enum.Font.GothamMedium,TextSize=12,TextColor3=isSel and ZNX.Theme.A or ZNX.Theme.TxB,TextXAlignment=Enum.TextXAlignment.Left})
                         C(ob.MouseButton1Up,function() DD:Set(opt); SaveCfg(wCfg.ConfigName) end)
@@ -1359,7 +1333,7 @@ function ZNX:MakeWindow(wCfg)
                 DD:Refresh(DD.Options,false); reg(outer,dCfg.Name); if dCfg.Flag then ZNX.Flags[dCfg.Flag]=DD end; return DD
             end
 
-            -- ── PLAYERS DROPDOWN (mantido e melhorado) ──
+            -- ── PLAYERS DROPDOWN com borda arredondada ──
             function E:AddPlayersDropdown(dCfg)
                 dCfg=dCfg or{}; dCfg.Name=dCfg.Name or "Players"; dCfg.Callback=dCfg.Callback or function()end; dCfg.Flag=dCfg.Flag or nil; dCfg.MultipleSelection=dCfg.MultipleSelection or false; dCfg.Save=false
                 local DD={Value=nil,Buttons={},Type="PlayersDropdown",Save=false,MultipleSelection=dCfg.MultipleSelection,SelectedPlayers={},PendingReconnect={}}
@@ -1451,9 +1425,9 @@ function ZNX:MakeWindow(wCfg)
                     if DD.PendingReconnect[pn] then
                         isSelected=true; table.insert(DD.SelectedPlayers,pn); DD.PendingReconnect[pn]=nil; UpdateSelectedText()
                     end
-                    local ob=N("TextButton",{Parent=sc,Size=UDim2.new(1,0,0,52),BackgroundColor3=isSelected and SelBg() or ZNX.Theme.Bg2,BorderSizePixel=0,Text="",AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5})})
+                    local ob=N("TextButton",{Parent=sc,Size=UDim2.new(1,0,0,52),BackgroundColor3=isSelected and SelBg() or ZNX.Theme.Bg2,BorderSizePixel=0,Text="",AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,12)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5})})
                     local sb=N("Frame",{Parent=ob,Name="SB",Position=UDim2.new(0,0,0.12,0),Size=UDim2.new(0,3,0.76,0),BackgroundColor3=ZNX.Theme.A,BackgroundTransparency=isSelected and 0 or 1,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(1,0)})}); B(sb,"BackgroundColor3","A")
-                    N("ImageLabel",{Parent=ob,Position=UDim2.new(0,8,0.5,-18),Size=UDim2.new(0,36,0,36),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..uid.."&width=420&height=420&format=png"},{N("UICorner",{CornerRadius=UDim.new(0,6)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1.2})})
+                    N("ImageLabel",{Parent=ob,Position=UDim2.new(0,8,0.5,-18),Size=UDim2.new(0,36,0,36),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..uid.."&width=420&height=420&format=png"},{N("UICorner",{CornerRadius=UDim.new(0,8)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1.2})})
                     N("ImageLabel",{Parent=ob,Name="DisIco",Position=UDim2.new(1,-25,0.5,-12),Size=UDim2.new(0,22,0,22),BackgroundTransparency=1,Image="rbxassetid://7072725342",ImageColor3=Color3.fromRGB(220,50,50),Visible=false})
                     if inFolder then N("ImageLabel",{Parent=ob,Name="FolderIco",Position=UDim2.new(1,-52,0.5,-10),Size=UDim2.new(0,18,0,18),BackgroundTransparency=1,Image="rbxassetid://6693712941",ImageColor3=Color3.fromRGB(55,155,255)}) end
                     local nc=inFolder and Color3.fromRGB(55,155,255) or(isSelected and ZNX.Theme.A or Color3.fromRGB(232,235,252))
@@ -1518,9 +1492,9 @@ function ZNX:MakeWindow(wCfg)
                 local function AddOpts(pl)
                     for _,p in ipairs(pl) do
                         local isSel=DD.SelP[p]
-                        local ob=N("TextButton",{Parent=sc,Size=UDim2.new(1,0,0,46),BackgroundColor3=isSel and SelBg() or ZNX.Theme.Bg2,BorderSizePixel=0,Text="",AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5})})
+                        local ob=N("TextButton",{Parent=sc,Size=UDim2.new(1,0,0,46),BackgroundColor3=isSel and SelBg() or ZNX.Theme.Bg2,BorderSizePixel=0,Text="",AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,12)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5})})
                         local sb=N("Frame",{Parent=ob,Name="SB",Position=UDim2.new(0,0,0.12,0),Size=UDim2.new(0,3,0.76,0),BackgroundColor3=ZNX.Theme.A,BackgroundTransparency=isSel and 0 or 1,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(1,0)})}); B(sb,"BackgroundColor3","A")
-                        N("ImageLabel",{Parent=ob,Position=UDim2.new(0,8,0.5,-15),Size=UDim2.new(0,30,0,30),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..p.UserId.."&width=420&height=420&format=png"},{N("UICorner",{CornerRadius=UDim.new(0,5)})})
+                        N("ImageLabel",{Parent=ob,Position=UDim2.new(0,8,0.5,-15),Size=UDim2.new(0,30,0,30),BackgroundTransparency=1,Image="https://www.roblox.com/headshot-thumbnail/image?userId="..p.UserId.."&width=420&height=420&format=png"},{N("UICorner",{CornerRadius=UDim.new(0,8)})})
                         local dl=N("TextLabel",{Parent=ob,Position=UDim2.new(0,46,0,7),Size=UDim2.new(1,-50,0,16),BackgroundTransparency=1,Text=p.DisplayName,Font=Enum.Font.GothamBold,TextSize=12,TextColor3=isSel and ZNX.Theme.A or Color3.fromRGB(232,235,252),TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
                         N("TextLabel",{Parent=ob,Position=UDim2.new(0,46,0,23),Size=UDim2.new(1,-50,0,13),BackgroundTransparency=1,Text="@"..p.Name,Font=Enum.Font.GothamMedium,TextSize=10,TextColor3=ZNX.Theme.TxC,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd})
                         C(ob.MouseButton1Up,function() DD.SelP[p]=DD.SelP[p] and nil or true; DD:Set(); if pdCfg.Save then SaveCfg(wCfg.ConfigName) end end)
@@ -1541,19 +1515,19 @@ function ZNX:MakeWindow(wCfg)
                 reg(outer,pdCfg.Name); if pdCfg.Flag then ZNX.Flags[pdCfg.Flag]=DD end; return DD
             end
 
-            -- ── TEXTBOX redesenhado ─────────────────────
+            -- ── TEXTBOX com borda arredondada ─────────────────────
             function E:AddTextbox(xCfg)
                 xCfg=xCfg or{}; xCfg.Name=xCfg.Name or "Textbox"; xCfg.Default=xCfg.Default or""; xCfg.Placeholder=xCfg.Placeholder or"Digite..."; xCfg.ClearOnSubmit=xCfg.ClearOnSubmit or false; xCfg.Callback=xCfg.Callback or function()end
                 local c=MkCard(par,44)
                 local lbl=N("TextLabel",{Parent=c,Position=UDim2.new(0,14,0,0),Size=UDim2.new(0,118,1,0),BackgroundTransparency=1,Text=xCfg.Name,Font=Enum.Font.GothamBold,TextSize=13,TextColor3=ZNX.Theme.TxA,TextXAlignment=Enum.TextXAlignment.Left}); B(lbl,"TextColor3","TxA")
-                local ibg=N("Frame",{Parent=c,Position=UDim2.new(.44,0,0.5,-13),Size=UDim2.new(.54,0,0,26),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,8)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.45})}); B(ibg,"BackgroundColor3","BgI"); B(ibg:FindFirstChildOfClass("UIStroke"),"Color","Line")
+                local ibg=N("Frame",{Parent=c,Position=UDim2.new(.44,0,0.5,-13),Size=UDim2.new(.54,0,0,26),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.45})}); B(ibg,"BackgroundColor3","BgI"); B(ibg:FindFirstChildOfClass("UIStroke"),"Color","Line")
                 local tb2=N("TextBox",{Parent=ibg,Position=UDim2.new(0,9,0,0),Size=UDim2.new(1,-18,1,0),BackgroundTransparency=1,Text=xCfg.Default,PlaceholderText=xCfg.Placeholder,PlaceholderColor3=ZNX.Theme.TxD,Font=Enum.Font.GothamMedium,TextSize=12,TextColor3=ZNX.Theme.TxA,ClearTextOnFocus=false,TextXAlignment=Enum.TextXAlignment.Left}); B(tb2,"TextColor3","TxA")
                 C(tb2.Focused,function() Tw(ibg:FindFirstChildOfClass("UIStroke"),TI.Fast,{Color=ZNX.Theme.A,Transparency=0}) end)
                 C(tb2.FocusLost,function() Tw(ibg:FindFirstChildOfClass("UIStroke"),TI.Fast,{Color=ZNX.Theme.Line,Transparency=0.45}); xCfg.Callback(tb2.Text); if xCfg.ClearOnSubmit then tb2.Text="" end end)
                 reg(c,xCfg.Name); return{Get=function() return tb2.Text end,Set=function(_,t) tb2.Text=t end}
             end
 
-            -- ── KEYBIND redesenhado ─────────────────────
+            -- ── KEYBIND com borda arredondada ─────────────────────
             function E:AddBind(bCfg)
                 bCfg=bCfg or{}; bCfg.Name=bCfg.Name or "Keybind"; bCfg.Default=bCfg.Default or Enum.KeyCode.Unknown; bCfg.Hold=bCfg.Hold or false; bCfg.Callback=bCfg.Callback or function()end; bCfg.Flag=bCfg.Flag or nil; bCfg.Save=bCfg.Save or false
                 local BL={Enum.KeyCode.Unknown,Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D,Enum.KeyCode.Slash,Enum.KeyCode.Tab,Enum.KeyCode.Backspace,Enum.KeyCode.Escape,Enum.KeyCode.Up,Enum.KeyCode.Down,Enum.KeyCode.Left,Enum.KeyCode.Right}
@@ -1561,7 +1535,7 @@ function ZNX:MakeWindow(wCfg)
                 local BO={Value=bCfg.Default.Name or tostring(bCfg.Default),Binding=false,Holding=false,Type="Bind",Save=bCfg.Save}
                 local c=MkCard(par,44)
                 local lbl=N("TextLabel",{Parent=c,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-110,1,0),BackgroundTransparency=1,Text=bCfg.Name,Font=Enum.Font.GothamBold,TextSize=13,TextColor3=ZNX.Theme.TxA,TextXAlignment=Enum.TextXAlignment.Left}); B(lbl,"TextColor3","TxA")
-                local kbg=N("Frame",{Parent=c,Position=UDim2.new(1,-98,0.5,-15),Size=UDim2.new(0,86,0,30),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,8)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.45})}); B(kbg,"BackgroundColor3","BgI"); B(kbg:FindFirstChildOfClass("UIStroke"),"Color","Line")
+                local kbg=N("Frame",{Parent=c,Position=UDim2.new(1,-98,0.5,-15),Size=UDim2.new(0,86,0,30),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.45})}); B(kbg,"BackgroundColor3","BgI"); B(kbg:FindFirstChildOfClass("UIStroke"),"Color","Line")
                 local kl=N("TextLabel",{Parent=kbg,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=BO.Value,Font=Enum.Font.GothamBlack,TextSize=12,TextColor3=ZNX.Theme.A,TextXAlignment=Enum.TextXAlignment.Center}); B(kl,"TextColor3","A")
                 local btn=N("TextButton",{Parent=c,Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",AutoButtonColor=false})
                 local s=c:FindFirstChildOfClass("UIStroke")
@@ -1574,23 +1548,23 @@ function ZNX:MakeWindow(wCfg)
                 BO:Set(bCfg.Default); reg(c,bCfg.Name); if bCfg.Flag then ZNX.Flags[bCfg.Flag]=BO end; return BO
             end
 
-            -- ── COLORPICKER redesenhado ─────────────────
+            -- ── COLORPICKER com borda arredondada ─────────────────
             function E:AddColorpicker(cpCfg)
                 cpCfg=cpCfg or{}; cpCfg.Name=cpCfg.Name or "Cor"; cpCfg.Default=cpCfg.Default or Color3.fromRGB(155,72,255); cpCfg.Callback=cpCfg.Callback or function()end; cpCfg.Flag=cpCfg.Flag or nil; cpCfg.Save=cpCfg.Save or false; cpCfg.ThemeKey=cpCfg.ThemeKey or nil
                 local CP={Value=cpCfg.Default,Toggled=false,Type="Colorpicker",Save=cpCfg.Save}
                 local H,S,V=Color3.toHSV(cpCfg.Default)
-                local outer=N("Frame",{Parent=par,Size=UDim2.new(1,0,0,44),BackgroundColor3=ZNX.Theme.Bg2,BorderSizePixel=0,ClipsDescendants=true},{N("UICorner",{CornerRadius=UDim.new(0,12)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5})})
+                local outer=N("Frame",{Parent=par,Size=UDim2.new(1,0,0,44),BackgroundColor3=ZNX.Theme.Bg2,BorderSizePixel=0,ClipsDescendants=true},{N("UICorner",{CornerRadius=UDim.new(0,16)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5})})
                 B(outer,"BackgroundColor3","Bg2")
                 table.insert(ZNX.Watch,function() local s=outer:FindFirstChildOfClass("UIStroke"); if s and outer.Parent then s.Color=ZNX.Theme.Line end end)
                 local hdr=N("Frame",{Parent=outer,Size=UDim2.new(1,0,0,44),BackgroundTransparency=1})
                 local nl=N("TextLabel",{Parent=hdr,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-74,1,0),BackgroundTransparency=1,Text=cpCfg.Name,Font=Enum.Font.GothamBold,TextSize=13,TextColor3=ZNX.Theme.TxA,TextXAlignment=Enum.TextXAlignment.Left}); B(nl,"TextColor3","TxA")
-                local prev=N("Frame",{Parent=hdr,Position=UDim2.new(1,-54,0.5,-15),Size=UDim2.new(0,28,0,28),BackgroundColor3=cpCfg.Default,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,8)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1.5,Transparency=0.3})})
+                local prev=N("Frame",{Parent=hdr,Position=UDim2.new(1,-54,0.5,-15),Size=UDim2.new(0,28,0,28),BackgroundColor3=cpCfg.Default,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1.5,Transparency=0.3})})
                 local ar2=N("ImageLabel",{Parent=hdr,Position=UDim2.new(1,-20,0.5,-7),Size=UDim2.new(0,14,0,14),BackgroundTransparency=1,Image="rbxassetid://7072706796",ImageColor3=ZNX.Theme.TxC})
                 local sep2=N("Frame",{Parent=outer,Position=UDim2.new(0,0,0,44),Size=UDim2.new(1,0,0,1),BackgroundColor3=ZNX.Theme.Line,BorderSizePixel=0,Visible=false,BackgroundTransparency=0.5}); B(sep2,"BackgroundColor3","Line")
                 local pa=N("Frame",{Parent=outer,Position=UDim2.new(0,12,0,52),Size=UDim2.new(1,-24,0,114),BackgroundTransparency=1,Visible=false})
-                local svb=N("ImageLabel",{Parent=pa,Size=UDim2.new(1,-28,1,0),Image="rbxassetid://4155801252",BackgroundColor3=Color3.fromHSV(H,1,1),BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,8)})})
+                local svb=N("ImageLabel",{Parent=pa,Size=UDim2.new(1,-28,1,0),Image="rbxassetid://4155801252",BackgroundColor3=Color3.fromHSV(H,1,1),BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,10)})})
                 local svp=N("Frame",{Parent=svb,Position=UDim2.new(S,0,1-V,0),Size=UDim2.new(0,14,0,14),BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0,AnchorPoint=Vector2.new(0.5,0.5)},{N("UICorner",{CornerRadius=UDim.new(1,0)}),N("UIStroke",{Color=Color3.fromRGB(20,20,20),Thickness=2})})
-                local hb2=N("Frame",{Parent=pa,Position=UDim2.new(1,-24,0,0),Size=UDim2.new(0,18,1,0),BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,8)}),N("UIGradient",{Rotation=270,Color=ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.fromRGB(255,0,4)),ColorSequenceKeypoint.new(.17,Color3.fromRGB(255,255,0)),ColorSequenceKeypoint.new(.33,Color3.fromRGB(0,255,0)),ColorSequenceKeypoint.new(.5,Color3.fromRGB(0,255,255)),ColorSequenceKeypoint.new(.67,Color3.fromRGB(0,0,255)),ColorSequenceKeypoint.new(.83,Color3.fromRGB(255,0,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,4))}})})
+                local hb2=N("Frame",{Parent=pa,Position=UDim2.new(1,-24,0,0),Size=UDim2.new(0,18,1,0),BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIGradient",{Rotation=270,Color=ColorSequence.new{ColorSequenceKeypoint.new(0,Color3.fromRGB(255,0,4)),ColorSequenceKeypoint.new(.17,Color3.fromRGB(255,255,0)),ColorSequenceKeypoint.new(.33,Color3.fromRGB(0,255,0)),ColorSequenceKeypoint.new(.5,Color3.fromRGB(0,255,255)),ColorSequenceKeypoint.new(.67,Color3.fromRGB(0,0,255)),ColorSequenceKeypoint.new(.83,Color3.fromRGB(255,0,255)),ColorSequenceKeypoint.new(1,Color3.fromRGB(255,0,4))}})})
                 local hp2=N("Frame",{Parent=hb2,Position=UDim2.new(0.5,0,1-H,0),Size=UDim2.new(1,6,0,4),AnchorPoint=Vector2.new(0.5,0.5),BackgroundColor3=Color3.fromRGB(255,255,255),BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,2)}),N("UIStroke",{Color=Color3.fromRGB(20,20,20),Thickness=1.5})})
                 local function UpdCP() local c2=Color3.fromHSV(H,S,V); CP.Value=c2; prev.BackgroundColor3=c2; svb.BackgroundColor3=Color3.fromHSV(H,1,1); cpCfg.Callback(c2); SaveCfg(wCfg.ConfigName) end
                 local svD,svI=false; C(svb.InputBegan,function(i) if i.UserInputType==Enum.UserInputType.MouseButton1 or i.UserInputType==Enum.UserInputType.Touch then svD=true; i.Changed:Connect(function() if i.UserInputState==Enum.UserInputState.End then svD=false end end) end end); C(svb.InputChanged,function(i) if i.UserInputType==Enum.UserInputType.MouseMovement or i.UserInputType==Enum.UserInputType.Touch then svI=i end end); C(UIS.InputChanged,function(i) if svD and i==svI then S=Cl((i.Position.X-svb.AbsolutePosition.X)/math.max(svb.AbsoluteSize.X,1),0,1); V=1-Cl((i.Position.Y-svb.AbsolutePosition.Y)/math.max(svb.AbsoluteSize.Y,1),0,1); svp.Position=UDim2.new(S,0,1-V,0); UpdCP() end end)
@@ -1608,21 +1582,18 @@ function ZNX:MakeWindow(wCfg)
                 CP:Set(cpCfg.Default); reg(outer,cpCfg.Name); if cpCfg.Flag then ZNX.Flags[cpCfg.Flag]=CP end; return CP
             end
 
-            -- ── SECTION redesenhado ─────────────────────
+            -- ── SECTION com borda arredondada ─────────────────────
             function E:AddSection(sCfg)
                 sCfg=sCfg or{}; sCfg.Name=sCfg.Name or "Seção"
                 local wrap=N("Frame",{Parent=par,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1})
                 N("UIListLayout",{Parent=wrap,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,7)})
                 local hrow=N("Frame",{Parent=wrap,Size=UDim2.new(1,0,0,24),BackgroundTransparency=1})
 
-                -- Indicador lateral da seção
                 N("Frame",{Parent=hrow,Position=UDim2.new(0,0,0.12,0),Size=UDim2.new(0,3,0.76,0),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0},{
                     N("UICorner",{CornerRadius=UDim.new(1,0)}),
                 })
-                -- Linha separadora com fade
                 N("Frame",{Parent=hrow,Position=UDim2.new(0,10,0.5,0),Size=UDim2.new(1,-10,0,1),BackgroundColor3=ZNX.Theme.Line,BackgroundTransparency=0.5,BorderSizePixel=0})
 
-                -- Label da seção — com gradiente de texto via ImageLabel overlay
                 local slbl=N("TextLabel",{Parent=hrow,Position=UDim2.new(0,14,0,0),Size=UDim2.new(1,-14,1,0),BackgroundTransparency=1,Text=sCfg.Name:upper(),Font=Enum.Font.GothamBlack,TextSize=9,TextColor3=ZNX.Theme.A,TextXAlignment=Enum.TextXAlignment.Left})
                 B(slbl,"TextColor3","A")
 
@@ -1637,20 +1608,20 @@ function ZNX:MakeWindow(wCfg)
                 local function LdImg() if not readfile or not isfile or not isfolder then return end; local p=ZNX.SaveDir.."/"..imgCfg.SaveKey..".json"; if not isfile(p) then return end; local ok,d=pcall(function() return HTTP:JSONDecode(readfile(p)) end); if ok and type(d)=="table" then saved=d end end
                 local function SvImg() if not writefile or not isfolder then return end; if not isfolder(ZNX.SaveDir) then makefolder(ZNX.SaveDir) end; pcall(writefile,ZNX.SaveDir.."/"..imgCfg.SaveKey..".json",HTTP:JSONEncode(saved)) end
                 LdImg()
-                local outer=N("Frame",{Parent=par,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundColor3=ZNX.Theme.Bg2,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,12)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5}),N("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),PaddingTop=UDim.new(0,12),PaddingBottom=UDim.new(0,12)})})
+                local outer=N("Frame",{Parent=par,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundColor3=ZNX.Theme.Bg2,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,16)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5}),N("UIPadding",{PaddingLeft=UDim.new(0,14),PaddingRight=UDim.new(0,14),PaddingTop=UDim.new(0,12),PaddingBottom=UDim.new(0,12)})})
                 B(outer,"BackgroundColor3","Bg2")
                 table.insert(ZNX.Watch,function() local s=outer:FindFirstChildOfClass("UIStroke"); if s and outer.Parent then s.Color=ZNX.Theme.Line end end)
                 N("UIListLayout",{Parent=outer,SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,9)})
                 local tlbl=N("TextLabel",{Parent=outer,Size=UDim2.new(1,0,0,16),BackgroundTransparency=1,Text=imgCfg.Name:upper(),Font=Enum.Font.GothamBlack,TextSize=9,TextColor3=ZNX.Theme.A,TextXAlignment=Enum.TextXAlignment.Left}); B(tlbl,"TextColor3","A")
                 local inRow=N("Frame",{Parent=outer,Size=UDim2.new(1,0,0,32),BackgroundTransparency=1})
                 local function MkIn(x,w,ph)
-                    local f=N("Frame",{Parent=inRow,Position=UDim2.new(x,0,0,0),Size=UDim2.new(w,-4,1,0),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,8)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.45})}); B(f,"BackgroundColor3","BgI"); B(f:FindFirstChildOfClass("UIStroke"),"Color","Line")
+                    local f=N("Frame",{Parent=inRow,Position=UDim2.new(x,0,0,0),Size=UDim2.new(w,-4,1,0),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.45})}); B(f,"BackgroundColor3","BgI"); B(f:FindFirstChildOfClass("UIStroke"),"Color","Line")
                     local tb3=N("TextBox",{Parent=f,Position=UDim2.new(0,9,0,0),Size=UDim2.new(1,-18,1,0),BackgroundTransparency=1,Text="",PlaceholderText=ph,PlaceholderColor3=ZNX.Theme.TxD,Font=Enum.Font.GothamMedium,TextSize=11,TextColor3=ZNX.Theme.TxA,ClearTextOnFocus=false,TextXAlignment=Enum.TextXAlignment.Left}); B(tb3,"TextColor3","TxA")
                     C(tb3.Focused,function() Tw(f:FindFirstChildOfClass("UIStroke"),TI.Fast,{Color=ZNX.Theme.A,Transparency=0}) end); C(tb3.FocusLost,function() Tw(f:FindFirstChildOfClass("UIStroke"),TI.Fast,{Color=ZNX.Theme.Line,Transparency=0.45}) end)
                     return tb3
                 end
                 local nameIn=MkIn(0,.38,"Nome"); local idIn=MkIn(.39,.39,"ID Roblox")
-                local addBtn=N("TextButton",{Parent=inRow,Position=UDim2.new(.79,4,0,0),Size=UDim2.new(.21,-4,1,0),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0,Text="ADD",Font=Enum.Font.GothamBlack,TextSize=11,TextColor3=Color3.fromRGB(4,4,10),AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,8)})}); B(addBtn,"BackgroundColor3","A")
+                local addBtn=N("TextButton",{Parent=inRow,Position=UDim2.new(.79,4,0,0),Size=UDim2.new(.21,-4,1,0),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0,Text="ADD",Font=Enum.Font.GothamBlack,TextSize=11,TextColor3=Color3.fromRGB(4,4,10),AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,10)})}); B(addBtn,"BackgroundColor3","A")
                 C(addBtn.MouseEnter,function() Tw(addBtn,TI.Fast,{BackgroundColor3=ZNX.Theme.ABr}) end); C(addBtn.MouseLeave,function() Tw(addBtn,TI.Fast,{BackgroundColor3=ZNX.Theme.A}) end)
                 N("Frame",{Parent=outer,Size=UDim2.new(1,0,0,1),BackgroundColor3=ZNX.Theme.Line,BorderSizePixel=0,BackgroundTransparency=0.55})
                 local listF=N("Frame",{Parent=outer,Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1})
@@ -1661,15 +1632,15 @@ function ZNX:MakeWindow(wCfg)
                         local em=N("TextLabel",{Parent=listF,Size=UDim2.new(1,0,0,22),BackgroundTransparency=1,Text="Nenhuma imagem salva.",Font=Enum.Font.GothamMedium,TextSize=11,TextColor3=ZNX.Theme.TxC,TextXAlignment=Enum.TextXAlignment.Center}); B(em,"TextColor3","TxC"); return
                     end
                     for idx3,img in ipairs(saved) do
-                        local row2=N("Frame",{Parent=listF,Size=UDim2.new(1,0,0,64),BackgroundColor3=ZNX.Theme.Bg3,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5}),N("UIPadding",{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10),PaddingTop=UDim.new(0,9),PaddingBottom=UDim.new(0,9)})}); B(row2,"BackgroundColor3","Bg3"); B(row2:FindFirstChildOfClass("UIStroke"),"Color","Line")
-                        N("ImageLabel",{Parent=row2,Size=UDim2.new(0,44,0,44),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0,Image="rbxassetid://"..tostring(img.id),ScaleType=Enum.ScaleType.Crop},{N("UICorner",{CornerRadius=UDim.new(0,8)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5})})
+                        local row2=N("Frame",{Parent=listF,Size=UDim2.new(1,0,0,64),BackgroundColor3=ZNX.Theme.Bg3,BorderSizePixel=0},{N("UICorner",{CornerRadius=UDim.new(0,12)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5}),N("UIPadding",{PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10),PaddingTop=UDim.new(0,9),PaddingBottom=UDim.new(0,9)})}); B(row2,"BackgroundColor3","Bg3"); B(row2:FindFirstChildOfClass("UIStroke"),"Color","Line")
+                        N("ImageLabel",{Parent=row2,Size=UDim2.new(0,44,0,44),BackgroundColor3=ZNX.Theme.BgI,BorderSizePixel=0,Image="rbxassetid://"..tostring(img.id),ScaleType=Enum.ScaleType.Crop},{N("UICorner",{CornerRadius=UDim.new(0,10)}),N("UIStroke",{Color=ZNX.Theme.Line,Thickness=1,Transparency=0.5})})
                         local nl4=N("TextLabel",{Parent=row2,Position=UDim2.new(0,54,0,2),Size=UDim2.new(1,-168,0,18),BackgroundTransparency=1,Text=img.name,Font=Enum.Font.GothamBold,TextSize=12,TextColor3=ZNX.Theme.TxA,TextXAlignment=Enum.TextXAlignment.Left,TextTruncate=Enum.TextTruncate.AtEnd}); B(nl4,"TextColor3","TxA")
                         N("TextLabel",{Parent=row2,Position=UDim2.new(0,54,0,22),Size=UDim2.new(1,-168,0,12),BackgroundTransparency=1,Text="ID: "..tostring(img.id),Font=Enum.Font.GothamMedium,TextSize=9,TextColor3=ZNX.Theme.TxC,TextXAlignment=Enum.TextXAlignment.Left})
-                        local apB=N("TextButton",{Parent=row2,Position=UDim2.new(1,-110,0.5,-13),Size=UDim2.new(0,52,0,26),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0,Text="Aplicar",Font=Enum.Font.GothamBold,TextSize=10,TextColor3=Color3.fromRGB(4,4,10),AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,7)})}); B(apB,"BackgroundColor3","A")
+                        local apB=N("TextButton",{Parent=row2,Position=UDim2.new(1,-110,0.5,-13),Size=UDim2.new(0,52,0,26),BackgroundColor3=ZNX.Theme.A,BorderSizePixel=0,Text="Aplicar",Font=Enum.Font.GothamBold,TextSize=10,TextColor3=Color3.fromRGB(4,4,10),AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,9)})}); B(apB,"BackgroundColor3","A")
                         C(apB.MouseEnter,function() Tw(apB,TI.Fast,{BackgroundColor3=ZNX.Theme.ABr}) end); C(apB.MouseLeave,function() Tw(apB,TI.Fast,{BackgroundColor3=ZNX.Theme.A}) end)
                         C(apB.MouseButton1Up,function() imgCfg.OnApply(tostring(img.id)); ZNX:Notify({Title="Imagem aplicada",Message=img.name,Duration=3,Type="ok"}) end)
                         local capIdx=idx3
-                        local delB=N("TextButton",{Parent=row2,Position=UDim2.new(1,-52,0.5,-13),Size=UDim2.new(0,46,0,26),BackgroundColor3=Color3.fromRGB(48,8,8),BorderSizePixel=0,Text="Deletar",Font=Enum.Font.GothamBold,TextSize=9,TextColor3=Color3.fromRGB(210,55,55),AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,7)})})
+                        local delB=N("TextButton",{Parent=row2,Position=UDim2.new(1,-52,0.5,-13),Size=UDim2.new(0,46,0,26),BackgroundColor3=Color3.fromRGB(48,8,8),BorderSizePixel=0,Text="Deletar",Font=Enum.Font.GothamBold,TextSize=9,TextColor3=Color3.fromRGB(210,55,55),AutoButtonColor=false},{N("UICorner",{CornerRadius=UDim.new(0,9)})})
                         C(delB.MouseEnter,function() Tw(delB,TI.Fast,{BackgroundColor3=Color3.fromRGB(85,14,14)}) end); C(delB.MouseLeave,function() Tw(delB,TI.Fast,{BackgroundColor3=Color3.fromRGB(48,8,8)}) end)
                         C(delB.MouseButton1Up,function() local n2=saved[capIdx] and saved[capIdx].name or "?"; table.remove(saved,capIdx); SvImg(); ReBuild(); ZNX:Notify({Title="Removido",Message=n2,Duration=2,Type="err"}) end)
                     end
@@ -1691,7 +1662,7 @@ function ZNX:MakeWindow(wCfg)
     end
 
     -- ══════════════════════════════════════════════════
-    -- ABA SETTINGS — completamente redesenhada
+    -- ABA SETTINGS
     -- ══════════════════════════════════════════════════
     local function BuildSettings()
         local ST=TabFn:MakeTab({Name="Settings"})
